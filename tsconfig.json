@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "skipLibCheck": true,
+    "outDir": "./build",
+    "rootDir": "./src",        // Changed from "." to "./src"
+    "baseUrl": "./src",        // Changed to "./src"
+    "resolveJsonModule": true, // Added for JSON imports
+    "sourceMap": true          // Added for better debugging
+  },
+  "include": [
+    "src/**/*"                 // Only include files from src directory
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.spec.ts"
+  ]
+}
+

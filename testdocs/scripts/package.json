@@ -1,0 +1,18 @@
+{
+  "name": "carpet-market-test-scripts",
+  "version": "1.0.0",
+  "description": "Test scripts for Carpet Market Backend",
+  "scripts": {
+    "seed:users": "ts-node seed-users.ts",
+    "seed:users:faker": "ts-node seed-users-faker.ts",
+    "seed:products": "ts-node seed-products.ts",
+    "seed:products:faker": "ts-node seed-products-faker.ts",
+    "seed:all": "yarn seed:users:faker && yarn seed:products:faker"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^8.3.1",
+    "bcryptjs": "^2.4.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

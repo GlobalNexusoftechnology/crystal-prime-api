@@ -1,0 +1,19 @@
+{
+  "port": 3000,
+  "accessTokenExpiresIn": 15,
+  "refreshTokenExpiresIn": 60,
+  "origin": "http://localhost:3000",
+  "dbUri": "mongodb://localhost:27017/test",
+  "accessTokenPrivateKey": "test_access_private_key",
+  "accessTokenPublicKey": "test_access_public_key",
+  "refreshTokenPrivateKey": "test_refresh_private_key",
+  "refreshTokenPublicKey": "test_refresh_public_key",
+  "smtp": {
+    "host": "smtp.mailtrap.io",
+    "port": 2525,
+    "auth": {
+      "user": "test_user",
+      "pass": "test_pass"
+    }
+  }
+}
