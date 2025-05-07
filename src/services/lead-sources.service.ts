@@ -1,23 +1,24 @@
-import { LeadSources } from "../entities/lead_sources.entity";
+import { LeadSources } from "../entities/lead-sources.entity";
 import { AppDataSource } from "../utils/data-source";
 import AppError from "../utils/appError";
 
-const leadsourceRepo = AppDataSource.getRepository(LeadSources);
+const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 
 // create LeadSource
-export const createLeadSource = async (name: string) => {
-    const existingName = await leadsourceRepo.findOne({ where: { name } });
+export const createLeadSourceService = async (name: string) => {
+    console.log(name,"name########")
+    const existingName = await leadSourceRepo.findOne({ where: { name } });
     if (existingName) {
         throw new Error("Lead source with this name already exists");
     }
 
-    const leadSource = leadsourceRepo.create({ name, deleted: false });
-    return await leadsourceRepo.save(leadSource);
+    const leadSource = leadSourceRepo.create({ name, deleted: false });
+    return await leadSourceRepo.save(leadSource);
 };
 
 // Get LeadSource By Id
-export const getLeadSourceById = async (id: string) => {
-    const leadSource = await leadsourceRepo.findOne({
+export const getLeadSourceByIdService = async (id: string) => {
+    const leadSource = await leadSourceRepo.findOne({
         where: { id, deleted: false },
     });
 
@@ -29,17 +30,17 @@ export const getLeadSourceById = async (id: string) => {
 };
 
 // Get All LeadSource
-export const getAllLeadSource = async () => {
-    const leadSource = await leadsourceRepo.find({
+export const getAllLeadSourceService = async () => {
+    const leadSource = await leadSourceRepo.find({
         where: { deleted: false },
     });
     return leadSource;
 };
 
 // Update LeadSource By Id
-export const updateLeadSource = async (id: string, data: Partial<LeadSources>) => {
+export const updateLeadSourceService = async (id: string, data: Partial<LeadSources>) => {
     // Find the LeadSource by ID
-    const leadSource = await leadsourceRepo.findOne({ where: { id, deleted: false } });
+    const leadSource = await leadSourceRepo.findOne({ where: { id, deleted: false } });
 
     // If the LeadSource is not found, throw an error
     if (!leadSource) {
@@ -47,16 +48,16 @@ export const updateLeadSource = async (id: string, data: Partial<LeadSources>) =
     }
 
     // Update the LeadSource record
-    await leadsourceRepo.update(id, data);
+    await leadSourceRepo.update(id, data);
 
     // Return the updated LeadSource
-    return await leadsourceRepo.findOne({ where: { id } });
+    return await leadSourceRepo.findOne({ where: { id } });
 };
 
 // Soft delete LeadSource by ID
-export const softDeleteLeadSource = async (id: string) => {
+export const softDeleteLeadSourceService = async (id: string) => {
     // Find the LeadSource entity by ID
-    const leadSource = await leadsourceRepo.findOne({ where: { id } });
+    const leadSource = await leadSourceRepo.findOne({ where: { id } });
 
     if (!leadSource) {
         throw new AppError(404, 'LeadSource not found');
@@ -65,7 +66,7 @@ export const softDeleteLeadSource = async (id: string) => {
     // Soft delete: Update the deleted flag to true
     leadSource.deleted = true;
     leadSource.deleted_at = new Date();
-    await leadsourceRepo.save(leadSource);
+    await leadSourceRepo.save(leadSource);
 
     return leadSource; // Return the updated LeadSource entity
 };

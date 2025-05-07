@@ -4,11 +4,11 @@ import {
   PrimaryGeneratedColumn,
   BaseEntity,
   DeleteDateColumn,
-  Column
-} from 'typeorm';
+  Column,
+} from "typeorm";
 
 export default abstract class Model extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
   @CreateDateColumn()
@@ -19,7 +19,7 @@ export default abstract class Model extends BaseEntity {
 
   @Column({ type: "boolean", nullable: true, default: false })
   deleted: boolean;
-  
+
   @DeleteDateColumn()
   deleted_at?: Date;
 }
