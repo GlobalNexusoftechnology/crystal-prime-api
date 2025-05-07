@@ -18,7 +18,6 @@ export const createLeadSourceController = async (
   next: NextFunction
 ) => {
   try {
-    console.log(req, "validated$$$$$$$$$")
     const validated = createLeadSourceSchema.parse(req.body);
     const data = await createLeadSourceService(validated.name);
 

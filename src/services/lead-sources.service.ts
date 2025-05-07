@@ -6,8 +6,8 @@ const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 
 // create LeadSource
 export const createLeadSourceService = async (name: string) => {
-    console.log(name,"name########")
     const existingName = await leadSourceRepo.findOne({ where: { name } });
+
     if (existingName) {
         throw new Error("Lead source with this name already exists");
     }
@@ -68,5 +68,5 @@ export const softDeleteLeadSourceService = async (id: string) => {
     leadSource.deleted_at = new Date();
     await leadSourceRepo.save(leadSource);
 
-    return leadSource; // Return the updated LeadSource entity
+    return leadSource; 
 };
