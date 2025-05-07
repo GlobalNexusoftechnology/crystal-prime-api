@@ -12,6 +12,7 @@ import authRouter from './routes/auth.routes';
 import userRouter from './routes/user.routes';
 import validateEnv from './utils/validateEnv';
 import leadSourcesRouter from './routes/lead-sources.routes';
+import leadStatusesRouter from './routes/lead-statuses.routes';
 
 
 (async function () {
@@ -50,6 +51,7 @@ AppDataSource.initialize()
     app.use('/api/auth', authRouter);
     app.use('/api/users', userRouter);
     app.use('/api/lead-sources', leadSourcesRouter);
+    app.use('/api/lead-statuses', leadStatusesRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
