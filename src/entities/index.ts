@@ -1,5 +1,5 @@
 export * from "./model.entity";
 export * from "./session.entity";
 export * from "./user.entity";
-export * from "./lead_sources.entity"
+export * from "./lead-sources.entity"
 
