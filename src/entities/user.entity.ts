@@ -1,6 +1,7 @@
-import { Entity, Column, Index, BeforeInsert } from "typeorm";
+import { Entity, Column, Index, BeforeInsert, OneToMany } from "typeorm";
 import bcrypt from "bcryptjs";
 import Model from "./model.entity";
+import { Leads } from "./leads.entity";
 
 export enum RoleEnumType {
   CUSTOMER = "customer",
@@ -66,6 +67,9 @@ export class User extends Model {
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 12);
   }
+
+  @OneToMany(() => Leads, (lead) => lead.assigned_to)
+  assignedLeads: Leads[];
 
   static async comparePasswords(
     candidatePassword: string,
