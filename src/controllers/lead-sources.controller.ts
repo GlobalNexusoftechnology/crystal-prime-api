@@ -1,118 +1,74 @@
 import { Request, Response, NextFunction } from "express";
-import {
-  createLeadSourceSchema,
-  updateLeadSourceSchema,
-} from "../schemas/lead-sources.schema";
-import {
-  createLeadSourceService,
-  getAllLeadSourceService,
-  getLeadSourceByIdService,
-  softDeleteLeadSourceService,
-  updateLeadSourceService,
-} from "../services/lead-sources.service";
+import { LeadSourceService } from "../services/lead-sources.service";
+import { createLeadSourceSchema, updateLeadSourceSchema } from "../schemas/lead-sources.schema";
 
-// create LeadSource
-export const createLeadSourceController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const validated = createLeadSourceSchema.parse(req.body);
-    const data = await createLeadSourceService(validated.name);
+const service = LeadSourceService();
 
-    return res.status(201).json({
-      status: "success",
-      message: "Lead source created successfully",
-      data: data,
-    });
-  } catch (error) {
-    next(error);
-  }
+export const leadSourceController = () => {
+
+  // Create Lead Source
+  const createLeadSource = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+
+      const parsedData = createLeadSourceSchema.parse(req.body);  // Validating input data
+      const result = await service.createLeadSource(parsedData);
+      res.status(201).json({ status: "success", message: "Lead Source created", data: result });
+    } catch (error) {
+      next(error);  // Passing error to the error handling middleware
+    }
+  };
+
+  // Get All Lead Sources
+  const getAllLeadSources = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await service.getAllLeadSources();
+      res.status(200).json({ status: "success", message: "All Lead Sources fetched", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get Lead Source by ID
+  const getLeadSourceById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const result = await service.getLeadSourceById(id);
+      res.status(200).json({ status: "success", message: "Lead Source fetched by id", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Update Lead Source
+  const updateLeadSource = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const parsedData = updateLeadSourceSchema.parse(req.body);  // Validating input data
+      const result = await service.updateLeadSource(id, parsedData);
+      res.status(200).json({ status: "success", message: "Lead Source updated", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Soft Delete Lead Source
+  const softDeleteLeadSource = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const result = await service.softDeleteLeadSource(id);
+      res.status(200).json({ status: "success", message: "Lead Source deleted", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Return the controller methods
+  return {
+    createLeadSource,
+    getAllLeadSources,
+    getLeadSourceById,
+    updateLeadSource,
+    softDeleteLeadSource,
+  };
 };
 
-// Get LeadSource By Id
-export const getLeadSourceByIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const id = req.params.id;
-    const leadSource = await getLeadSourceByIdService(id);
-
-    return res.status(200).json({
-      status: "success",
-      data: leadSource,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get All LeadSource
-export const getAllLeadSourceController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const leadSource = await getAllLeadSourceService();
-
-    return res.status(200).json({
-      status: "success",
-      data: leadSource,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Update LeadSource By Id
-export const updateLeadSourceController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-
-    // Validate the request body using Zod
-    const updatedData = updateLeadSourceSchema.parse(req.body);
-
-    // Call the service to update the LeadSource
-    const updatedLeadSource = await updateLeadSourceService(id, updatedData);
-
-    // Send the response with success message and updated data
-    return res.status(200).json({
-      status: "success",
-      message: "LeadSource updated successfully",
-      data: updatedLeadSource,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Soft delete LeadSource by ID
-export const softDeleteLeadSourceController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-
-    // Call the soft delete service
-    const deletedLeadSource = await softDeleteLeadSourceService(id);
-
-    // Return success response
-    return res.status(200).json({
-      status: "success",
-      message: "LeadSource soft deleted successfully",
-      data: deletedLeadSource,
-    });
-  } catch (error) {
-    next(error);
-  }
-};

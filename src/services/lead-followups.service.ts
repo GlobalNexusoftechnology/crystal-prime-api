@@ -1,106 +1,121 @@
+// services/lead-followup.service.ts
 import { AppDataSource } from "../utils/data-source";
-import { LeadFollowup } from "../entities/lead-followups.entity";
+import { LeadFollowup, FollowupStatus } from "../entities/lead-followups.entity";
 import { Leads } from "../entities/leads.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 
-const followupRepo = AppDataSource.getRepository(LeadFollowup);
+const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
 
-// Create Followup
-export const createFollowupService = async (data: any) => {
-  const {
-    lead_id,
-    user_id,
-    status,
-    due_date,
-    completed_date,
-    remarks,
-  } = data;
+export const LeadFollowupService = () => {
 
-  const lead = await leadRepo.findOne({ where: { id: lead_id, deleted: false } });
-  if (!lead) throw new AppError(404, "Lead not found");
+  // Create Lead Followup with any data
+  const createLeadFollowup = async (data: any) => {
+    const {
+      lead_id,
+      user_id,
+      status = FollowupStatus.PENDING,
+      due_date,
+      completed_date,
+      remarks,
+    } = data;
 
-  // const user = await userRepo.findOne({ where: { id: user_id } });
-  // if (!user) throw new AppError(404, "User not found");
-
-  const followup = followupRepo.create({
-    lead,
-    // user,
-    status,
-    due_date,
-    completed_date,
-    remarks,
-  });
-
-  return await followupRepo.save(followup);
-};
-
-// Get All Followups
-export const getAllFollowupsService = async () => {
-  return await followupRepo.find({
-    where: { deleted: false },
-    relations: ["lead", "user"],
-    order: { created_at: "DESC" },
-  });
-};
-
-// Get Followup by ID
-export const getFollowupByIdService = async (id: string) => {
-  const followup = await followupRepo.findOne({
-    where: { id, deleted: false },
-    relations: ["lead", "user"],
-  });
-  if (!followup) throw new AppError(404, "Followup not found");
-  return followup;
-};
-
-// Update Followup
-export const updateFollowupService = async (id: string, data: any) => {
-  const followup = await followupRepo.findOne({ where: { id, deleted: false } });
-  if (!followup) throw new AppError(404, "Followup not found");
-
-  const {
-    lead_id,
-    user_id,
-    status,
-    due_date,
-    completed_date,
-    remarks,
-  } = data;
-
-  if (lead_id) {
     const lead = await leadRepo.findOne({ where: { id: lead_id, deleted: false } });
     if (!lead) throw new AppError(404, "Lead not found");
-    followup.lead = lead;
-  }
 
-  if (user_id) {
-    const user = await userRepo.findOne({ where: { id: user_id } });
-    if (!user) throw new AppError(404, "User not found");
-    followup.user = user;
-  }
+    let user = null;
+    if (user_id) {
+      user = await userRepo.findOne({ where: { id: user_id } });
+      if (!user) throw new AppError(404, "User not found");
+    }
 
-  followup.status = status ?? followup.status;
-  followup.due_date = due_date ?? followup.due_date;
-  followup.completed_date = completed_date ?? followup.completed_date;
-  followup.remarks = remarks ?? followup.remarks;
+    const leadFollowup = new LeadFollowup();
+    leadFollowup.lead = lead;
+    leadFollowup.user = user;
+    leadFollowup.status = status;
+    leadFollowup.due_date = due_date ?? null;
+    leadFollowup.completed_date = completed_date ?? null;
+    leadFollowup.remarks = remarks ?? "";
 
-  return await followupRepo.save(followup);
+    return await leadFollowupRepo.save(leadFollowup);
+  };
+
+  // Get All Lead Followups
+  const getAllLeadFollowups = async () => {
+    return await leadFollowupRepo.find({
+      where: { deleted: false },
+      relations: ["lead", "user"],
+    });
+  };
+
+  // Get Lead Followup By ID
+  const getLeadFollowupById = async (id: string) => {
+    const leadFollowup = await leadFollowupRepo.findOne({
+      where: { id, deleted: false },
+      relations: ["lead", "user"],
+    });
+    if (!leadFollowup) throw new AppError(404, "Lead Followup not found");
+    return leadFollowup;
+  };
+
+  // Update Lead Followup with any data
+  const updateLeadFollowup = async (id: string, data: any) => {
+    const {
+      user_id,
+      status,
+      due_date,
+      completed_date,
+      remarks,
+    } = data;
+
+    const leadFollowup = await leadFollowupRepo.findOne({ where: { id, deleted: false } });
+    if (!leadFollowup) throw new AppError(404, "Lead Followup not found");
+
+    if (user_id !== undefined) {
+      if (user_id === null) {
+        leadFollowup.user = null;
+      } else {
+        const user = await userRepo.findOne({ where: { id: user_id } });
+        if (!user) throw new AppError(404, "User not found");
+        leadFollowup.user = user;
+      }
+    }
+
+    if (status !== undefined) leadFollowup.status = status;
+    if (due_date !== undefined) leadFollowup.due_date = due_date;
+    if (completed_date !== undefined) leadFollowup.completed_date = completed_date;
+    if (remarks !== undefined) leadFollowup.remarks = remarks;
+
+    return await leadFollowupRepo.save(leadFollowup);
+  };
+
+  // Soft Delete Lead Followup
+  const softDeleteLeadFollowup = async (id: string) => {
+    const leadFollowup = await leadFollowupRepo.findOne({ where: { id } });
+    if (!leadFollowup) throw new AppError(404, "Lead Followup not found");
+
+    leadFollowup.deleted = true;
+    leadFollowup.deleted_at = new Date();
+
+    await leadFollowupRepo.save(leadFollowup);
+
+    return {
+      status: "success",
+      message: "Lead Followup soft deleted successfully",
+      data: leadFollowup,
+    };
+  };
+
+  return {
+    createLeadFollowup,
+    getAllLeadFollowups,
+    getLeadFollowupById,
+    updateLeadFollowup,
+    softDeleteLeadFollowup,
+  };
 };
 
-// Soft Delete Followup
-export const softDeleteFollowupService = async (id: string) => {
-  const followup = await followupRepo.findOne({ where: { id, deleted: false } });
-  if (!followup) throw new AppError(404, "Followup not found");
-
-  followup.deleted = true;
-  followup.deleted_at = new Date();
-
-  await followupRepo.save(followup);
-
-  return followup;
-};
 
 

@@ -5,6 +5,8 @@ import { LeadSources } from "./lead-sources.entity";
 import { LeadStatuses } from "./lead-statuses.entity";
 import { User } from "./user.entity";
 import { LeadFollowup } from "./lead-followups.entity";
+import { LeadAttachments } from "./lead-attachments.entity";
+import { LeadStatusHistory } from "./lead-status-history.entity";
 
 @Entity('leads')
 export class Leads extends Model {
@@ -46,5 +48,12 @@ export class Leads extends Model {
 
   @OneToMany(() => LeadFollowup, (followup) => followup.lead)
   followups: LeadFollowup[];
+
+  @OneToMany(() => LeadAttachments, (attachment) => attachment.lead)
+  attachments: LeadAttachments[];
+
+  @OneToMany(() => LeadStatusHistory, (history) => history.lead)
+  status_histories: LeadStatusHistory[];
+
 }
 

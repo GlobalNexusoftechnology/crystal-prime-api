@@ -1,110 +1,72 @@
 import { Request, Response, NextFunction } from "express";
-import {
-  createLeadSchema,
-  updateLeadSchema,
-} from "../schemas/leads.schema";
-import {
-  createLeadService,
-  getAllLeadsService,
-  getLeadByIdService,
-  updateLeadService,
-  softDeleteLeadService,
-} from "../services/leads.service";
+import { LeadService } from "../services/leads.service";
+import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
 
-// Create Lead
-export const createLeadController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const validated = createLeadSchema.parse(req.body);
-    const data = await createLeadService(validated);
+const service = LeadService();
 
-    return res.status(201).json({
-      status: "success",
-      message: "Lead created successfully",
-      data,
-    });
-  } catch (error) {
-    next(error);
-  }
+export const leadController = () => {
+
+  // Create Lead
+  const createLead = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const parsed = createLeadSchema.parse(req.body);
+      const result = await service.createLead(parsed);
+      res.status(201).json({ status: "success", message: "Lead created", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get All Lead
+  const getAllLeads = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await service.getAllLeads();
+      res.status(200).json({ status: "success", message: "All Leads fetched", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Get Lead by ID
+  const getLeadById = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const result = await service.getLeadById(id);
+      res.status(200).json({ status: "success", message: "Lead fetched", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  // Update Lead
+  const updateLead = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateLeadSchema.parse(req.body);
+      const result = await service.updateLead(id, parsed);
+      res.status(200).json({ status: "success", message: "Lead updated", data: result });
+    }catch (error) {
+      next(error);
+    }
+  };
+
+  // Soft Delete Lead
+  const softDeleteLead = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const result = await service.softDeleteLead(id);
+      res.status(200).json({ status: "success", message: "Lead deleted", data: result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  return {
+    createLead,
+    getAllLeads,
+    getLeadById,
+    updateLead,
+    softDeleteLead,
+  };
 };
 
-// Get Lead by ID
-export const getLeadByIdController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-    const lead = await getLeadByIdService(id);
-
-    return res.status(200).json({
-      status: "success",
-      data: lead,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Get All Leads
-export const getAllLeadsController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const leads = await getAllLeadsService();
-
-    return res.status(200).json({
-      status: "success",
-      data: leads,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Update Lead by ID
-export const updateLeadController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-    const validated = updateLeadSchema.parse(req.body);
-    const updatedLead = await updateLeadService(id, validated);
-
-    return res.status(200).json({
-      status: "success",
-      message: "Lead updated successfully",
-      data: updatedLead,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Soft Delete Lead by ID
-export const softDeleteLeadController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-    const deletedLead = await softDeleteLeadService(id);
-
-    return res.status(200).json({
-      status: "success",
-      message: "Lead soft deleted successfully",
-      data: deletedLead,
-    });
-  } catch (error) {
-    next(error);
-  }
-};

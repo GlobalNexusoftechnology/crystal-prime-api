@@ -14,6 +14,10 @@ export const createLeadSchema = z.object({
   source_id: z.string().uuid("Invalid source ID").optional(),
   status_id: z.string().uuid("Invalid status ID").optional(),
   assigned_to: z.string().uuid("Invalid assigned_to user ID").optional(),
+
+  followups: z.array(z.any()).optional(),
+  attachments: z.array(z.any()).optional(),
+  status_histories: z.array(z.any()).optional(),
 });
 
 // Update Lead Schema (all optional)
@@ -29,4 +33,8 @@ export const updateLeadSchema = z.object({
   source_id: z.string().uuid("Invalid source ID").optional(),
   status_id: z.string().uuid("Invalid status ID").optional(),
   assigned_to: z.string().uuid("Invalid assigned_to user ID").optional(),
+
+  followups: z.array(z.any()).optional(),
+  attachments: z.array(z.any()).optional(),
+  status_histories: z.array(z.any()).optional(),
 });

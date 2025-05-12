@@ -1,6 +1,7 @@
 import { Entity, Column, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Leads } from "./leads.entity";
+import { LeadStatusHistory } from "./lead-status-history.entity";
 
 @Entity("lead_statuses")
 export class LeadStatuses extends Model {
@@ -9,4 +10,7 @@ export class LeadStatuses extends Model {
 
   @OneToMany(() => Leads, (lead) => lead.status)
   leads: Leads[];
+
+  @OneToMany(() => LeadStatusHistory, (history) => history.status)
+  status_histories: LeadStatusHistory[];
 }
