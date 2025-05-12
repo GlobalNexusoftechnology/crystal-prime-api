@@ -1,9 +1,10 @@
 // lead.entity.ts
-import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { LeadSources } from "./lead-sources.entity";
 import { LeadStatuses } from "./lead-statuses.entity";
 import { User } from "./user.entity";
+import { LeadFollowup } from "./lead-followups.entity";
 
 @Entity('leads')
 export class Leads extends Model {
@@ -42,5 +43,8 @@ export class Leads extends Model {
   @ManyToOne(() => User, (user) => user.assignedLeads, { nullable: true })
   @JoinColumn({ name: "assigned_to" })
   assigned_to: User | null;
+
+  @OneToMany(() => LeadFollowup, (followup) => followup.lead)
+  followups: LeadFollowup[];
 }
 
