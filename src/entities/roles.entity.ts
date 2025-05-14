@@ -4,7 +4,7 @@ import { User } from "./user.entity";
 
 @Entity("roles")
 export class Role extends Model {
-  @Column()
+  @Column({nullable:true})
   name: string;
 
   @Column("text", { array: true })
