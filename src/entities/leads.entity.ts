@@ -1,0 +1,59 @@
+// lead.entity.ts
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
+import Model from "./model.entity";
+import { LeadSources } from "./lead-sources.entity";
+import { LeadStatuses } from "./lead-statuses.entity";
+import { User } from "./user.entity";
+import { LeadFollowup } from "./lead-followups.entity";
+import { LeadAttachments } from "./lead-attachments.entity";
+import { LeadStatusHistory } from "./lead-status-history.entity";
+
+@Entity('leads')
+export class Leads extends Model {
+  @Column()
+  first_name: string;
+
+  @Column()
+  last_name: string;
+
+  @Column({ nullable: true })
+  company: string;
+
+  @Column({ nullable: true })
+  phone: string;
+
+  @Column({ nullable: true, unique: true })
+  email: string;
+
+  @Column({ nullable: true })
+  location: string;
+
+  @Column('decimal', { precision: 12, scale: 2, nullable: true })
+  budget: number;
+
+  @Column('text', { nullable: true })
+  requirement: string;
+
+  @ManyToOne(() => LeadSources, (source) => source.leads, { nullable: true })
+  @JoinColumn({ name: "source_id" })
+  source: LeadSources | null;
+
+  @ManyToOne(() => LeadStatuses, (status) => status.leads, { nullable: true })
+  @JoinColumn({ name: 'status_id' })
+  status: LeadStatuses | null;
+
+  @ManyToOne(() => User, (user) => user.assignedLeads, { nullable: true })
+  @JoinColumn({ name: "assigned_to" })
+  assigned_to: User | null;
+
+  @OneToMany(() => LeadFollowup, (followup) => followup.lead)
+  followups: LeadFollowup[];
+
+  @OneToMany(() => LeadAttachments, (attachment) => attachment.lead)
+  attachments: LeadAttachments[];
+
+  @OneToMany(() => LeadStatusHistory, (history) => history.lead)
+  status_histories: LeadStatusHistory[];
+
+}
+
