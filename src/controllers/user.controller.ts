@@ -52,7 +52,7 @@ export const getProfileController = async (
 
     let filteredProfile;
 
-    if (user.role === RoleEnumType.CUSTOMER) {
+    if (user.role === RoleEnumType.DEVELOPER) {
       filteredProfile = {
         id: profile.id,
         image: profile.image,

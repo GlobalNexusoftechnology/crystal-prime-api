@@ -17,6 +17,7 @@ import leadsRouter from './routes/leads.routes';
 import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
 import leadStatusHistoryRouter from './routes/lead-status-history.routes';
+import rolesRouter from './routes/roles.routes';
 
 
 (async function () {
@@ -60,6 +61,7 @@ AppDataSource.initialize()
     app.use('/api/lead-followup', leadFollowupsRouter);
     app.use('/api/lead-attachments', leadAttachmentsRouter);
     app.use('/api/lead-status-history', leadStatusHistoryRouter);
+    app.use('/api/roles', rolesRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {

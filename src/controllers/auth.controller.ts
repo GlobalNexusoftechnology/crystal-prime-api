@@ -4,20 +4,15 @@ import crypto from "crypto";
 import {
   CreateUserInput,
   LoginUserInput,
-  VerifyEmailInput,
 } from "../schemas/user.schema";
 import {
   createUser,
-  findUser,
   findUserByEmail,
   signTokens,
 } from "../services/user.service";
 import AppError from "../utils/appError";
-import { signJwt, verifyJwt } from "../utils/jwt";
 import { RoleEnumType, User } from "../entities/user.entity";
 import bcrypt from "bcryptjs";
-
-import { deleteSessionByUserId, findSessionByUserId } from "../services";
 import { sendEmail } from "../utils";
 
 const cookiesOptions: CookieOptions = {
@@ -43,6 +38,7 @@ const refreshTokenCookieOptions: CookieOptions = {
   maxAge: config.get<number>("refreshTokenExpiresIn") * 60 * 1000,
 };
 
+// Register email
 export const registerUserHandler = async (
   req: Request<{}, {}, CreateUserInput>,
   res: Response,
@@ -51,52 +47,56 @@ export const registerUserHandler = async (
   try {
     const { email, name, password, role } = req.body;
 
+    // Check if user already exists
+    const existingUser = await findUserByEmail({ email });
+    if (existingUser) {
+      return res.status(409).json({
+        status: "fail",
+        message: "User with that email already exists",
+      });
+    }
+
+    
+    // Generate verification code
+    const rawCode = crypto.randomBytes(32).toString("hex");
+    const hashedCode = crypto.createHash("sha256").update(rawCode).digest("hex");
+
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 12);
+
     // Prepare user data based on role
     let userData: Partial<CreateUserInput>;
-
-    if (role === RoleEnumType.CUSTOMER) {
-      userData = { email, name, password, role };
+    if (role === RoleEnumType.DEVELOPER) {
+      userData = { email, name, password: hashedPassword, role: RoleEnumType.DEVELOPER };
+    } else if (role === RoleEnumType.ADMIN) {
+      userData = { email, name, password: hashedPassword, role: RoleEnumType.ADMIN };
     } else {
-      userData = {
-        name,
-        email,
-        password,
-        role: RoleEnumType.ADMIN,
-      };
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid role specified",
+      });
     }
 
     // Create the user
     const newUser = await createUser(userData);
 
+    // Send response without tokens
     res.status(201).json({
       status: "success",
-      message: "An email with a verification code has been sent to your email",
+      message: "User created successfully!",
+      data: newUser,
     });
 
-    try {
-      // Add logic to send verification email here
-    } catch (error) {
-      newUser.verificationCode = null;
-      await newUser.save();
+    // Optional: add your email verification logic here
 
-      return res.status(500).json({
-        status: "error",
-        message: "There was an error sending email, please try again",
-      });
-    }
   } catch (err: any) {
-    if (err.code === "23505") {
-      return res.status(409).json({
-        status: "fail",
-        message: "User with that email or username already exists",
-      });
-    }
     next(err);
   }
 };
 
+// Login user
 export const loginUserHandler = async (
-  req: Request<LoginUserInput>,
+  req: Request<{}, {}, LoginUserInput>,
   res: Response,
   next: NextFunction
 ) => {
@@ -105,26 +105,22 @@ export const loginUserHandler = async (
     const ipAddress = req.ip || "unknown";
     const userAgent = req.headers["user-agent"] || "unknown";
 
+    // 1. Find user by email
     const user = await findUserByEmail({ email });
-
-    // 1. Check if user exists
     if (!user) {
       return next(new AppError(400, "Invalid email or password"));
     }
 
-    // 2. Check if password is valid
-    if (!(await User.comparePasswords(password, user.password))) {
+    // 2. Compare passwords
+    const isValidPassword = await User.comparePasswords(password, user.password);
+    if (!isValidPassword) {
       return next(new AppError(400, "Invalid email or password"));
     }
 
     // 3. Sign Access and Refresh Tokens
-    const { access_token, refresh_token } = await signTokens(
-      user,
-      ipAddress,
-      userAgent
-    );
+    const { access_token, refresh_token } = await signTokens(user, ipAddress, userAgent);
 
-    // 4. Add Cookies
+    // 4. Set tokens in cookies
     res.cookie("access_token", access_token, accessTokenCookieOptions);
     res.cookie("refresh_token", refresh_token, refreshTokenCookieOptions);
     res.cookie("logged_in", true, {
@@ -132,152 +128,15 @@ export const loginUserHandler = async (
       httpOnly: false,
     });
 
-    // 7. Send response
+    // 5. Send Response
     res.status(200).json({
       status: "success",
       access_token,
       refresh_token,
-    });
-  } catch (err: any) {
-    console.log(err);
-    next(err);
-  }
-};
-
-export const verifyEmailHandler = async (
-  req: Request<VerifyEmailInput>,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const verificationCode = crypto
-      .createHash("sha256")
-      .update(req.params.verificationCode)
-      .digest("hex");
-
-    const user = await findUser({ verificationCode });
-
-    if (!user) {
-      return next(new AppError(401, "Could not verify email"));
-    }
-
-    user.verificationCode = null;
-    await user.save();
-
-    res.status(200).json({
-      status: "success",
-      message: "Email verified successfully",
-    });
-  } catch (err: any) {
-    next(err);
-  }
-};
-
-export const refreshAccessTokenHandler = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const refresh_token = req.cookies.refresh_token;
-
-    if (!refresh_token) {
-      return next(new AppError(403, "Could not refresh access token"));
-    }
-
-    const decoded = verifyJwt<{ sub: string; sessionId: string }>(
-      refresh_token,
-      "refreshTokenPublicKey"
-    );
-
-    if (!decoded) {
-      return next(new AppError(403, "Could not refresh access token"));
-    }
-
-    const session = await findSessionByUserId(decoded.sub);
-
-    if (!session || session.isExpired) {
-      return next(new AppError(403, "Invalid or expired session"));
-    }
-
-    const access_token = signJwt(
-      { sub: decoded.sub },
-      "accessTokenPrivateKey",
-      {
-        expiresIn: `${config.get<number>("accessTokenExpiresIn")}m`,
-      }
-    );
-
-    res.cookie("access_token", access_token, accessTokenCookieOptions);
-    res.cookie("logged_in", true, {
-      ...accessTokenCookieOptions,
-      httpOnly: false,
-    });
-
-    res.status(200).json({
-      status: "success",
-      access_token,
-    });
-  } catch (err: any) {
-    next(err);
-  }
-};
-
-// Development only - verify user by email
-export const verifyUserByEmailHandler = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { email } = req.body;
-
-    const user = await findUserByEmail({ email });
-
-    if (!user) {
-      return next(new AppError(404, "User not found"));
-    }
-
-    user.verificationCode = null;
-    await user.save();
-
-    res.status(200).json({
-      status: "success",
-      message: "User verified successfully",
+      message:"Logged in successfully",
+      user
     });
   } catch (err) {
-    next(err);
-  }
-};
-
-const logout = (res: Response) => {
-  res.cookie("access_token", "", { maxAge: 1 });
-  res.cookie("refresh_token", "", { maxAge: 1 });
-  res.cookie("logged_in", "", { maxAge: 1 });
-};
-
-/**
- * Logs out the authenticated user by deleting their session and clearing cookies.
- */
-export const logoutHandler = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const user = res.locals.user;
-
-    // Delete the user's session from the database
-    await deleteSessionByUserId(user.id);
-
-    logout(res);
-
-    // Respond with a success message
-    res.status(200).json({
-      status: "success",
-      message: "Logged out successfully",
-    });
-  } catch (err: any) {
     next(err);
   }
 };
@@ -420,3 +279,7 @@ export const resetPassword = async (
     next(error);
   }
 };
+
+
+
+

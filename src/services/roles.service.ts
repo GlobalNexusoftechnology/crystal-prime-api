@@ -1,11 +1,11 @@
 import { AppDataSource } from "../utils/data-source";
-import { Role } from "../entities/roles.entity";
+import { Role, RoleName } from "../entities/roles.entity";
 import AppError from "../utils/appError";
 
 const roleRepo = AppDataSource.getRepository(Role);
 
 interface RoleInput {
-  name: string;
+  role: RoleName; // use the enum here
   permissions: string[];
 }
 
@@ -13,13 +13,13 @@ export const roleService = () => {
 
   // Create Role
   const createRole = async (data: RoleInput) => {
-    const { name, permissions } = data;
+    const { role, permissions } = data;
 
-    const existing = await roleRepo.findOne({ where: { name, deleted: false } });
+    const existing = await roleRepo.findOne({ where: { role, deleted: false } });
     if (existing) throw new AppError(409, "Role with this name already exists");
 
-    const role = roleRepo.create({ name, permissions });
-    return await roleRepo.save(role);
+    const newRole = roleRepo.create({ role, permissions });
+    return await roleRepo.save(newRole);
   };
 
   // Get All Roles
@@ -39,13 +39,13 @@ export const roleService = () => {
 
   // Update Role
   const updateRole = async (id: string, data: Partial<RoleInput>) => {
-    const role = await roleRepo.findOne({ where: { id, deleted: false } });
-    if (!role) throw new AppError(404, "Role not found");
+    const roleEntity = await roleRepo.findOne({ where: { id, deleted: false } });
+    if (!roleEntity) throw new AppError(404, "Role not found");
 
-    if (data.name !== undefined) role.name = data.name;
-    if (data.permissions !== undefined) role.permissions = data.permissions;
+    if (data.role !== undefined) roleEntity.role = data.role;
+    if (data.permissions !== undefined) roleEntity.permissions = data.permissions;
 
-    return await roleRepo.save(role);
+    return await roleRepo.save(roleEntity);
   };
 
   // Soft Delete Role
@@ -67,3 +67,4 @@ export const roleService = () => {
     softDeleteRole,
   };
 };
+

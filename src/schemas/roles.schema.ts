@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { RoleName } from "../entities/roles.entity";
 
 export const CreateRoleSchema = z.object({
-  name: z.string().min(1, "Role name is required"),
+  role: z.nativeEnum(RoleName),
   permissions: z.array(z.string()).nonempty("At least one permission is required"),
 });
 
 export const UpdateRoleSchema = z.object({
-  name: z.string().min(1).optional(),
+  role: z.nativeEnum(RoleName).optional(),
   permissions: z.array(z.string()).optional(),
 });
