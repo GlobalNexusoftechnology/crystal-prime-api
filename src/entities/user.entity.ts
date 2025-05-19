@@ -6,7 +6,7 @@ import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
 
 export enum RoleEnumType {
-  CUSTOMER = "customer",
+  DEVELOPER = "developer",
   ADMIN = "admin",
 }
 
@@ -18,7 +18,7 @@ export class User extends Model {
   @Column({
     type: "enum",
     enum: RoleEnumType,
-    default: RoleEnumType.CUSTOMER,
+    default: RoleEnumType.DEVELOPER,
   })
   role: RoleEnumType;
 

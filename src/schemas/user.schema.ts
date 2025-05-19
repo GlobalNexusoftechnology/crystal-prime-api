@@ -15,17 +15,12 @@ export const createUserSchema = object({
     })
       .min(8, "Password must be more than 8 characters")
       .max(32, "Password must be less than 32 characters"),
-    passwordConfirm: string({
-      required_error: "Please confirm your password",
-    }),
+   
     role: z.nativeEnum(RoleEnumType, {
       required_error: "Role is required",
     }),
     verificationCode: string().optional(), // Add this line here
-  }).refine((data) => data.password === data.passwordConfirm, {
-    path: ["passwordConfirm"],
-    message: "Passwords do not match",
-  }),
+  })
 });
 
 // Schema for user login
@@ -41,9 +36,7 @@ export const loginUserSchema = object({
 });
 
 // Type definitions
-export type CreateUserInput = Omit<
-  TypeOf<typeof createUserSchema>["body"],
-  "passwordConfirm"
->;
+export type CreateUserInput = TypeOf<typeof createUserSchema>["body"];
+
 export type LoginUserInput = TypeOf<typeof loginUserSchema>["body"];
 

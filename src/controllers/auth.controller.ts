@@ -66,8 +66,8 @@ export const registerUserHandler = async (
 
     // Prepare user data based on role
     let userData: Partial<CreateUserInput>;
-    if (role === RoleEnumType.CUSTOMER) {
-      userData = { email, name, password: hashedPassword, role: RoleEnumType.CUSTOMER };
+    if (role === RoleEnumType.DEVELOPER) {
+      userData = { email, name, password: hashedPassword, role: RoleEnumType.DEVELOPER };
     } else if (role === RoleEnumType.ADMIN) {
       userData = { email, name, password: hashedPassword, role: RoleEnumType.ADMIN };
     } else {
@@ -133,6 +133,8 @@ export const loginUserHandler = async (
       status: "success",
       access_token,
       refresh_token,
+      message:"Logged in successfully",
+      user
     });
   } catch (err) {
     next(err);
