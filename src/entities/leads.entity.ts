@@ -10,10 +10,10 @@ import { LeadStatusHistory } from "./lead-status-history.entity";
 
 @Entity('leads')
 export class Leads extends Model {
-  @Column()
+  @Column({ nullable: true })
   first_name: string;
 
-  @Column()
+  @Column({ nullable: true })
   last_name: string;
 
   @Column({ nullable: true })
@@ -54,6 +54,5 @@ export class Leads extends Model {
 
   @OneToMany(() => LeadStatusHistory, (history) => history.lead)
   status_histories: LeadStatusHistory[];
-
 }
 
