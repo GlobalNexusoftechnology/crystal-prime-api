@@ -4,12 +4,14 @@ import { LeadSources } from "../entities/lead-sources.entity";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
+import ExcelJS from "exceljs";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 
+// Create lead
 export const LeadService = () => {
   // Create Lead
   const createLead = async (data: any) => {
@@ -156,12 +158,63 @@ export const LeadService = () => {
     };
   };
 
+  //  Export Leads to Excel
+  const exportLeadsToExcel = async (): Promise<ExcelJS.Workbook> => {
+    const leadRepo = AppDataSource.getRepository(Leads);
+
+    const leads = await leadRepo.find({
+      where: { deleted: false },
+      relations: ["source", "status", "assigned_to"],
+      order: { created_at: "DESC" },
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Leads");
+
+    worksheet.columns = [
+      { header: "Sr No", key: "sr_no", width: 6 },
+      { header: "First Name", key: "first_name", width: 20 },
+      { header: "Last Name", key: "last_name", width: 20 },
+      { header: "Company", key: "company", width: 25 },
+      { header: "Phone", key: "phone", width: 20 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Location", key: "location", width: 20 },
+      { header: "Budget", key: "budget", width: 15 },
+      { header: "Requirement", key: "requirement", width: 40 },
+      { header: "Source", key: "source", width: 20 },
+      { header: "Status", key: "status", width: 20 },
+      { header: "Assigned To", key: "assigned_to", width: 25 },
+      { header: "Created At", key: "created_at", width: 25 },
+    ];
+
+    leads.forEach((lead, index) => {
+      worksheet.addRow({
+        sr_no: index + 1,
+        first_name: lead.first_name,
+        last_name: lead.last_name,
+        company: lead.company ?? "",
+        phone: lead.phone ?? "",
+        email: lead.email ?? "",
+        location: lead.location ?? "",
+        budget: lead.budget ?? 0,
+        requirement: lead.requirement ?? "",
+        source: lead.source?.name ?? "",
+        status: lead.status?.name ?? "",
+        assigned_to: lead.assigned_to?.name ?? "", // ✅ Only 'name' assumed for User
+        created_at: lead.created_at?.toLocaleString() ?? "",
+      });
+    });
+
+    return workbook;
+  };
+
   return {
     createLead,
     getAllLeads,
     getLeadById,
     updateLead,
     softDeleteLead,
+    exportLeadsToExcel
   };
 };
 
