@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
+import path from 'path';
 
 import { AppDataSource } from './utils/data-source';
 import AppError from './utils/appError';
@@ -20,6 +21,7 @@ import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
 
 
+
 (async function () {
   const credentials = await nodemailer.createTestAccount();
   console.log(credentials);
@@ -32,6 +34,10 @@ AppDataSource.initialize()
     validateEnv();
 
     const app = express();
+
+    // Inside src/app.ts or main file
+    app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
+
 
     // MIDDLEWARE
 

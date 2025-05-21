@@ -9,6 +9,7 @@ router.get("/", controller.getAllLeads);
 router.get("/:id", controller.getLeadById);
 router.put("/:id", controller.updateLead);
 router.delete("/:id", controller.softDeleteLead);
+router.get("/export/excel", controller.exportLeadsExcelController);
 
 export default router;
 
