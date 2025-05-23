@@ -4,7 +4,6 @@ import Model from "./model.entity";
 import { Leads } from "./leads.entity";
 import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
-import { Task } from "./task-management.entity";
 
 export enum RoleEnumType {
   DEVELOPER = "developer",
@@ -75,9 +74,6 @@ export class User extends Model {
 
   @OneToMany(() => Leads, (lead) => lead.assigned_to)
   assignedLeads: Leads[];
-
-   @OneToMany(() => Task, (task) => task.assignedTo)
-    assignedTasks: Task[];
 
   static async comparePasswords(
     candidatePassword: string,
