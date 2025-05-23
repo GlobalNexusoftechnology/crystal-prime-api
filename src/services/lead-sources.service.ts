@@ -6,6 +6,14 @@ interface LeadSourceInput {
     name: string;
 }
 
+interface GetLeadSourcesQuery {
+    search?: string;
+    page?: number;
+    limit?: number;
+    sortBy?: 'id' | 'name' | 'created_at' | 'updated_at';
+    sortOrder?: 'ASC' | 'DESC';
+}
+
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 
 export const LeadSourceService = () => {
@@ -22,12 +30,40 @@ export const LeadSourceService = () => {
     };
 
     // Get All Lead Sources
-    const getAllLeadSources = async () => {
-        return await leadSourceRepo.find({
-            where: { deleted: false },
-            order: { created_at: "DESC" },
-        });
+    const getAllLeadSources = async (params: GetLeadSourcesQuery) => {
+        const {
+            search = '',
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'DESC',
+        } = params;
+
+        const query = leadSourceRepo
+            .createQueryBuilder('leadSource')
+            .where('leadSource.deleted = :deleted', { deleted: false });
+
+        if (search) {
+            query.andWhere('leadSource.name ILIKE :search', { search: `%${search}%` });
+        }
+
+        // Sorting
+        query.orderBy(`leadSource.${sortBy}`, sortOrder);
+
+        // Pagination
+        query.skip((page - 1) * limit).take(limit);
+
+        const [data, total] = await query.getManyAndCount();
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     };
+
 
     // Get Lead Source by ID
     const getLeadSourceById = async (id: string) => {
