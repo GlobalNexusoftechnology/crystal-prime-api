@@ -9,8 +9,15 @@ interface RoleInput {
   permissions: string[];
 }
 
-export const roleService = () => {
+export interface GetRolesQuery {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at';
+  sortOrder?: 'ASC' | 'DESC';
+}
 
+export const roleService = () => {
   // Create Role
   const createRole = async (data: RoleInput) => {
     const { role, permissions } = data;
@@ -23,12 +30,36 @@ export const roleService = () => {
   };
 
   // Get All Roles
-  const getAllRoles = async () => {
-    return await roleRepo.find({
-      where: { deleted: false },
-      order: { created_at: "DESC" },
-    });
+ const getAllRoles = async (params: GetRolesQuery) => {
+  const {
+    search = '',
+    page = 1,
+    limit = 10,
+    sortBy = 'created_at',
+    sortOrder = 'DESC',
+  } = params;
+
+  const query = roleRepo
+    .createQueryBuilder('role')
+    .where('role.deleted = false' , { deleted: false });
+
+  if (search) {
+    query.andWhere('role.name ILIKE :search', { search: `%${search}%` });
+  }
+
+  query.orderBy(`role.${sortBy}`, sortOrder);
+  query.skip((page - 1) * limit).take(limit);
+
+  const [data, total] = await query.getManyAndCount();
+
+  return {
+    data,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   };
+};
 
   // Get Role by ID
   const getRoleById = async (id: string) => {
