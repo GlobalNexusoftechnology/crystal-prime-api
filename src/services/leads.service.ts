@@ -200,7 +200,7 @@ export const LeadService = () => {
         requirement: lead.requirement ?? "",
         source: lead.source?.name ?? "",
         status: lead.status?.name ?? "",
-        assigned_to: lead.assigned_to?.name ?? "", // ✅ Only 'name' assumed for User
+        // assigned_to: lead.assigned_to?.name ?? "", // ✅ Only 'name' assumed for User
         created_at: lead.created_at?.toLocaleString() ?? "",
       });
     });
