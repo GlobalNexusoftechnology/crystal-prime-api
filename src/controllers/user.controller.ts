@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { findUserById, updateUser } from "../services";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, } from "../services";
 import { RoleEnumType } from "../entities/user.entity";
-import { uploadToS3 } from "../utils/s3Bucket";
 
+//update profile
 export const updateProfileController = async (
   req: Request,
   res: Response,
@@ -12,28 +12,21 @@ export const updateProfileController = async (
     const userId = res.locals.user.id;
     const role = res.locals.user.role;
     const payload = req.body;
-    let image: string | null = null;
 
-    if (req.file) {
-      const uploadResult = await uploadToS3(
-        req.file.buffer,
-        req.file.originalname
-      );
-      image = uploadResult.url;
-    }
+    // Update user profile without image handling
+    const updatedUser = await updateUser(userId, role, payload);
 
-    const updatedProfile = await updateUser(userId, role, {...payload, image});
-
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       message: "Profile updated successfully",
-      data: updatedProfile,
+      data: updatedUser,
     });
   } catch (error) {
     next(error);
   }
 };
 
+// getProfile
 export const getProfileController = async (
   req: Request,
   res: Response,
@@ -43,32 +36,32 @@ export const getProfileController = async (
     const user = res.locals.user;
     const profile = await findUserById(user.id);
 
-    if (!profile) {
+    if (!profile || profile.deleted) {
       return res.status(404).json({
         status: "error",
         message: "Profile not found",
       });
     }
 
-    let filteredProfile;
+    // Base filtered data for all roles
+    let filteredProfile: any = {
+      id: profile.id,
+      email: profile.email,
+      // number: profile.number,
+      dob: profile.dob,
 
+      role: profile.role,
+    };
+
+    // Additional fields by role
     if (user.role === RoleEnumType.DEVELOPER) {
-      filteredProfile = {
-        id: profile.id,
-        image: profile.image,
-        name: profile.name,
-        email: profile.email,
-      };
+      filteredProfile.first_name = profile.first_name;
+      filteredProfile.last_name = profile.last_name;
+      filteredProfile.role_id = profile.role_id;
     } else if (user.role === RoleEnumType.ADMIN) {
-      filteredProfile = {
-        id: profile.id,
-        image: profile.image,
-        city: profile.city,
-        state: profile.state,
-        country: profile.country,
-      };
-    } else {
-      return res.status(400).json({ status: "error", message: "Invalid role" });
+
+      filteredProfile.role_id = profile.role_id;
+
     }
 
     return res.status(200).json({
@@ -79,3 +72,37 @@ export const getProfileController = async (
     next(error);
   }
 };
+
+// Get all users
+export const getAllUsersHandler = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const users = await findAllUsers();
+    res.status(200).json({ status: "success", data: users });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Soft delete user
+export const softDeleteUserHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await softDeleteUser(req.params.id);
+    res.status(200).json({
+      status: "success",
+      message: "User soft-deleted successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
