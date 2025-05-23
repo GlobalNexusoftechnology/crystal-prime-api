@@ -20,8 +20,20 @@ export const roleController = () => {
   // Get All Roles
   const getAllRoles = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await service.getAllRoles();
-      res.status(200).json({ status: "success", message: "All roles fetched", data: result });
+      const { search, page, limit, sortBy, sortOrder } = req.query;
+
+      const result = await service.getAllRoles({
+        search: search as string,
+        page: parseInt(page as string) || 1,
+        limit: parseInt(limit as string) || 10,
+        sortBy: (sortBy as any) || 'created_at',
+        sortOrder: (sortOrder as 'ASC' | 'DESC') || 'DESC',
+      });
+
+      res.status(200).json({
+        status: 'success',
+        ...result,
+      });
     } catch (error) {
       next(error);
     }
