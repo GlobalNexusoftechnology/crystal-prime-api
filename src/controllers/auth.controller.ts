@@ -38,14 +38,14 @@ const refreshTokenCookieOptions: CookieOptions = {
   maxAge: config.get<number>("refreshTokenExpiresIn") * 60 * 1000,
 };
 
-// Register email
+// register User
 export const registerUserHandler = async (
   req: Request<{}, {}, CreateUserInput>,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { email, name, password, role } = req.body;
+    const { email, first_name, last_name, password, role } = req.body;
 
     // Check if user already exists
     const existingUser = await findUserByEmail({ email });
@@ -56,43 +56,47 @@ export const registerUserHandler = async (
       });
     }
 
-    
-    // Generate verification code
-    const rawCode = crypto.randomBytes(32).toString("hex");
-    const hashedCode = crypto.createHash("sha256").update(rawCode).digest("hex");
-
-    // Hash the password before saving
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Prepare user data based on role
-    let userData: Partial<CreateUserInput>;
-    if (role === RoleEnumType.DEVELOPER) {
-      userData = { email, name, password: hashedPassword, role: RoleEnumType.DEVELOPER };
-    } else if (role === RoleEnumType.ADMIN) {
-      userData = { email, name, password: hashedPassword, role: RoleEnumType.ADMIN };
-    } else {
+    // Validate role
+    if (![RoleEnumType.ADMIN, RoleEnumType.DEVELOPER].includes(role)) {
       return res.status(400).json({
         status: "fail",
         message: "Invalid role specified",
       });
     }
 
-    // Create the user
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Generate email verification code
+    const rawCode = crypto.randomBytes(32).toString("hex");
+    const hashedVerificationCode = crypto.createHash("sha256").update(rawCode).digest("hex");
+
+    // Prepare user data
+    const userData = {
+      email,
+      first_name,
+      last_name,
+      password: hashedPassword,
+      role,
+      verificationCode: hashedVerificationCode,
+      verified: false,
+    };
+
+    // Create user
     const newUser = await createUser(userData);
 
-    // Send response without tokens
+    // Optionally send verification email using rawCode here
+
     res.status(201).json({
       status: "success",
-      message: "User created successfully!",
+      message: "User registered successfully. Please verify your email.",
       data: newUser,
     });
-
-    // Optional: add your email verification logic here
-
-  } catch (err: any) {
+  } catch (err) {
     next(err);
   }
 };
+
 
 // Login user
 export const loginUserHandler = async (
@@ -133,7 +137,7 @@ export const loginUserHandler = async (
       status: "success",
       access_token,
       refresh_token,
-      message:"Logged in successfully",
+      message: "Logged in successfully",
       user
     });
   } catch (err) {
@@ -156,23 +160,27 @@ export const sendOtp = async (
       return next(new AppError(400, "Email is required."));
     }
 
-    // Check if user exists
+    // Find user by email
     const user = await User.findOne({ where: { email } });
     if (!user) {
       return next(new AppError(404, "User with this email does not exist."));
     }
 
-    // Generate OTP
+    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
+    // Store OTP and expiry on the user
     user.otp = otp;
-    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     await user.save();
 
-    const templateId = 5;
-    const params = { otp, userName: user.name };
+    // Combine first and last name
+    const fullName = `${user.first_name} ${user.last_name}`.trim();
 
-    // Send email with OTP
+    // Send OTP via email
+    const templateId = 5;
+    const params = { otp, userName: fullName };
+
     await sendEmail(email, templateId, params);
 
     res.status(200).json({
@@ -187,47 +195,34 @@ export const sendOtp = async (
 /**
  * Verifies the OTP entered by the user for authentication or password reset.
  */
-export const verifyOtp = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, otp } = req.body;
 
-    if (!email) {
-      return next(new AppError(400, "Email is required."));
+    if (!email || !otp) {
+      return next(new AppError(400, "Email and OTP are required."));
     }
 
-    if (!otp) {
-      return next(new AppError(400, "Otp is required."));
-    }
-
-    // Find user
     const user = await User.findOne({ where: { email } });
+
     if (!user) {
-      return next(new AppError(404, "User with this email does not exist."));
+      return next(new AppError(404, "User not found."));
     }
 
-    // Check if OTP matches
     if (user.otp !== otp) {
       return next(new AppError(400, "Invalid OTP."));
     }
 
-    // Check if OTP is expired
     if (user.otpExpiresAt && new Date(user.otpExpiresAt) < new Date()) {
-      return next(
-        new AppError(400, "OTP has expired. Please request a new one.")
-      );
+      return next(new AppError(400, "OTP has expired."));
     }
 
-    // OTP verified, clear OTP and expiration fields
     user.otp = null;
     user.otpExpiresAt = null;
     user.isOtpVerified = true;
     await user.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
     });
@@ -245,7 +240,11 @@ export const resetPassword = async (
   next: NextFunction
 ) => {
   try {
-    const { email, newPassword } = req.body;
+    const { userId, email, newPassword } = req.body;
+
+    if (!userId) {
+      return next(new AppError(400, "User ID is required."));
+    }
 
     if (!email) {
       return next(new AppError(400, "Email is required."));
@@ -255,9 +254,9 @@ export const resetPassword = async (
       return next(new AppError(400, "New password is required."));
     }
 
-    const user = await User.findOne({ where: { email } });
+    const user = await User.findOne({ where: { id: userId, email } });
     if (!user) {
-      return next(new AppError(404, "User with this email does not exist."));
+      return next(new AppError(404, "User with this ID and email does not exist."));
     }
 
     if (!user.isOtpVerified) {
@@ -279,6 +278,7 @@ export const resetPassword = async (
     next(error);
   }
 };
+
 
 
 

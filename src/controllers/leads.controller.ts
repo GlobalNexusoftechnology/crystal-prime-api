@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import path from "path";
+import fs from "fs/promises";
 
 const service = LeadService();
 
@@ -45,7 +47,7 @@ export const leadController = () => {
       const parsed = updateLeadSchema.parse(req.body);
       const result = await service.updateLead(id, parsed);
       res.status(200).json({ status: "success", message: "Lead updated", data: result });
-    }catch (error) {
+    } catch (error) {
       next(error);
     }
   };
@@ -61,12 +63,35 @@ export const leadController = () => {
     }
   };
 
+  // Excel file
+  const exportLeadsExcelController = async (req: Request, res: Response) => {
+    try {
+      const workbook = await service.exportLeadsToExcel();
+
+      const exportDir = path.join(__dirname, "..", "..", "public", "exports");
+      await fs.mkdir(exportDir, { recursive: true });
+
+      const filename = `leads_${Date.now()}.xlsx`;
+      const filepath = path.join(exportDir, filename);
+
+      await workbook.xlsx.writeFile(filepath);
+
+      const fileURL = `${req.protocol}://${req.get("host")}/exports/${filename}`;
+
+      res.json({ fileURL });
+    } catch (error) {
+      console.error("Error exporting leads:", error);
+      res.status(500).json({ message: "Failed to export leads" });
+    }
+  };
+
   return {
     createLead,
     getAllLeads,
     getLeadById,
     updateLead,
     softDeleteLead,
+    exportLeadsExcelController
   };
 };
 

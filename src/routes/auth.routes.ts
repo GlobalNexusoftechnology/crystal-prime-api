@@ -11,6 +11,7 @@ import {
   createUserSchema,
   loginUserSchema,
 } from "../schemas/user.schema";
+import { requireUser } from "../middleware";
 
 const router = express.Router();
 
