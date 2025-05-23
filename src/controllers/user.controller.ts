@@ -1,6 +1,40 @@
 import { Request, Response, NextFunction } from "express";
-import { findAllUsers, findUserById, softDeleteUser, updateUser, } from "../services";
-import { RoleEnumType } from "../entities/user.entity";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser } from "../services/user.service";
+import { RoleEnumType, User } from "../entities/user.entity";
+import { AppDataSource } from "../utils/data-source";
+import { createUserSchema } from "../schemas/user.schema";
+
+// create user
+export const createUserController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const validated = createUserSchema.parse({ body: req.body });
+
+    // Get the actual user data from .body
+    const userData = validated.body;
+
+    const newUser = await createUser(userData);
+
+    return res.status(201).json({
+      status: "success",
+      message: "User created successfully",
+      data: newUser,
+    });
+  } catch (error: any) {
+    if (error.name === "ZodError") {
+      return res.status(400).json({
+        status: "fail",
+        message: "Validation failed",
+        errors: error.errors,
+      });
+    }
+
+    next(error);
+  }
+};
 
 //update profile
 export const updateProfileController = async (
@@ -26,16 +60,19 @@ export const updateProfileController = async (
   }
 };
 
-// getProfile
+// getProfileById
 export const getProfileController = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const user = res.locals.user;
-    const profile = await findUserById(user.id);
+    const { userId } = req.params;
 
+    // Fetch user by ID
+    const profile = await findUserById(userId);
+
+    // If user doesn't exist or is soft deleted
     if (!profile || profile.deleted) {
       return res.status(404).json({
         status: "error",
@@ -43,27 +80,28 @@ export const getProfileController = async (
       });
     }
 
-    // Base filtered data for all roles
-    let filteredProfile: any = {
+    // Basic profile info common to all roles
+    const filteredProfile: any = {
       id: profile.id,
       email: profile.email,
-      // number: profile.number,
+      number: profile.number,
       dob: profile.dob,
-
       role: profile.role,
     };
 
-    // Additional fields by role
-    if (user.role === RoleEnumType.DEVELOPER) {
+    // Add developer-specific fields
+    if (profile.role === RoleEnumType.DEVELOPER) {
       filteredProfile.first_name = profile.first_name;
       filteredProfile.last_name = profile.last_name;
       filteredProfile.role_id = profile.role_id;
-    } else if (user.role === RoleEnumType.ADMIN) {
-
-      filteredProfile.role_id = profile.role_id;
-
     }
 
+    // Add admin-specific fields
+    if (profile.role === RoleEnumType.ADMIN) {
+      filteredProfile.role_id = profile.role_id;
+    }
+
+    // Return filtered profile
     return res.status(200).json({
       status: "success",
       data: filteredProfile,
