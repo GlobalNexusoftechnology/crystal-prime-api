@@ -6,6 +6,16 @@ interface LeadStatusInput {
     name: string;
 }
 
+export interface GetLeadStatusesQuery {
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at';
+  sortOrder?: 'ASC' | 'DESC';
+}
+
+
+
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 
 export const LeadStatusService = () => {
@@ -22,12 +32,40 @@ export const LeadStatusService = () => {
     };
 
     // Get All Lead Statuses
-    const getAllLeadStatuses = async () => {
-        return await leadStatusRepo.find({
-            where: { deleted: false },
-            order: { created_at: "DESC" },
-        });
+    const getAllLeadStatuses = async (params: GetLeadStatusesQuery) => {
+        const {
+            search = '',
+            page = 1,
+            limit = 10,
+            sortBy = 'created_at',
+            sortOrder = 'DESC',
+        } = params;
+
+        const query = leadStatusRepo
+            .createQueryBuilder('leadStatus')
+            .where('leadStatus.deleted = :deleted', { deleted: false });
+
+        if (search) {
+            query.andWhere('leadStatus.name ILIKE :search', { search: `%${search}%` });
+        }
+
+        // Sorting
+        query.orderBy(`leadStatus.${sortBy}`, sortOrder as 'ASC' | 'DESC');
+
+        // Pagination
+        query.skip((page - 1) * limit).take(limit);
+
+        const [data, total] = await query.getManyAndCount();
+
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
     };
+
 
     // Get Lead Status by ID
     const getLeadStatusById = async (id: string) => {
