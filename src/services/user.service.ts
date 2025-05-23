@@ -12,12 +12,12 @@ export const createUser = async (input: Partial<User>) => {
   return await userRepository.save(input);
 };
 
-// Find user email by Id
+// Find user by email
 export const findUserByEmail = async ({ email }: { email: string }) => {
   return await userRepository.findOneBy({ email });
 };
 
-// Find user by Id
+// Find user by ID
 export const findUserById = async (userId: string) => {
   const user = await userRepository.findOne({
     where: { id: userId },
@@ -26,19 +26,26 @@ export const findUserById = async (userId: string) => {
   if (!user) {
     throw new AppError(404, "User not found.");
   }
+
   return user;
 };
 
-// Sign Tokens
+// Find All user 
+export const findAllUsers = async () => {
+  return await userRepository.find({
+    where: { deleted: false },
+    order: { created_at: "DESC" },
+  });
+};
+
+// Sign access and refresh tokens
 export const signTokens = async (
   user: User,
   ipAddress: string,
   userAgent: string
 ) => {
-  // 1. Create Session
   const session = await createSession(user.id, ipAddress, userAgent);
 
-  // 2. Create Access and Refresh Tokens
   const access_token = signJwt({ sub: user.id }, "accessTokenPrivateKey", {
     expiresIn: `${config.get<number>("accessTokenExpiresIn")}m`,
   });
@@ -54,7 +61,7 @@ export const signTokens = async (
   return { access_token, refresh_token };
 };
 
-
+// Update user
 export const updateUser = async (
   userId: string,
   role: string,
@@ -68,22 +75,42 @@ export const updateUser = async (
     throw new AppError(404, "User not found.");
   }
 
-  if (role === RoleEnumType.DEVELOPER) {
-    user.image = payload.name ?? user.image;
-    user.name = payload.name ?? user.name;
+  // Update fields based on role
+  if (role === RoleEnumType.DEVELOPER || role === RoleEnumType.ADMIN) {
+    user.first_name = payload.first_name ?? user.first_name;
+    user.last_name = payload.last_name ?? user.last_name;
     user.email = payload.email ?? user.email;
     user.number = payload.number ?? user.number;
-    user.city = payload.city ?? user.city;
-    user.country = payload.country ?? user.country;
-    user.address = payload.address ?? user.address;
-  } else if (role === RoleEnumType.ADMIN) {
-    user.image = payload.image ?? user.image;
-    user.number = payload.number ?? user.number;
-    user.city = payload.city ?? user.city;
-    user.state = payload.state ?? user.state;
-    user.country = payload.country ?? user.country;
+    user.role = payload.role ?? user.role;
+    user.dob = payload.dob ?? user.dob;
+    user.verificationCode = payload.verificationCode ?? user.verificationCode;
+    user.authToken = payload.authToken ?? user.authToken;
+    user.refreshToken = payload.refreshToken ?? user.refreshToken;
+    user.otp = payload.otp ?? user.otp;
+    user.otpExpiresAt = payload.otpExpiresAt ?? user.otpExpiresAt;
+    user.isOtpVerified =
+      payload.isOtpVerified !== undefined
+        ? payload.isOtpVerified
+        : user.isOtpVerified;
+    user.role_id = payload.role_id ?? user.role_id;
   }
 
   await userRepository.save(user);
   return user;
 };
+
+// Soft Delete User
+export const softDeleteUser = async (id: string) => {
+  const user = await userRepository.findOne({
+    where: { id, deleted: false },
+  });
+
+  if (!user) throw new AppError(404, "User not found");
+
+  user.deleted = true;
+  user.deleted_at = new Date();
+
+  return await userRepository.save(user);
+};
+
+
