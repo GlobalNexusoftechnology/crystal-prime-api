@@ -61,11 +61,37 @@ export const leadAttachmentController = () => {
     }
   };
 
+  //download student application form pdf
+ const downloadStudentPdf = async ( req: Request,
+  res: Response,
+  next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    console.log("dddd",id)
+
+    if (!id) {
+      return res.status(404).json({ message: 'attachment not found' });
+    }
+
+    const invoice = await service.createLeadAttachment(id);
+     // Success response
+     return res.status(200).json({
+      status: "success",
+      message: "Get Application successfully",
+      data: invoice,
+    });
+  }
+    catch (err) {
+      next(err);
+    }
+  }
+
   return {
     createAttachment,
     getAllAttachments,
     getAttachmentById,
     updateAttachment,
     softDeleteAttachment,
+    downloadStudentPdf
   };
 };
