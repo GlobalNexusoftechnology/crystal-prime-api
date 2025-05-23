@@ -3,6 +3,7 @@ import { LeadAttachments } from "../entities/lead-attachments.entity";
 import { Leads } from "../entities/leads.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
+import { uploadToS3 } from "../utils/s3Bucket";
 
 interface AttachmentInput {
   lead_id: string;
@@ -101,6 +102,58 @@ export const LeadAttachmentService = () => {
     return await attachmentRepo.save(attachment);
   };
 
+  // Upload Document
+  const createLeadAttachment = async (
+    leadId: string,
+    file?: Express.Multer.File,
+    link?: string,
+    uploadedById?: string
+  ): Promise<LeadAttachments> => {
+    // Validate Lead
+    const lead = await Leads.findOne({ where: { id: leadId } });
+    if (!lead) {
+      throw new Error("Lead not found");
+    }
+
+    // Validate uploader (optional)
+    let uploadedByUser: User | null = null;
+    if (uploadedById) {
+      uploadedByUser = await User.findOne({ where: { id: uploadedById } });
+      if (!uploadedByUser) {
+        throw new Error("Uploader user not found");
+      }
+    }
+
+    // Determine file path and type
+    let filePath: string;
+    let fileType: string;
+
+    if (file) {
+      const uploadResult = await uploadToS3(file.buffer, file.originalname);
+      filePath = uploadResult.url;
+      fileType = file.mimetype;
+    } else if (link) {
+      filePath = link;
+      fileType = "link";
+    } else {
+      throw new Error("Either file or link must be provided");
+    }
+
+    // Create and save attachment
+    const attachment = LeadAttachments.create({
+      lead,
+      uploaded_by: uploadedByUser ?? null,
+      file_path: filePath,
+      file_type: fileType,
+    });
+
+    await attachment.save();
+
+    return attachment;
+  };
+
+
+
   // Return all actions as an object
   return {
     createAttachment,
@@ -108,6 +161,7 @@ export const LeadAttachmentService = () => {
     getAttachmentById,
     updateAttachment,
     softDeleteAttachment,
+    createLeadAttachment
   };
 }
 
