@@ -1,11 +1,11 @@
 import { AppDataSource } from "../utils/data-source";
-import { Role, RoleName } from "../entities/roles.entity";
+import { Role } from "../entities/roles.entity";
 import AppError from "../utils/appError";
 
 const roleRepo = AppDataSource.getRepository(Role);
 
 interface RoleInput {
-  role: RoleName; // use the enum here
+  role: string; // use the enum here
   permissions: string[];
 }
 
