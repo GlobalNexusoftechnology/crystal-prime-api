@@ -1,9 +1,9 @@
-import { Request, Response, NextFunction } from "express";
-import { LeadAttachmentService } from "../services/lead-attachments.service";
-import { createLeadAttachment } from "../schemas/lead-attachments.schema";
-import { AppError, uploadToCloudinary } from "utils";
+import { Request, Response, NextFunction } from "express"
+import { LeadAttachmentService } from "../services/lead-attachments.service"
+import { createLeadAttachment } from "../schemas/lead-attachments.schema"
+import { AppError, uploadToCloudinary } from "../utils"
 
-const service = LeadAttachmentService();
+const service = LeadAttachmentService()
 
 export const leadAttachmentController = () => {
   const createAttachment = async (
@@ -20,13 +20,11 @@ export const leadAttachmentController = () => {
         file_type: parsedData.file_type,
       }
       const result = await service.createAttachment(attachementPayload)
-      res
-        .status(201)
-        .json({
-          status: "success",
-          message: "Attachment created",
-          data: result,
-        })
+      res.status(201).json({
+        status: "success",
+        message: "Attachment created",
+        data: result,
+      })
     } catch (error) {
       next(error)
     }
@@ -40,13 +38,11 @@ export const leadAttachmentController = () => {
   ) => {
     try {
       const result = await service.getAllAttachments()
-      res
-        .status(200)
-        .json({
-          status: "success",
-          message: "All Attachment get",
-          data: result,
-        })
+      res.status(200).json({
+        status: "success",
+        message: "All Attachment get",
+        data: result,
+      })
     } catch (error) {
       next(error)
     }
@@ -61,20 +57,18 @@ export const leadAttachmentController = () => {
     try {
       const { id } = req.params
       const result = await service.getAttachmentById(id)
-      res
-        .status(200)
-        .json({
-          status: "success",
-          message: "Attachment get by id",
-          data: result,
-        })
+      res.status(200).json({
+        status: "success",
+        message: "Attachment get by id",
+        data: result,
+      })
     } catch (error) {
       next(error)
     }
   }
 
   //upload image and pdf in Cloudinary
-  const uploadFilesToCloudinary = async (
+  const uploadMultipleFilesToCloudinary = async (
     req: Request,
     res: Response,
     next: NextFunction
@@ -131,10 +125,51 @@ export const leadAttachmentController = () => {
     }
   }
 
+  const uploadSingleFileToCloudinary = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const file = req.file as Express.Multer.File
+
+      if (!file) {
+        return res.status(400).json({
+          status: "error",
+          message: "No file provided in the request",
+        })
+      }
+
+      const uploadResult = await uploadToCloudinary(
+        file.buffer,
+        file.originalname,
+        "uploads" // or any folder name
+      )
+
+      return res.status(200).json({
+        status: "success",
+        message: "File uploaded successfully",
+        data: {
+          docUrl: uploadResult.url,
+          fileType: req.file?.mimetype,
+        },
+      })
+    } catch (error) {
+      console.error("Upload error:", error)
+      next(
+        new AppError(
+          500,
+          "An error occurred while uploading the file. Please try again later."
+        )
+      )
+    }
+  }
+
   return {
     createAttachment,
     getAllAttachments,
     getAttachmentById,
-    uploadFilesToCloudinary,
+    uploadMultipleFilesToCloudinary,
+    uploadSingleFileToCloudinary,
   }
-};
+}

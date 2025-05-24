@@ -12,7 +12,7 @@ const controller = leadAttachmentController();
 
 router.post(
   "/uploadAttachment",
-  singleDocumentUpload, controller.uploadFilesToCloudinary
+  singleDocumentUpload, controller.uploadSingleFileToCloudinary
 );
 
 router.post("/", controller.createAttachment);

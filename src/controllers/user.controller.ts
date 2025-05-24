@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel } from "../services/user.service";
-import { RoleEnumType, User } from "../entities/user.entity";
-import { AppDataSource } from "../utils/data-source";
-import { createUserSchema } from "../schemas/user.schema";
 import path from "path";
 import fs from "fs/promises";
+import bcrypt from "bcryptjs";
+
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail } from "../services/user.service";
+import { createUserSchema } from "../schemas/user.schema";
 
 // create user
 export const createUserController = async (
@@ -14,17 +14,41 @@ export const createUserController = async (
 ) => {
   try {
     const validated = createUserSchema.parse({ body: req.body });
+    const { email, first_name, last_name, password, role_id, dob, phone_number } = validated.body;
 
-    // Get the actual user data from .body
-    const userData = validated.body;
+      // Check if user already exists
+       const existingUser = await findUserByEmail({ email });
+       if (existingUser) {
+         return res.status(409).json({
+           status: "fail",
+           message: "User with that email already exists",
+         });
+       }
+   
+       // Hash password
+       const hashedPassword = await bcrypt.hash(password, 12);
+   
+       // Prepare user data
+       const userData = {
+         email,
+         first_name,
+         last_name,
+         dob,
+         password: hashedPassword,
+         role_id,
+         verificationCode: null,
+         verified: true,
+         phone_number
+       };
+   
+       // Create user
+       const newUser = await createUser(userData);
 
-    const newUser = await createUser(userData);
-
-    return res.status(201).json({
-      status: "success",
-      message: "User created successfully",
-      data: newUser,
-    });
+       res.status(201).json({
+         status: "success",
+         message: "User created successfully.",
+         data: newUser,
+       });
   } catch (error: any) {
     if (error.name === "ZodError") {
       return res.status(400).json({
@@ -86,22 +110,10 @@ export const getProfileController = async (
     const filteredProfile: any = {
       id: profile.id,
       email: profile.email,
-      number: profile.number,
+      number: profile.phone_number,
       dob: profile.dob,
       role: profile.role,
     };
-
-    // Add developer-specific fields
-    if (profile.role === RoleEnumType.DEVELOPER) {
-      filteredProfile.first_name = profile.first_name;
-      filteredProfile.last_name = profile.last_name;
-      filteredProfile.role_id = profile.role_id;
-    }
-
-    // Add admin-specific fields
-    if (profile.role === RoleEnumType.ADMIN) {
-      filteredProfile.role_id = profile.role_id;
-    }
 
     // Return filtered profile
     return res.status(200).json({

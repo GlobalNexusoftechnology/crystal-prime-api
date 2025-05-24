@@ -11,7 +11,7 @@ import {
   signTokens,
 } from "../services/user.service";
 import AppError from "../utils/appError";
-import { RoleEnumType, User } from "../entities/user.entity";
+import { User } from "../entities/user.entity";
 import bcrypt from "bcryptjs";
 import { sendEmail } from "../utils";
 
@@ -45,7 +45,7 @@ export const registerUserHandler = async (
   next: NextFunction
 ) => {
   try {
-    const { email, first_name, last_name, password, role } = req.body;
+    const { email, first_name, last_name, password, role_id } = req.body;
 
     // Check if user already exists
     const existingUser = await findUserByEmail({ email });
@@ -53,14 +53,6 @@ export const registerUserHandler = async (
       return res.status(409).json({
         status: "fail",
         message: "User with that email already exists",
-      });
-    }
-
-    // Validate role
-    if (![RoleEnumType.ADMIN, RoleEnumType.DEVELOPER].includes(role)) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Invalid role specified",
       });
     }
 
@@ -77,7 +69,7 @@ export const registerUserHandler = async (
       first_name,
       last_name,
       password: hashedPassword,
-      role,
+      role_id,
       verificationCode: hashedVerificationCode,
       verified: false,
     };
