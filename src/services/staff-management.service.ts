@@ -1,6 +1,7 @@
 import { AppDataSource } from "../utils/data-source";
 import { Staff } from "../entities/staff-management.entity";
 import AppError from "../utils/appError";
+import ExcelJS from "exceljs";
 
 const staffRepo = AppDataSource.getRepository(Staff);
 
@@ -94,11 +95,52 @@ export const staffService = () => {
     return await staffRepo.save(staff);
   };
 
+  const exportStaffToExcel = async (): Promise<ExcelJS.Workbook> => {
+  const staffRepo = AppDataSource.getRepository(Staff);
+
+  const staffList = await staffRepo.find({
+    where: { deleted: false },
+    order: { created_at: "DESC" },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Staff List");
+
+  worksheet.columns = [
+    { header: "ID", key: "id", width: 6 },
+    { header: "First Name", key: "first_name", width: 20 },
+    { header: "Last Name", key: "last_name", width: 20 },
+    { header: "Contact", key: "contact", width: 20 },
+    { header: "DOB", key: "dob", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Role Name", key: "role_name", width: 20 },
+    { header: "Created At", key: "created_at", width: 20 },
+    { header: "Updated At", key: "updated_at", width: 20 },
+  ];
+
+  staffList.forEach((staff) => {
+    worksheet.addRow({
+      id: staff.id,
+      first_name: staff.first_name,
+      last_name: staff.last_name,
+      contact: staff.contact ?? "",
+      dob: staff.dob ?? "",
+      email: staff.email ?? "",
+      role_name: staff.role_name ?? "",
+      created_at: staff.created_at?.toLocaleString() ?? "",
+      updated_at: staff.updated_at?.toLocaleString() ?? "",
+    });
+  });
+
+  return workbook;
+};
+
   return {
     createStaff,
     getAllStaff,
     getStaffById,
     updateStaff,
     softDeleteStaff,
+    exportStaffToExcel
   };
 };
