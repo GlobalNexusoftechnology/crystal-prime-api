@@ -1,6 +1,7 @@
 import express from "express";
 import { leadAttachmentController } from "../controllers/lead-attachments.controller";
 import multer from "multer";
+import { singleDocumentUpload } from "../middleware";
 
 const router = express.Router();
 const upload = multer();
@@ -9,9 +10,8 @@ const upload = multer();
 const controller = leadAttachmentController();
 
 router.post(
-  "/:leadId/upload",
-  upload.single("file"), controller.
-  downloadStudentPdf
+  "/uploadAttachment",
+  singleDocumentUpload, controller.uploadAttachmentHandler
 );
 
 router.post("/", controller.createAttachment);
