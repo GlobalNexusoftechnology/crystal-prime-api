@@ -1,13 +1,17 @@
-import { z } from "zod";
+// import { z } from "zod";
 
-export const createLeadAttachment = z.object({
-  lead_id: z.string().uuid(),
-  uploaded_by: z.string().uuid().nullable().optional(),
-  file_path: z.string().url(),
-  file_type: z.string(),
-});
+// // Create Attachment Schema
+// export const createLeadAttachment = z.object({
+//   lead_id: z.string().uuid(),
+//   uploaded_by: z.string().uuid().nullable().optional(),
+//   file_url: z.string().url().optional(), // for cloud storage or direct link
+//   link: z.string().url().optional(),     // optional external link
+// });
 
-export const updateLeadAttachment = z.object({
-  file_path: z.string().url().optional(),
-  file_type: z.string().min(1).optional(),
-});
+// // Update Attachment Schema
+// export const updateLeadAttachment = z.object({
+//   lead_id: z.string().uuid().optional(),
+//   uploaded_by: z.string().uuid().nullable().optional(),
+//   file_url: z.string().url().optional(),
+//   link: z.string().url().optional(),
+// });
