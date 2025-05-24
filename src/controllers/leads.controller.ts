@@ -85,13 +85,31 @@ export const leadController = () => {
     }
   };
 
+
+const downloadLeadTemplate = async (req: Request, res: Response) => {
+  try {
+    const relativePath = await service.generateLeadTemplate();
+    const fileUrl = `${req.protocol}://${req.get('host')}${relativePath}`;
+
+    return res.status(200).json({
+      message: 'Lead template generated successfully',
+      url: fileUrl,
+    });
+  } catch (error) {
+    console.error('Error generating template:', error);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+};
+
+
   return {
     createLead,
     getAllLeads,
     getLeadById,
     updateLead,
     softDeleteLead,
-    exportLeadsExcelController
+    exportLeadsExcelController,
+    downloadLeadTemplate
   };
 };
 
