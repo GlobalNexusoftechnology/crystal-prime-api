@@ -21,7 +21,7 @@ import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
 import projectManagementRouter from './routes/project-management.routes'
 import taskManagementRouter from './routes/task-management.routes';
-import staffManagementRouter from './routes/staff-management.routes';
+
 
 
 
@@ -40,6 +40,8 @@ AppDataSource.initialize()
 
     // Inside src/app.ts or main file
     app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
+
+    
 
 
     // MIDDLEWARE
@@ -73,7 +75,7 @@ AppDataSource.initialize()
     app.use('/api/roles', rolesRouter);
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
-    app.use('/api/staff-management', staffManagementRouter);
+    
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {

@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { staffService } from "../services/staff-management.service";
 import { createStaffSchema, updateStaffSchema } from "../schemas/staff-management.schema";
+import path from "path";
+import fs from "fs/promises";
 
 const service = staffService();
 
@@ -73,11 +75,32 @@ export const staffController = () => {
     }
   };
 
+  const exportStaffExcelController = async (req: Request, res: Response) => {
+  try {
+    const workbook = await service.exportStaffToExcel();
+
+    const exportDir = path.join(__dirname, "..", "..", "public", "exports");
+    await fs.mkdir(exportDir, { recursive: true });
+
+    const filename = `staff_${Date.now()}.xlsx`;
+    const filepath = path.join(exportDir, filename);
+
+    await workbook.xlsx.writeFile(filepath);
+
+    const fileURL = `${req.protocol}://${req.get("host")}/exports/${filename}`;
+    res.json({ fileURL });
+  } catch (error) {
+    console.error("Error exporting staff:", error);
+    res.status(500).json({ message: "Failed to export staff data" });
+  }
+};
+
   return {
     createStaff,
     getAllStaff,
     getStaffById,
     updateStaff,
     softDeleteStaff,
+    exportStaffExcelController
   };
 };
