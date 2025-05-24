@@ -4,6 +4,7 @@ import { AppDataSource } from "../utils/data-source";
 import { signJwt } from "../utils/jwt";
 import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
+import ExcelJS from "exceljs";
 
 const userRepository = AppDataSource.getRepository(User);
 
@@ -112,5 +113,48 @@ export const softDeleteUser = async (id: string) => {
 
   return await userRepository.save(user);
 };
+
+
+// Export all users to Excel
+export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
+  const userList = await userRepository.find({
+    where: { deleted: false },
+    order: { created_at: "DESC" },
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("User List");
+
+  worksheet.columns = [
+    { header: "ID", key: "id", width: 36 },
+    { header: "First Name", key: "first_name", width: 20 },
+    { header: "Last Name", key: "last_name", width: 20 },
+    { header: "Contact", key: "number", width: 20 },
+    { header: "DOB", key: "dob", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Role", key: "role", width: 20 },
+    { header: "Created At", key: "created_at", width: 25 },
+    { header: "Updated At", key: "updated_at", width: 25 },
+  ];
+
+  userList.forEach((user) => {
+    worksheet.addRow({
+      id: user.id,
+      first_name: user.first_name ?? "",
+      last_name: user.last_name ?? "",
+      number: user.number ?? "",
+      dob: user.dob ?? "",
+      email: user.email ?? "",
+      role: user.role ?? "",
+      created_at: user.created_at?.toLocaleString() ?? "",
+      updated_at: user.updated_at?.toLocaleString() ?? "",
+    });
+  });
+
+  return workbook;
+};
+
+
+
 
 
