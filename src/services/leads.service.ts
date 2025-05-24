@@ -5,6 +5,8 @@ import { LeadStatuses } from "../entities/lead-statuses.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
+import path from "path";
+import fs from 'fs';
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -208,13 +210,46 @@ export const LeadService = () => {
     return workbook;
   };
 
+  // src/services/lead.service.ts
+
+ const generateLeadTemplate = async (): Promise<string> => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Leads');
+
+  worksheet.columns = [
+    { header: 'First Name', key: 'firstName', width: 20 },
+    { header: 'Last Name', key: 'lastName', width: 20 },
+    { header: 'Company', key: 'company', width: 25 },
+    { header: 'Phone', key: 'phone', width: 15 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Location', key: 'location', width: 20 },
+    { header: 'Budget', key: 'budget', width: 15 },
+    { header: 'Source', key: 'source', width: 15 },
+    { header: 'Status', key: 'status', width: 15 },
+  ];
+
+  const outputDir = path.join(__dirname, '../../public/templates');
+  const filePath = path.join(outputDir, 'lead_template.xlsx');
+
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  await workbook.xlsx.writeFile(filePath);
+
+  return '/public/templates/lead_template.xlsx';
+};
+
+
+
   return {
     createLead,
     getAllLeads,
     getLeadById,
     updateLead,
     softDeleteLead,
-    exportLeadsToExcel
+    exportLeadsToExcel,
+    generateLeadTemplate
   };
 };
 
