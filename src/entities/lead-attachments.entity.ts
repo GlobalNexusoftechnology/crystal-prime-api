@@ -13,9 +13,16 @@ export class LeadAttachments extends Model {
   @JoinColumn({ name: "uploaded_by" })
   uploaded_by: User | null | undefined;
 
-  @Column()
-  file_path: string;
+  // @Column()
+  // file_path: string;
 
-  @Column()
-  file_type: string;
+  // @Column()
+  // file_type: string;
+
+  @Column({ type: 'text', nullable: true })
+  file_url: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  link: string | null;
+
 }
