@@ -4,12 +4,13 @@ import { Leads } from "../entities/leads.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import { uploadToS3 } from "../utils/s3Bucket";
+import { uploadToCloudinary } from "../utils/uploadToCloudinary";
 
 interface AttachmentInput {
   lead_id: string;
   uploaded_by?: string | null;
-  file_path: string;
-  file_type: string;
+  file_url?: string;
+  link: string;
 }
 
 const attachmentRepo = AppDataSource.getRepository(LeadAttachments);
@@ -103,53 +104,46 @@ export const LeadAttachmentService = () => {
   };
 
   // Upload Document
-  const createLeadAttachment = async (
+
+  const uploadLeadAttachment = async (
     leadId: string,
     file?: Express.Multer.File,
     link?: string,
-    uploadedById?: string
+    userId?: string
   ): Promise<LeadAttachments> => {
-    // Validate Lead
-    const lead = await Leads.findOne({ where: { id: leadId } });
-    if (!lead) {
-      throw new Error("Lead not found");
-    }
+    const leadRepo = AppDataSource.getRepository(Leads);
+    const userRepo = AppDataSource.getRepository(User);
+    const attachmentRepo = AppDataSource.getRepository(LeadAttachments);
 
-    // Validate uploader (optional)
-    let uploadedByUser: User | null = null;
-    if (uploadedById) {
-      uploadedByUser = await User.findOne({ where: { id: uploadedById } });
-      if (!uploadedByUser) {
-        throw new Error("Uploader user not found");
-      }
-    }
+    const lead = await leadRepo.findOneBy({ id: leadId });
+    if (!lead) throw new Error("Lead not found");
 
-    // Determine file path and type
-    let filePath: string;
-    let fileType: string;
+    const uploaded_by = userId ? await userRepo.findOneBy({ id: userId }) : null;
+
+    const newAttachment = new LeadAttachments();
+    newAttachment.lead = lead;
+    newAttachment.uploaded_by = uploaded_by || null;
+    newAttachment.file_url = null;  // Explicitly initialize to avoid misassignment
+    newAttachment.link = null;
+
+    // if (file) {
+    //   const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
+    //   newAttachment.file_url = uploadResult.url;
+    // }
 
     if (file) {
-      const uploadResult = await uploadToS3(file.buffer, file.originalname);
-      filePath = uploadResult.url;
-      fileType = file.mimetype;
-    } else if (link) {
-      filePath = link;
-      fileType = "link";
-    } else {
-      throw new Error("Either file or link must be provided");
+      console.log("File received:", file.originalname);
+      const uploadResult = await uploadToCloudinary(file.buffer, file.originalname);
+      console.log("Upload result:", uploadResult);
+      newAttachment.file_url = uploadResult.url;
     }
 
-    // Create and save attachment
-    const attachment = LeadAttachments.create({
-      lead,
-      uploaded_by: uploadedByUser ?? null,
-      file_path: filePath,
-      file_type: fileType,
-    });
 
-    await attachment.save();
+    if (link) {
+      newAttachment.link = link;
+    }
 
-    return attachment;
+    return await attachmentRepo.save(newAttachment);
   };
 
 
@@ -161,7 +155,7 @@ export const LeadAttachmentService = () => {
     getAttachmentById,
     updateAttachment,
     softDeleteAttachment,
-    createLeadAttachment
+    uploadLeadAttachment
   };
 }
 
