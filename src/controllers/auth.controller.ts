@@ -127,10 +127,12 @@ export const loginUserHandler = async (
     // 5. Send Response
     res.status(200).json({
       status: "success",
-      access_token,
-      refresh_token,
       message: "Logged in successfully",
-      user
+      data: {
+        user,
+        access_token,
+        refresh_token,
+      }
     });
   } catch (err) {
     next(err);
