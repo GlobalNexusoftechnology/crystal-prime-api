@@ -10,6 +10,7 @@ router.get("/:id", controller.getLeadById);
 router.put("/:id", controller.updateLead);
 router.delete("/:id", controller.softDeleteLead);
 router.get("/export/excel", controller.exportLeadsExcelController);
+router.get('/template/download', controller.downloadLeadTemplate);
 
 export default router;
 
