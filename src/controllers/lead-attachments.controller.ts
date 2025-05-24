@@ -61,30 +61,30 @@ export const leadAttachmentController = () => {
     }
   };
 
-  //download student application form pdf
- const downloadStudentPdf = async ( req: Request,
-  res: Response,
-  next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    console.log("dddd",id)
+ //download student application form pdf
+  const uploadAttachmentHandler = async (req: Request, res: Response) => {
+    try {
+      const { leadId, link, userId } = req.body;
+      const file = req.file;
 
-    if (!id) {
-      return res.status(404).json({ message: 'attachment not found' });
-    }
+      if (!leadId) {
+        return res.status(400).json({ message: "leadId is required" });
+      }
 
-    const invoice = await service.createLeadAttachment(id);
-     // Success response
-     return res.status(200).json({
-      status: "success",
-      message: "Get Application successfully",
-      data: invoice,
-    });
-  }
-    catch (err) {
-      next(err);
+      const attachment = await service.uploadLeadAttachment(leadId, file, link, userId);
+
+      res.status(201).json({
+        message: "Attachment uploaded successfully",
+        attachment,
+      });
+    } catch (err: any) {
+      console.error(err);
+      res.status(500).json({
+        message: err.message || "Error uploading attachment",
+        error: err,
+      });
     }
-  }
+  };
 
   return {
     createAttachment,
@@ -92,6 +92,6 @@ export const leadAttachmentController = () => {
     getAttachmentById,
     updateAttachment,
     softDeleteAttachment,
-    downloadStudentPdf
+    uploadAttachmentHandler
   };
 };
