@@ -1,1 +1,3 @@
-export * from "./email"
+export * from "./email";
+export { uploadToCloudinary } from './uploadToCloudinary';
+export { default as AppError } from './appError';
