@@ -27,16 +27,6 @@ export class User extends Model {
   @Column({ type: "timestamp", nullable: true })
   dob: Date;
 
-  @Index("verificationCode_index")
-  @Column({ type: "text", nullable: true })
-  verificationCode!: string | null;
-
-  @Column({ nullable: true })
-  authToken: string;
-
-  @Column({ nullable: true })
-  refreshToken: string;
-
   @Column({ type: "varchar", length: 6, nullable: true })
   otp: string | null;
 
@@ -49,21 +39,11 @@ export class User extends Model {
   @Column({ nullable: false })
   password: string;
 
-  @OneToMany(() => LeadAttachments, (attachment) => attachment.uploaded_by)
-  lead_attachments: LeadAttachments[];
-
-  @OneToMany(() => LeadStatusHistory, (status) => status.changed_by)
-  changed_statuses: LeadStatusHistory[];
-  assignedTasks: any;
-
   @BeforeInsert()
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 12);
   }
-
-  @OneToMany(() => Leads, (lead) => lead.assigned_to)
-  assignedLeads: Leads[];
-
+  
   static async comparePasswords(
     candidatePassword: string,
     hashedPassword: string
