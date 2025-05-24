@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser } from "../services/user.service";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel } from "../services/user.service";
 import { RoleEnumType, User } from "../entities/user.entity";
 import { AppDataSource } from "../utils/data-source";
 import { createUserSchema } from "../schemas/user.schema";
+import path from "path";
+import fs from "fs/promises";
 
 // create user
 export const createUserController = async (
@@ -142,5 +144,31 @@ export const softDeleteUserHandler = async (
     next(error);
   }
 };
+
+// Export users to Excel
+export const exportUsersExcelController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const workbook = await exportUsersToExcel(); // call to service
+
+    const exportDir = path.join(__dirname, "..", "..", "public", "exports");
+    await fs.mkdir(exportDir, { recursive: true });
+
+    const filename = `users_${Date.now()}.xlsx`;
+    const filepath = path.join(exportDir, filename);
+
+    await workbook.xlsx.writeFile(filepath);
+
+    const fileURL = `${req.protocol}://${req.get("host")}/exports/${filename}`;
+    res.status(200).json({ status: "success", fileURL });
+  } catch (error) {
+    console.error("Error exporting users:", error);
+    res.status(500).json({ status: "error", message: "Failed to export user data" });
+  }
+};
+
 
 
