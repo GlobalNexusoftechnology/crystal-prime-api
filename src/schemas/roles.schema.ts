@@ -8,8 +8,6 @@ export const CreateRoleSchema = z.object({
 });
 
 export const UpdateRoleSchema = z.object({
-  role: string({
-      required_error: "role is required",
-    }),
+  role: string().optional(),
   permissions: z.array(z.string()).optional(),
 });

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { roleService } from "../services/roles.service";
 import { CreateRoleSchema, UpdateRoleSchema } from "../schemas/roles.schema";
+import { validatePermissionCodes } from "../helpers";
 
 const service = roleService();
 
@@ -10,6 +11,10 @@ export const roleController = () => {
   const createRole = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsedData = CreateRoleSchema.parse(req.body);
+      if (!validatePermissionCodes(parsedData.permissions)) {
+        return res.status(400).json({ status: "error", message: "Invalid permission codes" });
+      }
+
       const result = await service.createRole(parsedData);
       res.status(201).json({ status: "success", message: "Role created", data: result });
     } catch (error) {
@@ -55,6 +60,11 @@ export const roleController = () => {
     try {
       const { id } = req.params;
       const parsedData = UpdateRoleSchema.parse(req.body);
+
+      if (parsedData.permissions && !validatePermissionCodes(parsedData.permissions)) {
+        return res.status(400).json({ status: "error", message: "Invalid permission codes" });
+      }
+
       const result = await service.updateRole(id, parsedData);
       res.status(200).json({ status: "success", message: "Role updated", data: result });
     } catch (error) {
