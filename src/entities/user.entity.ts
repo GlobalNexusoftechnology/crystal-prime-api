@@ -4,6 +4,7 @@ import Model from "./model.entity";
 import { Leads } from "./leads.entity";
 import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
+import { Task } from "./task-management.entity";
 import { Role } from "./roles.entity";
 
 @Entity("users")
@@ -38,6 +39,18 @@ export class User extends Model {
 
   @Column({ nullable: false })
   password: string;
+
+  @OneToMany(() => Leads, (lead) => lead.assigned_to)
+  assignedLeads: Leads[];
+
+  @OneToMany(() => LeadAttachments, (attachment) => attachment.uploaded_by)
+  lead_attachments: LeadAttachments[];
+
+  @OneToMany(() => LeadStatusHistory, (status) => status.changed_by)
+  changed_statuses: LeadStatusHistory[];
+
+  @OneToMany(() => Task, (task) => task.assignedTo)
+  assignedTasks: Task[];
 
   @BeforeInsert()
   async hashPassword() {

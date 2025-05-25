@@ -1,5 +1,5 @@
 import config from "config";
-import { RoleEnumType, User } from "../entities/user.entity";
+import { User } from "../entities/user.entity";
 import { AppDataSource } from "../utils/data-source";
 import { signJwt } from "../utils/jwt";
 import { createSession } from "../services/session.service";
@@ -76,25 +76,7 @@ export const updateUser = async (
     throw new AppError(404, "User not found.");
   }
 
-  // Update fields based on role
-  if (role === RoleEnumType.DEVELOPER || role === RoleEnumType.ADMIN) {
-    user.first_name = payload.first_name ?? user.first_name;
-    user.last_name = payload.last_name ?? user.last_name;
-    user.email = payload.email ?? user.email;
-    user.number = payload.number ?? user.number;
-    user.role = payload.role ?? user.role;
-    user.dob = payload.dob ?? user.dob;
-    user.verificationCode = payload.verificationCode ?? user.verificationCode;
-    user.authToken = payload.authToken ?? user.authToken;
-    user.refreshToken = payload.refreshToken ?? user.refreshToken;
-    user.otp = payload.otp ?? user.otp;
-    user.otpExpiresAt = payload.otpExpiresAt ?? user.otpExpiresAt;
-    user.isOtpVerified =
-      payload.isOtpVerified !== undefined
-        ? payload.isOtpVerified
-        : user.isOtpVerified;
-    user.role_id = payload.role_id ?? user.role_id;
-  }
+  Object.assign(user, payload);
 
   await userRepository.save(user);
   return user;
@@ -142,7 +124,7 @@ export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
       id: user.id,
       first_name: user.first_name ?? "",
       last_name: user.last_name ?? "",
-      number: user.number ?? "",
+      number: user.phone_number ?? "",
       dob: user.dob ?? "",
       email: user.email ?? "",
       role: user.role ?? "",
