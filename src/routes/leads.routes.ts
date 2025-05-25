@@ -1,8 +1,11 @@
 import express from "express";
 import { leadController } from "../controllers/leads.controller";
+import { deserializeUser, requireUser } from "../middleware";
 
 const router = express.Router();
 const controller = leadController();
+
+router.use(deserializeUser, requireUser);
 
 router.post("/", controller.createLead);
 router.get("/", controller.getAllLeads);
@@ -13,4 +16,3 @@ router.get("/export/excel", controller.exportLeadsExcelController);
 router.get('/template/download', controller.downloadLeadTemplate);
 
 export default router;
-

@@ -66,7 +66,8 @@ export const leadController = () => {
   // Excel file
   const exportLeadsExcelController = async (req: Request, res: Response) => {
     try {
-      const workbook = await service.exportLeadsToExcel();
+      const userId = res.locals.user.id;
+      const workbook = await service.exportLeadsToExcel(userId);
 
       const exportDir = path.join(__dirname, "..", "..", "public", "exports");
       await fs.mkdir(exportDir, { recursive: true });
@@ -88,16 +89,21 @@ export const leadController = () => {
 
 const downloadLeadTemplate = async (req: Request, res: Response) => {
   try {
-    const relativePath = await service.generateLeadTemplate();
-    const fileUrl = `${req.protocol}://${req.get('host')}${relativePath}`;
+    const workbook = await service.generateLeadTemplate();
+    const templatesDir = path.join(__dirname, "..", "..", "public", "templates");
+    await fs.mkdir(templatesDir, { recursive: true });
 
-    return res.status(200).json({
-      message: 'Lead template generated successfully',
-      url: fileUrl,
-    });
+    const filename = `leads_template.xlsx`;
+    const filepath = path.join(templatesDir, filename);
+
+    await workbook.xlsx.writeFile(filepath);
+
+    const fileURL = `${req.protocol}://${req.get("host")}/templates/${filename}`;
+
+    res.download(filepath, filename);
   } catch (error) {
     console.error('Error generating template:', error);
-    return res.status(500).json({ message: 'Something went wrong' });
+    return res.status(500).json({ message: 'Failed to download the template' });
   }
 };
 
