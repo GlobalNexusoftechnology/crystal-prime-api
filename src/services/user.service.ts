@@ -5,8 +5,10 @@ import { signJwt } from "../utils/jwt";
 import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
+import { Role } from "../entities/roles.entity";
 
 const userRepository = AppDataSource.getRepository(User);
+const roleRepository = AppDataSource.getRepository(Role);
 
 // Create user
 export const createUser = async (input: Partial<User>) => {
@@ -36,6 +38,7 @@ export const findAllUsers = async () => {
   return await userRepository.find({
     where: { deleted: false },
     order: { created_at: "DESC" },
+    relations: ["role"]
   });
 };
 
@@ -65,18 +68,34 @@ export const signTokens = async (
 // Update user
 export const updateUser = async (
   userId: string,
-  role: string,
-  payload: Partial<User>
+  payload: Partial<User> & { role_id?: string }
 ): Promise<User | null> => {
   const user = await userRepository.findOne({
     where: { id: userId },
+    relations: ['role'], // optional, but useful if you want to update role properly
   });
 
   if (!user) {
     throw new AppError(404, "User not found.");
   }
 
-  Object.assign(user, payload);
+  // If payload includes a roleId, fetch and assign the role
+  if (payload.role_id) {
+    const role = await roleRepository.findOne({
+      where: { id: payload.role_id },
+    });
+
+    if (!role) {
+      throw new AppError(404, "Role not found.");
+    }
+
+    user.role = role;
+  }
+
+  // Remove roleId from payload to avoid conflict with entity
+  const { role_id, ...restPayload } = payload;
+
+  Object.assign(user, restPayload);
 
   await userRepository.save(user);
   return user;

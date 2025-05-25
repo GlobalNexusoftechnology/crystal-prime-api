@@ -69,12 +69,12 @@ export const updateProfileController = async (
   next: NextFunction
 ) => {
   try {
-    const userId = res.locals.user.id;
-    const role = res.locals.user.role;
-    const payload = req.body;
+    const userId = req.params.id;
+    const validated = createUserSchema.parse({ body: req.body });
+    const payload = validated.body;
 
     // Update user profile without image handling
-    const updatedUser = await updateUser(userId, role, payload);
+    const updatedUser = await updateUser(userId, payload);
 
     return res.status(200).json({
       status: "success",

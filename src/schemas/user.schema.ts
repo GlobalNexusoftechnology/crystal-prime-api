@@ -30,6 +30,26 @@ export const createUserSchema = object({
   }),
 });
 
+export const updateUserSchema = object({
+  body: object({
+    first_name: string().optional(),
+
+    last_name: string().optional().optional(),
+
+    email: string().email("Invalid email address").optional(),
+
+    phone_number: string().optional(),
+
+    password: string()
+      .min(8, "Password must be at least 8 characters")
+      .max(32, "Password must be less than 32 characters").optional(),
+
+    role_id: string().optional(),
+
+    dob: z.coerce.date().optional(),
+  }),
+});
+
 export const loginUserSchema = object({
   body: object({
     email: string({
