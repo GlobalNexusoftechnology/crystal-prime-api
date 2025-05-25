@@ -7,109 +7,142 @@ import fs from "fs/promises";
 const service = LeadService();
 
 export const leadController = () => {
-
   // Create Lead
-  const createLead = async (req: Request, res: Response, next: NextFunction) => {
+  const createLead = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const parsed = createLeadSchema.parse(req.body);
-      const result = await service.createLead(parsed);
-      res.status(201).json({ status: "success", message: "Lead created", data: result });
+      const parsed = createLeadSchema.parse(req.body)
+      const result = await service.createLead(parsed)
+      res
+        .status(201)
+        .json({ status: "success", message: "Lead created", data: result })
     } catch (error) {
-      next(error);
+      next(error)
     }
-  };
+  }
 
   // Get All Lead
-  const getAllLeads = async (req: Request, res: Response, next: NextFunction) => {
+  const getAllLeads = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const userId = res.locals.user.id;
-      const result = await service.getAllLeads();
-      const leadStats = await service.getLeadStats(userId);
+      const userId = res.locals.user.id
+      const result = await service.getAllLeads()
+      const leadStats = await service.getLeadStats(userId)
 
-      res.status(200).json({ status: "success", message: "All Leads fetched", data: { list: result, stats: leadStats } });
+      res
+        .status(200)
+        .json({
+          status: "success",
+          message: "All Leads fetched",
+          data: { list: result, stats: leadStats },
+        })
     } catch (error) {
-      next(error);
+      next(error)
     }
-  };
+  }
 
   // Get Lead by ID
-  const getLeadById = async (req: Request, res: Response, next: NextFunction) => {
+  const getLeadById = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const { id } = req.params;
-      const result = await service.getLeadById(id);
-      res.status(200).json({ status: "success", message: "Lead fetched", data: result });
+      const { id } = req.params
+      const result = await service.getLeadById(id)
+      res
+        .status(200)
+        .json({ status: "success", message: "Lead fetched", data: result })
     } catch (error) {
-      next(error);
+      next(error)
     }
-  };
+  }
 
   // Update Lead
-  const updateLead = async (req: Request, res: Response, next: NextFunction) => {
+  const updateLead = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const { id } = req.params;
-      const parsed = updateLeadSchema.parse(req.body);
-      const result = await service.updateLead(id, parsed);
-      res.status(200).json({ status: "success", message: "Lead updated", data: result });
+      const { id } = req.params
+      const parsed = updateLeadSchema.parse(req.body)
+      const result = await service.updateLead(id, parsed)
+      res
+        .status(200)
+        .json({ status: "success", message: "Lead updated", data: result })
     } catch (error) {
-      next(error);
+      next(error)
     }
-  };
+  }
 
   // Soft Delete Lead
-  const softDeleteLead = async (req: Request, res: Response, next: NextFunction) => {
+  const softDeleteLead = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const { id } = req.params;
-      const result = await service.softDeleteLead(id);
-      res.status(200).json({ status: "success", message: "Lead deleted", data: result });
+      const { id } = req.params
+      const result = await service.softDeleteLead(id)
+      res
+        .status(200)
+        .json({ status: "success", message: "Lead deleted", data: result })
     } catch (error) {
-      next(error);
+      next(error)
     }
-  };
+  }
 
-  // Excel file
+  // Export Lead Excel file
   const exportLeadsExcelController = async (req: Request, res: Response) => {
     try {
-      const userId = res.locals.user.id;
-      const workbook = await service.exportLeadsToExcel(userId);
+      const userId = res.locals.user.id
+      const workbook = await service.exportLeadsToExcel(userId)
 
-      const exportDir = path.join(__dirname, "..", "..", "public", "exports");
-      await fs.mkdir(exportDir, { recursive: true });
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      )
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=leads_${Date.now()}.xlsx`
+      )
 
-      const filename = `leads_${Date.now()}.xlsx`;
-      const filepath = path.join(exportDir, filename);
-
-      await workbook.xlsx.writeFile(filepath);
-
-      const fileURL = `${req.protocol}://${req.get("host")}/exports/${filename}`;
-
-      res.json({ fileURL });
+      await workbook.xlsx.write(res)
+      res.end()
     } catch (error) {
-      console.error("Error exporting leads:", error);
-      res.status(500).json({ message: "Failed to export leads" });
+      console.error("Error exporting leads:", error)
+      res.status(500).json({ message: "Failed to export leads" })
     }
-  };
-
-
-const downloadLeadTemplate = async (req: Request, res: Response) => {
-  try {
-    const workbook = await service.generateLeadTemplate();
-    const templatesDir = path.join(__dirname, "..", "..", "public", "templates");
-    await fs.mkdir(templatesDir, { recursive: true });
-
-    const filename = `leads_template.xlsx`;
-    const filepath = path.join(templatesDir, filename);
-
-    await workbook.xlsx.writeFile(filepath);
-
-    const fileURL = `${req.protocol}://${req.get("host")}/templates/${filename}`;
-
-    res.download(filepath, filename);
-  } catch (error) {
-    console.error('Error generating template:', error);
-    return res.status(500).json({ message: 'Failed to download the template' });
   }
-};
 
+  // Download lead template file.
+  const downloadLeadTemplate = async (req: Request, res: Response) => {
+    try {
+      const workbook = await service.generateLeadTemplate()
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      )
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=leads_template.xlsx"
+      )
+
+      await workbook.xlsx.write(res)
+      res.end()
+    } catch (error) {
+      console.error("Error generating template:", error)
+      res.status(500).json({ message: "Failed to download the template" })
+    }
+  }
 
   return {
     createLead,
@@ -118,7 +151,7 @@ const downloadLeadTemplate = async (req: Request, res: Response) => {
     updateLead,
     softDeleteLead,
     exportLeadsExcelController,
-    downloadLeadTemplate
-  };
+    downloadLeadTemplate,
+  }
 };
 
