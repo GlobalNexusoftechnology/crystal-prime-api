@@ -6,7 +6,7 @@ import { createUserController, getAllUsersHandler, getProfileController, softDel
 const router = express.Router();
 
 // Ensure user is authenticated
-// router.use(deserializeUser, requireUser);
+router.use(deserializeUser, requireUser);
 
 router.get("/export", exportUsersExcelController);
 router.post("/", createUserController)

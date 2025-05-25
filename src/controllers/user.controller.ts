@@ -106,13 +106,16 @@ export const getProfileController = async (
       });
     }
 
-    // Basic profile info common to all roles
-    const filteredProfile: any = {
+    const filteredProfile = {
       id: profile.id,
       email: profile.email,
-      number: profile.phone_number,
+      phone_number: profile.phone_number,
       dob: profile.dob,
       role: profile.role,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
     };
 
     // Return filtered profile
