@@ -22,8 +22,11 @@ export const leadController = () => {
   // Get All Lead
   const getAllLeads = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const userId = res.locals.user.id;
       const result = await service.getAllLeads();
-      res.status(200).json({ status: "success", message: "All Leads fetched", data: result });
+      const leadStats = await service.getLeadStats(userId);
+
+      res.status(200).json({ status: "success", message: "All Leads fetched", data: { list: result, stats: leadStats } });
     } catch (error) {
       next(error);
     }

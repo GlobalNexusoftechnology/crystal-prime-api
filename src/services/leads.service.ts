@@ -85,6 +85,41 @@ export const LeadService = () => {
     return lead;
   };
 
+  const getLeadStats = async (userId: string) => {
+    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested] =
+      await Promise.all([
+        leadRepo.count({ where: { deleted: false } }),
+
+        leadRepo.count({
+          where: { deleted: false, assigned_to: { id: userId } },
+          relations: ["assigned_to"],
+        }),
+
+        leadRepo.count({
+          where: { deleted: false, status: { name: "Profile Sent" } },
+          relations: ["status"],
+        }),
+
+        leadRepo.count({
+          where: { deleted: false, status: { name: "Business Done" } },
+          relations: ["status"],
+        }),
+
+        leadRepo.count({
+          where: { deleted: false, status: { name: "Not Interested" } },
+          relations: ["status"],
+        }),
+      ])
+
+    return {
+      totalLeads,
+      assignedToMe,
+      profileSent,
+      businessDone,
+      notInterested,
+    }
+  }
+
   // Update Lead
   const updateLead = async (id: string, data: any) => {
     const {
@@ -235,6 +270,7 @@ export const LeadService = () => {
   return {
     createLead,
     getAllLeads,
+    getLeadStats,
     getLeadById,
     updateLead,
     softDeleteLead,
