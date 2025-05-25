@@ -8,7 +8,7 @@ export function validatePermissionCodes(codes: string[]): boolean {
 
     const modulePart = code.slice(0, 2);
     const actionParts = code.slice(2).split("");
-    console.log(!VALID_MODULE_VALUES.includes(modulePart));
+
     // Module must be valid
     if (!VALID_MODULE_VALUES.includes(modulePart)) return false;
     
