@@ -11,7 +11,19 @@ const userRepository = AppDataSource.getRepository(User);
 const roleRepository = AppDataSource.getRepository(Role);
 
 // Create user
-export const createUser = async (input: Partial<User>) => {
+export const createUser = async (input: Partial<User> & { role_id?: string }) => {
+  const role = await roleRepository.findOne({
+    where: { id: input.role_id },
+  });
+
+  if (!role) {
+    throw new AppError(404, "Role not found.");
+  }
+
+  delete input.role_id;
+
+  input.role = role;
+
   return await userRepository.save(input);
 };
 
