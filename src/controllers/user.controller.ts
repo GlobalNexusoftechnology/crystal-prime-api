@@ -169,16 +169,17 @@ export const exportUsersExcelController = async (
   try {
     const workbook = await exportUsersToExcel(); // call to service
 
-    const exportDir = path.join(__dirname, "..", "..", "public", "exports");
-    await fs.mkdir(exportDir, { recursive: true });
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=leads_${Date.now()}.xlsx`
+    )
 
-    const filename = `users_${Date.now()}.xlsx`;
-    const filepath = path.join(exportDir, filename);
-
-    await workbook.xlsx.writeFile(filepath);
-
-    const fileURL = `${req.protocol}://${req.get("host")}/exports/${filename}`;
-    res.status(200).json({ status: "success", fileURL });
+    await workbook.xlsx.write(res)
+    res.end()
   } catch (error) {
     console.error("Error exporting users:", error);
     res.status(500).json({ status: "error", message: "Failed to export user data" });
