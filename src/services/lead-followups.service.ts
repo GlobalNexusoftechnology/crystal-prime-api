@@ -18,7 +18,6 @@ export const LeadFollowupService = () => {
       user_id,
       status = FollowupStatus.PENDING,
       due_date,
-      completed_date,
       remarks,
     } = data;
 
@@ -36,7 +35,9 @@ export const LeadFollowupService = () => {
     leadFollowup.user = user;
     leadFollowup.status = status;
     leadFollowup.due_date = due_date ?? null;
-    leadFollowup.completed_date = completed_date ?? null;
+    if(leadFollowup.status === FollowupStatus.COMPLETED) {
+      leadFollowup.completed_date = new Date();
+    }
     leadFollowup.remarks = remarks ?? "";
 
     return await leadFollowupRepo.save(leadFollowup);
