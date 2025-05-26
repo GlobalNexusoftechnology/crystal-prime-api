@@ -4,7 +4,7 @@ import fs from "fs/promises";
 import bcrypt from "bcryptjs";
 
 import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail } from "../services/user.service";
-import { createUserSchema } from "../schemas/user.schema";
+import { createUserSchema, updateUserSchema } from "../schemas/user.schema";
 
 // create user
 export const createUserController = async (
@@ -70,7 +70,7 @@ export const updateProfileController = async (
 ) => {
   try {
     const userId = req.params.id;
-    const validated = createUserSchema.parse({ body: req.body });
+    const validated = updateUserSchema.parse({ body: req.body });
     const payload = validated.body;
 
     // Update user profile without image handling
