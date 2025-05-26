@@ -38,3 +38,18 @@ export const updateLeadSchema = z.object({
   attachments: z.array(z.any()).optional(),
   status_histories: z.array(z.any()).optional(),
 });
+
+// Lead Upload Schema (fields expected in Excel)
+export const excelLeadSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
+  company: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("Invalid email format").optional(),
+  location: z.string().optional(),
+  budget: z.coerce.number().optional(),
+  requirement: z.string().optional(),
+  source_id: z.string().uuid("Invalid source ID").optional(),
+  status_id: z.string().uuid("Invalid status ID").optional(),
+  assigned_to: z.string().uuid("Invalid assigned user ID").optional(),
+});

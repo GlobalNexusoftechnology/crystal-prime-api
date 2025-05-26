@@ -41,6 +41,7 @@
     "sib-api-v3-sdk": "^8.5.0",
     "typeorm": "0.3.6",
     "uuid": "^11.0.3",
+    "xlsx": "^0.18.5",
     "zod": "^3.14.4"
   },
   "devDependencies": {
