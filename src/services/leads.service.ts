@@ -257,15 +257,16 @@ export const LeadService = () => {
     const worksheet = workbook.addWorksheet("Leads");
 
     worksheet.columns = [
-      { header: "First Name", key: "firstName", width: 20 },
-      { header: "Last Name", key: "lastName", width: 20 },
-      { header: "Company", key: "company", width: 25 },
-      { header: "Phone", key: "phone", width: 15 },
-      { header: "Email", key: "email", width: 25 },
-      { header: "Location", key: "location", width: 20 },
-      { header: "Budget", key: "budget", width: 15 },
-      { header: "Source", key: "source", width: 15 },
-      { header: "Status", key: "status", width: 15 },
+      { header: "first_name", key: "first_name", width: 20 },
+      { header: "last_name", key: "last_name", width: 20 },
+      { header: "company", key: "company", width: 25 },
+      { header: "phone", key: "phone", width: 15 },
+      { header: "email", key: "email", width: 25 },
+      { header: "location", key: "location", width: 20 },
+      { header: "requirement", key: "requirement", width: 20 },
+      { header: "budget", key: "budget", width: 15 },
+      { header: "source", key: "source", width: 15 },
+      { header: "status", key: "status", width: 15 },
     ];
 
     return workbook;
