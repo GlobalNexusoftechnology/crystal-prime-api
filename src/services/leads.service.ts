@@ -312,7 +312,7 @@ export const LeadService = () => {
     for (const data of leadsToInsert) {
       const existingEmail = data.email
         ? await leadRepo.findOne({
-            where: { email: String(data.email).trim(), deleted: false },
+            where: { email: String(data.email.text).trim(), deleted: false },
           })
         : null;
 
@@ -325,7 +325,7 @@ export const LeadService = () => {
         last_name: data.last_name || "",
         company: data.company || "",
         phone: data.phone || "",
-        email: data.email || "",
+        email: data.email.text || "",
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
