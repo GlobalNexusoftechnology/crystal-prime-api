@@ -28,7 +28,7 @@ export class Leads extends Model {
   @Column({ nullable: true })
   location: string;
 
-  @Column('decimal', { precision: 12, scale: 2, nullable: true })
+  @Column('decimal', { nullable: true })
   budget: number;
 
   @Column('text', { nullable: true })
