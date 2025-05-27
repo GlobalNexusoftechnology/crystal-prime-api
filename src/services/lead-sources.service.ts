@@ -62,6 +62,13 @@ export const LeadSourceService = () => {
     });
     if (!leadSource) throw new AppError(404, "Lead Source not found");
 
+    const existingLeadSource = await leadSourceRepo.findOne({
+    where: {name: data.name },
+    });
+    
+    if (existingLeadSource)
+      throw new AppError(400, "Lead Source already exists");
+
     const { name } = data;
 
     if (name !== undefined) leadSource.name = name;

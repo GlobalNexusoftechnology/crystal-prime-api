@@ -62,6 +62,12 @@ export const LeadStatusService = () => {
     });
     if (!leadStatus) throw new AppError(404, "Lead Status not found");
 
+    const existingLeadStatus = await leadStatusRepo.findOne({
+      where: { name: data.name },
+    });
+    if (existingLeadStatus)
+      throw new AppError(400, "Lead Status already exists");
+
     const { name } = data;
 
     if (name !== undefined) leadStatus.name = name;
