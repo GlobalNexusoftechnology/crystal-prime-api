@@ -273,7 +273,7 @@ export const LeadService = () => {
   };
 
   // Service to handle Excel upload
-  const uploadLeadsFromExcelService = async (fileBuffer: Buffer) => {
+  const uploadLeadsFromExcelService = async (fileBuffer: Buffer, user: User) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(fileBuffer);
     const worksheet = workbook.worksheets[0];
@@ -296,7 +296,6 @@ export const LeadService = () => {
     }
 
     const leadsToInsert: any[] = [];
-
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header row
 
@@ -305,59 +304,69 @@ export const LeadService = () => {
         leadData[header] = row.getCell(colIndex + 1).value || "";
       });
 
+      leadData._rowNumber = rowNumber; // Attach row number for error tracking
       leadsToInsert.push(leadData);
     });
 
     const savedLeads = [];
 
     for (const data of leadsToInsert) {
-      const existingEmail = data.email
-        ? await leadRepo.findOne({
-            where: { email: String(data.email.text).trim(), deleted: false },
-          })
-        : null;
+      const rowNumber = data._rowNumber;
+
+      // Check if email already exists
+      const email = data.email?.text || data.email || "";
+      const existingEmail = await leadRepo.findOne({
+        where: { email: String(email).trim(), deleted: false },
+      });
 
       if (existingEmail) {
-        continue; // Skip duplicate leads based on email
+        throw new AppError(
+          400,
+          `Email already exists at row ${rowNumber}: ${email}`
+        );
       }
 
+      // Create lead object
       const lead = leadRepo.create({
         first_name: data.first_name || "",
         last_name: data.last_name || "",
         company: data.company || "",
         phone: data.phone || "",
-        email: data.email.text || "",
+        email: String(email).trim(),
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
       });
 
-      if (data.source_id) {
+      // Find Source by Name
+      if (data.source) {
         const source = await leadSourceRepo.findOne({
-          where: { id: String(data.source_id) },
+          where: { name: String(data.source).trim() },
         });
-        if (!source)
-          throw new AppError(400, `Invalid source_id: ${data.source_id}`);
+        if (!source) {
+          throw new AppError(
+            400,
+            `Invalid source name at row ${rowNumber}: ${data.source}`
+          );
+        }
         lead.source = source;
       }
 
-      if (data.status_id) {
+      // Find Status by Name
+      if (data.status) {
         const status = await leadStatusRepo.findOne({
-          where: { id: String(data.status_id) },
+          where: { name: String(data.status).trim() },
         });
-        if (!status)
-          throw new AppError(400, `Invalid status_id: ${data.status_id}`);
+        if (!status) {
+          throw new AppError(
+            400,
+            `Invalid status name at row ${rowNumber}: ${data.status}`
+          );
+        }
         lead.status = status;
       }
 
-      if (data.assigned_to) {
-        const user = await userRepo.findOne({
-          where: { id: String(data.assigned_to) },
-        });
-        if (!user)
-          throw new AppError(400, `Invalid assigned_to: ${data.assigned_to}`);
-        lead.assigned_to = user;
-      }
+      lead.assigned_to = user;
 
       const saved = await leadRepo.save(lead);
       savedLeads.push(saved);

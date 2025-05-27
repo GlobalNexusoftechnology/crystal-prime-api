@@ -148,13 +148,14 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
+      const user = res.locals.user
       if (!req.file) {
         return res
           .status(400)
           .json({ status: "error", message: "No file uploaded" });
       }
 
-      const result = await service.uploadLeadsFromExcelService(req.file.buffer);
+      const result = await service.uploadLeadsFromExcelService(req.file.buffer, user);
       res.status(201).json({
         status: "success",
         message: "Leads uploaded successfully",
