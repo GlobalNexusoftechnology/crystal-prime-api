@@ -45,6 +45,10 @@ export const findUserById = async (userId: string) => {
   return user;
 };
 
+export const findUserByPhoneNumber = async ({ phone_number }: { phone_number: string }) => {
+  return AppDataSource.getRepository(User).findOne({ where: { phone_number } });
+};
+
 // Find All user 
 export const findAllUsers = async () => {
   return await userRepository.find({

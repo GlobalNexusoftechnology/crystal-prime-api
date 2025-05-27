@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import path from "path";
-import fs from "fs/promises";
 import bcrypt from "bcryptjs";
 
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail } from "../services/user.service";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber } from "../services/user.service";
 import { createUserSchema, updateUserSchema } from "../schemas/user.schema";
 
 // create user
@@ -16,39 +14,50 @@ export const createUserController = async (
     const validated = createUserSchema.parse({ body: req.body });
     const { email, first_name, last_name, password, role_id, dob, phone_number } = validated.body;
 
-      // Check if user already exists
-       const existingUser = await findUserByEmail({ email });
-       if (existingUser) {
-         return res.status(409).json({
-           status: "fail",
-           message: "User with that email already exists",
-         });
-       }
-   
-       // Hash password
-       const hashedPassword = await bcrypt.hash(password, 12);
-   
-       // Prepare user data
-       const userData = {
-         email,
-         first_name,
-         last_name,
-         dob,
-         password: hashedPassword,
-         role_id,
-         verificationCode: null,
-         verified: true,
-         phone_number
-       };
-   
-       // Create user
-       const newUser = await createUser(userData);
+    // Check if user already exists by email
+    const existingUserByEmail = await findUserByEmail({ email });
+    if (existingUserByEmail) {
+      return res.status(409).json({
+        status: "fail",
+        message: "User with that email already exists",
+      });
+    }
 
-       res.status(201).json({
-         status: "success",
-         message: "User created successfully.",
-         data: newUser,
-       });
+    // Check if phone number is provided
+    if (phone_number) {
+      const existingUserByPhone = await findUserByPhoneNumber({ phone_number });
+      if (existingUserByPhone) {
+        return res.status(409).json({
+          status: "fail",
+          message: "User with that phone number already exists",
+        });
+      }
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Prepare user data
+    const userData = {
+      email,
+      first_name,
+      last_name,
+      dob,
+      password: hashedPassword,
+      role_id,
+      verificationCode: null,
+      verified: true,
+      phone_number,
+    };
+
+    // Create user
+    const newUser = await createUser(userData);
+
+    res.status(201).json({
+      status: "success",
+      message: "User created successfully.",
+      data: newUser,
+    });
   } catch (error: any) {
     if (error.name === "ZodError") {
       return res.status(400).json({
@@ -73,7 +82,31 @@ export const updateProfileController = async (
     const validated = updateUserSchema.parse({ body: req.body });
     const payload = validated.body;
 
-    // Update user profile without image handling
+    const { email, phone_number } = payload;
+
+    // Check if email is already used by another user
+    if (email) {
+      const existingUserByEmail = await findUserByEmail({ email });
+      if (existingUserByEmail && existingUserByEmail.id !== userId) {
+        return res.status(409).json({
+          status: "fail",
+          message: "Email is already in use by another user",
+        });
+      }
+    }
+
+    // Check if phone number is already used by another user
+    if (phone_number) {
+      const existingUserByPhone = await findUserByPhoneNumber({ phone_number });
+      if (existingUserByPhone && existingUserByPhone.id !== userId) {
+        return res.status(409).json({
+          status: "fail",
+          message: "Phone number is already in use by another user",
+        });
+      }
+    }
+
+    // Update user profile
     const updatedUser = await updateUser(userId, payload);
 
     return res.status(200).json({
