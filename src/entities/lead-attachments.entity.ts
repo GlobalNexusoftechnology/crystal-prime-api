@@ -18,4 +18,7 @@ export class LeadAttachments extends Model {
 
   @Column()
   file_type: string;
+
+  @Column()
+  file_name: string;
 }

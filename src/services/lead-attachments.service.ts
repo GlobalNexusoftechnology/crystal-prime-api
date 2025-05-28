@@ -11,17 +11,17 @@ interface IAttachmentInput {
   uploaded_by: DeepPartial<User> | undefined;
   file_path: string;
   file_type: string;
+  file_name: string;
 }
 
 const attachmentRepo = AppDataSource.getRepository(LeadAttachments);
 const leadRepo = AppDataSource.getRepository(Leads);
-const userRepo = AppDataSource.getRepository(User);
 
 export const LeadAttachmentService = () => {
 
   // Create
   const createAttachment = async (data: IAttachmentInput) => {
-    const { lead_id, uploaded_by, file_path, file_type } = data;
+    const { lead_id, uploaded_by, file_path, file_type, file_name } = data;
 
     const lead = await leadRepo.findOne({ where: { id: lead_id, deleted: false } });
     if (!lead) {
@@ -33,6 +33,7 @@ export const LeadAttachmentService = () => {
       uploaded_by,
       file_path,
       file_type,
+      file_name
     });
 
     return await attachmentRepo.save(attachment);

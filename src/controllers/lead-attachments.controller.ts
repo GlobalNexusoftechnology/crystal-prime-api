@@ -13,13 +13,14 @@ export const leadAttachmentController = () => {
   ) => {
     try {
       const parsedData = createLeadAttachment.parse(req.body)
-      const attachementPayload = {
+      const attachmentPayload = {
         lead_id: parsedData.lead_id,
         uploaded_by: res.locals.user.id,
         file_path: parsedData.file_path,
         file_type: parsedData.file_type,
+        file_name: parsedData.file_name
       }
-      const result = await service.createAttachment(attachementPayload)
+      const result = await service.createAttachment(attachmentPayload)
       res.status(201).json({
         status: "success",
         message: "Attachment created",
@@ -152,6 +153,7 @@ export const leadAttachmentController = () => {
         data: {
           docUrl: uploadResult.url,
           fileType: req.file?.mimetype,
+          fileName: req.file?.originalname,
         },
       })
     } catch (error) {
