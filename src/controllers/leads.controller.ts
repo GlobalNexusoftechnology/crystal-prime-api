@@ -52,7 +52,15 @@ export const leadController = () => {
   ) => {
     try {
       const userId = res.locals.user.id;
-      const result = await service.getAllLeads();
+      const role = res.locals.user.role;
+      let result;
+
+      if(role === 'Admin' || role === 'admin') {
+        result = await service.getAllLeads();
+      } else {
+        result = await service.getLeadById(userId);
+      }
+      
       const leadStats = await service.getLeadStats(userId);
 
       res.status(200).json({
