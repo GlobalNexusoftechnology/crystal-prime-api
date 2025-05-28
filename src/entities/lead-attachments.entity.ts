@@ -19,6 +19,6 @@ export class LeadAttachments extends Model {
   @Column()
   file_type: string;
 
-  @Column()
+  @Column({nullable: true})
   file_name: string;
 }
