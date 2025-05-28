@@ -29,7 +29,10 @@ export const createUser = async (input: Partial<User> & { role_id?: string }) =>
 
 // Find user by email
 export const findUserByEmail = async ({ email }: { email: string }) => {
-  return await userRepository.findOneBy({ email });
+  return await userRepository.findOne({
+    where: { email },
+    relations: ["role"]
+  });
 };
 
 // Find user by ID

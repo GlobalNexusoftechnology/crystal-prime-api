@@ -9,6 +9,10 @@ export const MODULES: TOptionItem[] = [
   { key: "LEAD_MANAGEMENT", label: "Lead Management Module", value: '11' },
   { key: "PROJECT_MANAGEMENT", label: "Project Management Module", value: '12' },
   { key: "STAFF_MANAGEMENT", label: "Staff Management Module", value: '13' },
+  { key: "LEAD_SOURCES", label: "Lead Sources Module", value: '14'},
+  { key: "LEAD_STATUSES", label: "Lead Statuses Module", value: '15'},
+  { key: "ROLES", label: "Roles Module", value: '16'},
+  { key: "SETTINGS", label: "Settings Module", value: '17' },
   // Add more as needed
 ];
 
