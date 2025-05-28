@@ -36,6 +36,7 @@ export const findUserByEmail = async ({ email }: { email: string }) => {
 export const findUserById = async (userId: string) => {
   const user = await userRepository.findOne({
     where: { id: userId },
+    relations: ["role"]
   });
 
   if (!user) {

@@ -82,7 +82,7 @@ export const updateProfileController = async (
     const validated = updateUserSchema.parse({ body: req.body });
     const payload = validated.body;
 
-    const { email, phone_number } = payload;
+    const { email, phone_number, password } = payload;
 
     // Check if email is already used by another user
     if (email) {
@@ -104,6 +104,12 @@ export const updateProfileController = async (
           message: "Phone number is already in use by another user",
         });
       }
+    }
+
+      // Hash the password if it's provided
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
+      payload.password = hashedPassword;
     }
 
     // Update user profile

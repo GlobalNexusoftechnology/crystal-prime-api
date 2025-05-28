@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
+import { findUserById } from "../services/user.service";
 import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
-import path from "path";
-import fs from "fs/promises";
 
 const service = LeadService();
 
@@ -101,7 +100,10 @@ export const leadController = () => {
   const exportLeadsExcelController = async (req: Request, res: Response) => {
     try {
       const userId = res.locals.user.id;
-      const workbook = await service.exportLeadsToExcel(userId);
+      const userData = await findUserById(userId)
+      const userRole = userData.role.role
+
+      const workbook = await service.exportLeadsToExcel(userId, userRole);
 
       res.setHeader(
         "Content-Type",

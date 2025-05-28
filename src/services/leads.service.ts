@@ -201,56 +201,68 @@ export const LeadService = () => {
   };
 
   //  Export Leads to Excel
-  const exportLeadsToExcel = async (
-    userId: string
-  ): Promise<ExcelJS.Workbook> => {
-    const leadRepo = AppDataSource.getRepository(Leads);
+const exportLeadsToExcel = async (
+  userId: string,
+  userRole: string
+): Promise<ExcelJS.Workbook> => {
+  const leadRepo = AppDataSource.getRepository(Leads);
 
-    const leads = await leadRepo.find({
+  let leads: Leads[];
+
+  if (userRole === "admin") {
+    leads = await leadRepo.find({
+      where: { deleted: false },
+      relations: ["source", "status", "assigned_to"],
+      order: { created_at: "DESC" },
+    });
+  } else {
+    leads = await leadRepo.find({
       where: { deleted: false, assigned_to: { id: userId } },
       relations: ["source", "status", "assigned_to"],
       order: { created_at: "DESC" },
     });
+  }
 
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Leads");
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Leads");
 
-    worksheet.columns = [
-      { header: "Sr No", key: "sr_no", width: 6 },
-      { header: "First Name", key: "first_name", width: 20 },
-      { header: "Last Name", key: "last_name", width: 20 },
-      { header: "Company", key: "company", width: 25 },
-      { header: "Phone", key: "phone", width: 20 },
-      { header: "Email", key: "email", width: 30 },
-      { header: "Location", key: "location", width: 20 },
-      { header: "Budget", key: "budget", width: 15 },
-      { header: "Requirement", key: "requirement", width: 40 },
-      { header: "Source", key: "source", width: 20 },
-      { header: "Status", key: "status", width: 20 },
-      // { header: "Assigned To", key: "assigned_to", width: 25 },
-      { header: "Created At", key: "created_at", width: 25 },
-    ];
+  worksheet.columns = [
+    { header: "Sr No", key: "sr_no", width: 6 },
+    { header: "First Name", key: "first_name", width: 20 },
+    { header: "Last Name", key: "last_name", width: 20 },
+    { header: "Company", key: "company", width: 25 },
+    { header: "Phone", key: "phone", width: 20 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Location", key: "location", width: 20 },
+    { header: "Budget", key: "budget", width: 15 },
+    { header: "Requirement", key: "requirement", width: 40 },
+    { header: "Source", key: "source", width: 20 },
+    { header: "Status", key: "status", width: 20 },
+    { header: "Assigned To", key: "assigned_to", width: 25 },
+    { header: "Created At", key: "created_at", width: 25 },
+  ];
 
-    leads.forEach((lead, index) => {
-      worksheet.addRow({
-        sr_no: index + 1,
-        first_name: lead.first_name,
-        last_name: lead.last_name,
-        company: lead.company ?? "",
-        phone: lead.phone ?? "",
-        email: lead.email ?? "",
-        location: lead.location ?? "",
-        budget: lead.budget ?? 0,
-        requirement: lead.requirement ?? "",
-        source: lead.source?.name ?? "",
-        status: lead.status?.name ?? "",
-        // assigned_to: lead.assigned_to?.name ?? "", // ✅ Only 'name' assumed for User
-        created_at: lead.created_at?.toLocaleString() ?? "",
-      });
+  leads.forEach((lead, index) => {
+    worksheet.addRow({
+      sr_no: index + 1,
+      first_name: lead.first_name,
+      last_name: lead.last_name,
+      company: lead.company ?? "",
+      phone: lead.phone ?? "",
+      email: lead.email ?? "",
+      location: lead.location ?? "",
+      budget: lead.budget ?? 0,
+      requirement: lead.requirement ?? "",
+      source: lead.source?.name ?? "",
+      status: lead.status?.name ?? "",
+      assigned_to: `${lead.assigned_to?.first_name} ${lead.assigned_to?.last_name}`, 
+      created_at: lead.created_at?.toLocaleString() ?? "",
     });
+  });
 
-    return workbook;
-  };
+  return workbook;
+};
+
 
   const generateLeadTemplate = async (): Promise<ExcelJS.Workbook> => {
     const workbook = new ExcelJS.Workbook();
