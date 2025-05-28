@@ -5,8 +5,6 @@ import { LeadStatuses } from "../entities/lead-statuses.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
-import { createLeadSchema } from "../schemas/leads.schema";
-import xlsx from "xlsx";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -30,12 +28,6 @@ export const LeadService = () => {
       status_id,
       assigned_to,
     } = data;
-
-    const existingEmail = email
-      ? await leadRepo.findOne({ where: { email, deleted: false } })
-      : null;
-    if (existingEmail)
-      throw new AppError(400, "Lead with this email already exists");
 
     const lead = new Leads();
     lead.first_name = first_name;
@@ -387,6 +379,19 @@ const exportLeadsToExcel = async (
     return { total: savedLeads.length, leads: savedLeads };
   };
 
+   const findLeadByEmail = async ({ email }: { email: string | undefined }) => {
+  return await leadRepo.findOne({
+    where: { email, deleted: false },
+  });
+};
+
+ const findLeadByPhoneNumber = async ({ phone }: { phone: string }) => {
+  return await leadRepo.findOne({
+    where: { phone, deleted: false },
+  });
+};
+
+
   return {
     createLead,
     getAllLeads,
@@ -397,5 +402,7 @@ const exportLeadsToExcel = async (
     exportLeadsToExcel,
     generateLeadTemplate,
     uploadLeadsFromExcelService,
+    findLeadByEmail,
+    findLeadByPhoneNumber
   };
 };

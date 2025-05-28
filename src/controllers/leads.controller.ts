@@ -13,7 +13,28 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
-      const parsed = createLeadSchema.parse(req.body);
+    const parsed = createLeadSchema.parse(req.body);
+
+    // Check if user already exists by email
+    const existingLeadByEmail = await service.findLeadByEmail({ email: parsed.email });
+    if (existingLeadByEmail) {
+      return res.status(409).json({
+        status: "fail",
+        message: "Lead with that email already exists",
+      });
+    }
+
+    // Check if phone number is provided
+    if (parsed.phone) {
+      const existingLeadByPhone = await service.findLeadByPhoneNumber({ phone: parsed.phone });
+      if (existingLeadByPhone) {
+        return res.status(409).json({
+          status: "fail",
+          message: "Lead with that phone number already exists",
+        });
+      }
+    }
+
       const result = await service.createLead(parsed);
       res
         .status(201)
