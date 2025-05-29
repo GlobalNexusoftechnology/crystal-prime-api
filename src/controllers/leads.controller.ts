@@ -51,8 +51,8 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
-      const userId = res.locals.user.id;
-      const role = res.locals.user.role;
+      const userId = res?.locals?.user?.id;
+      const role = res?.locals?.user?.role?.role;
       let result;
 
       if(role === 'Admin' || role === 'admin') {

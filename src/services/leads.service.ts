@@ -41,19 +41,19 @@ export const LeadService = () => {
 
     if (source_id) {
       const source = await leadSourceRepo.findOne({ where: { id: source_id } });
-      if (!source) throw new AppError(404, "Invalid Lead Source");
+      if (!source) throw new AppError(400, "Invalid Lead Source");
       lead.source = source;
     }
 
     if (status_id) {
       const status = await leadStatusRepo.findOne({ where: { id: status_id } });
-      if (!status) throw new AppError(404, "Invalid Lead Status");
+      if (!status) throw new AppError(400, "Invalid Lead Status");
       lead.status = status;
     }
 
     if (assigned_to) {
       const user = await userRepo.findOne({ where: { id: assigned_to } });
-      if (!user) throw new AppError(404, "Invalid Assigned User");
+      if (!user) throw new AppError(400, "Invalid Assigned User");
       lead.assigned_to = user;
     }
 
@@ -74,7 +74,7 @@ export const LeadService = () => {
       where: { id, deleted: false },
       relations: ["source", "status", "assigned_to"],
     });
-    if (!lead) throw new AppError(404, "Lead not found");
+    if (!lead) throw new AppError(400, "Lead not found");
     return lead;
   };
 
@@ -130,7 +130,7 @@ export const LeadService = () => {
     } = data;
 
     const lead = await leadRepo.findOne({ where: { id, deleted: false } });
-    if (!lead) throw new AppError(404, "Lead not found");
+    if (!lead) throw new AppError(400, "Lead not found");
 
     if (email && email !== lead.email) {
       const existing = await leadRepo.findOne({ where: { email } });
@@ -178,7 +178,7 @@ export const LeadService = () => {
       relations: ["source", "status", "assigned_to"],
     });
 
-    if (!lead) throw new AppError(404, "Lead not found");
+    if (!lead) throw new AppError(400, "Lead not found");
 
     lead.deleted = true;
     lead.deleted_at = new Date();
