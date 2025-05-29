@@ -25,7 +25,7 @@ export const LeadStatusService = () => {
       where: { name },
     });
     if (existingLeadStatus)
-      throw new AppError(400, "Lead Status already exists");
+      throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
     const leadStatus = leadStatusRepo.create({ name });
     return await leadStatusRepo.save(leadStatus);
@@ -66,7 +66,7 @@ export const LeadStatusService = () => {
       where: { name: data.name },
     });
     if (existingLeadStatus)
-      throw new AppError(400, "Lead Status already exists");
+      throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
 
     const { name } = data;
 

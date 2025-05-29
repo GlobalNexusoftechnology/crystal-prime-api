@@ -25,7 +25,7 @@ export const LeadSourceService = () => {
       where: { name },
     });
     if (existingLeadSource)
-      throw new AppError(400, "Lead Source already exists");
+      throw new AppError(400, `${existingLeadSource.name} source already exists`);
 
     const leadSource = leadSourceRepo.create({ name });
     return await leadSourceRepo.save(leadSource);
@@ -67,7 +67,7 @@ export const LeadSourceService = () => {
     });
     
     if (existingLeadSource)
-      throw new AppError(400, "Lead Source already exists");
+      throw new AppError(400, `${existingLeadSource.name} source already exists`);
 
     const { name } = data;
 

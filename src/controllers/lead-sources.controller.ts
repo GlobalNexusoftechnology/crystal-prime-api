@@ -19,7 +19,7 @@ export const leadSourceController = () => {
       const result = await service.createLeadSource(parsedData);
       res.status(201).json({
         status: "success",
-        message: "Lead Source created",
+        message: `${result.name} created`,
         data: result,
       });
     } catch (error) {
@@ -75,7 +75,7 @@ export const leadSourceController = () => {
       const result = await service.updateLeadSource(id, parsedData);
       res.status(200).json({
         status: "success",
-        message: "Lead Source updated",
+        message: `${result.name} updated`,
         data: result,
       });
     } catch (error) {

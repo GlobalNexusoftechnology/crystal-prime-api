@@ -21,7 +21,7 @@ export const leadStatusController = () => {
         .status(201)
         .json({
           status: "success",
-          message: "Lead Status created",
+          message: `${result.name} created`,
           data: result,
         });
     } catch (error) {
@@ -82,7 +82,7 @@ export const leadStatusController = () => {
         .status(200)
         .json({
           status: "success",
-          message: "Lead Status updated",
+          message: `${result.name} updated`,
           data: result,
         });
     } catch (error) {
