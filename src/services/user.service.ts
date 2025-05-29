@@ -141,6 +141,7 @@ export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
   const userList = await userRepository.find({
     where: { deleted: false },
     order: { created_at: "DESC" },
+    relations: ["role"]
   });
 
   const workbook = new ExcelJS.Workbook();
@@ -166,7 +167,7 @@ export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
       number: user.phone_number ?? "",
       dob: user.dob ?? "",
       email: user.email ?? "",
-      role: user.role ?? "",
+      role: user.role.role ?? "",
       created_at: user.created_at?.toLocaleString() ?? "",
       updated_at: user.updated_at?.toLocaleString() ?? "",
     });
