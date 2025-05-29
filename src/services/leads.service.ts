@@ -385,7 +385,7 @@ const exportLeadsToExcel = async (
   });
 };
 
- const findLeadByPhoneNumber = async ({ phone }: { phone: string }) => {
+ const findLeadByPhoneNumber = async ({ phone }: { phone: number }) => {
   return await leadRepo.findOne({
     where: { phone, deleted: false },
   });
