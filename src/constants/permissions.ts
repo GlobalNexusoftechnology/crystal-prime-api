@@ -13,6 +13,8 @@ export const MODULES: TOptionItem[] = [
   { key: "LEAD_STATUSES", label: "Lead Statuses Module", value: '15'},
   { key: "ROLES", label: "Roles Module", value: '16'},
   { key: "SETTINGS", label: "Settings Module", value: '17' },
+  { key: "LEAD_TYPES", label: "Lead Types Module", value: '18' },
+
   // Add more as needed
 ];
 

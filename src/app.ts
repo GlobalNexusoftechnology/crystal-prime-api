@@ -14,6 +14,7 @@ import userRouter from './routes/user.routes';
 import validateEnv from './utils/validateEnv';
 import leadSourcesRouter from './routes/lead-sources.routes';
 import leadStatusesRouter from './routes/lead-statuses.routes';
+import leadTypesRouter from './routes/lead-types.routes';
 import leadsRouter from './routes/leads.routes';
 import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
@@ -67,6 +68,7 @@ AppDataSource.initialize()
     app.use('/api/auth', authRouter);
     app.use('/api/users', userRouter);
     app.use('/api/lead-sources', leadSourcesRouter);
+    app.use('/api/lead-types', leadTypesRouter);
     app.use('/api/lead-statuses', leadStatusesRouter);
     app.use('/api/leads', leadsRouter);
     app.use('/api/lead-followup', leadFollowupsRouter);
