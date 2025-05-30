@@ -20,8 +20,8 @@ export class Leads extends Model {
   @Column({ nullable: true })
   company: string;
 
-  @Column("decimal", { nullable: true })
-  phone: number;
+  @Column({ nullable: true })
+  phone: string;
 
   @Column({ nullable: true, unique: true })
   email: string;
