@@ -67,6 +67,9 @@ export const LeadService = () => {
     return await leadRepo.find({
       where: { deleted: false },
       relations: ["source", "status", "assigned_to"],
+      order: {
+      created_at: "DESC", 
+    },
     });
   };
 
