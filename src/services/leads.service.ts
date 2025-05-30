@@ -201,7 +201,7 @@ const exportLeadsToExcel = async (
 
   let leads: Leads[];
 
-  if (userRole === "admin") {
+  if (userRole === "admin" || userRole === "Admin") {
     leads = await leadRepo.find({
       where: { deleted: false },
       relations: ["source", "status", "assigned_to"],
