@@ -20,6 +20,7 @@ export const LeadService = () => {
       last_name,
       company,
       phone,
+      other_contact,
       email,
       location,
       budget,
@@ -38,6 +39,7 @@ export const LeadService = () => {
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
+    lead.other_contact = other_contact ?? "";
 
     if (source_id) {
       const source = await leadSourceRepo.findOne({ where: { id: source_id } });
@@ -120,6 +122,7 @@ export const LeadService = () => {
       last_name,
       company,
       phone,
+      other_contact,
       email,
       location,
       budget,
@@ -146,6 +149,7 @@ export const LeadService = () => {
     lead.location = location ?? lead.location;
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
+    lead.other_contact = other_contact ?? lead.other_contact;
 
     if (source_id !== undefined) {
       lead.source =
@@ -385,7 +389,7 @@ const exportLeadsToExcel = async (
   });
 };
 
- const findLeadByPhoneNumber = async ({ phone }: { phone: number }) => {
+ const findLeadByPhoneNumber = async ({ phone }: { phone: string }) => {
   return await leadRepo.findOne({
     where: { phone, deleted: false },
   });

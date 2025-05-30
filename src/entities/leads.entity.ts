@@ -23,6 +23,9 @@ export class Leads extends Model {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ nullable: true })
+  other_contact: string;
+
   @Column({ nullable: true, unique: true })
   email: string;
 
