@@ -23,6 +23,9 @@ export class Leads extends Model {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ nullable: true, type: 'boolean', default: false })
+  escalate_to?: boolean;
+
   @Column({ nullable: true })
   other_contact: string;
 

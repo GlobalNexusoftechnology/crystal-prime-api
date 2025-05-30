@@ -24,6 +24,7 @@ export const LeadService = () => {
       email,
       location,
       budget,
+      escalate_to,
       requirement,
       source_id,
       status_id,
@@ -36,6 +37,7 @@ export const LeadService = () => {
     lead.company = company ?? "";
     lead.phone = phone ?? "";
     lead.email = email ?? "";
+    lead.escalate_to = escalate_to ?? false;
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
@@ -128,6 +130,7 @@ export const LeadService = () => {
       other_contact,
       email,
       location,
+      escalate_to,
       budget,
       requirement,
       source_id,
@@ -153,6 +156,7 @@ export const LeadService = () => {
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
     lead.other_contact = other_contact ?? lead.other_contact;
+    lead.escalate_to = escalate_to ?? lead.escalate_to;
 
     if (source_id !== undefined) {
       lead.source =
