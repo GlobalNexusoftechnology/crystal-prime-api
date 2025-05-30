@@ -44,11 +44,25 @@ export const LeadFollowupService = () => {
   };
 
   // Get All Lead Followups
+  // Get All Lead Followups
   const getAllLeadFollowups = async () => {
     return await leadFollowupRepo.find({
       where: { deleted: false },
       relations: ["lead", "user"],
     });
+  };
+
+  const getLeadFollowupsByLeadId = async (leadId: string) => {
+    const followups = await leadFollowupRepo.find({
+      where: {
+        deleted: false,
+        lead: { id: leadId },
+      },
+      relations: ["lead", "user"],
+      order: { created_at: "DESC" }, // Optional: Latest first
+    });
+
+    return followups;
   };
 
   // Get Lead Followup By ID
@@ -115,6 +129,7 @@ export const LeadFollowupService = () => {
     getLeadFollowupById,
     updateLeadFollowup,
     softDeleteLeadFollowup,
+    getLeadFollowupsByLeadId
   };
 };
 
