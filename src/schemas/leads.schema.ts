@@ -16,7 +16,6 @@ export const createLeadSchema = z.object({
   status_id: z.string().uuid("Invalid status ID").optional(),
   type_id: z.string().uuid("Invalid type ID").optional(),
   assigned_to: z.string().uuid("Invalid assigned_to user ID").optional(),
-  escalate_to: z.boolean().optional(), // 👈 Added field
   followups: z.array(z.any()).optional(),
   attachments: z.array(z.any()).optional(),
   status_histories: z.array(z.any()).optional(),
@@ -37,7 +36,6 @@ export const updateLeadSchema = z.object({
   status_id: z.string().uuid("Invalid status ID").optional(),
   type_id: z.string().uuid("Invalid type ID").optional(),
   assigned_to: z.string().uuid("Invalid assigned_to user ID").optional(),
-  escalate_to: z.boolean().optional(), // 👈 Added field
   followups: z.array(z.any()).optional(),
   attachments: z.array(z.any()).optional(),
   status_histories: z.array(z.any()).optional(),
