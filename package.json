@@ -1,5 +1,5 @@
 {
-  "name": "backend-basic-folder-structure",
+  "name": "satkar-backend",
   "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
@@ -14,7 +14,8 @@
     "pm2:stop": "pm2 stop ecosystem.config.js",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "deploy": "npm install && npm run build && npm run pm2:start"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",

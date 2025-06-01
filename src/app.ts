@@ -23,9 +23,6 @@ import rolesRouter from './routes/roles.routes';
 import projectManagementRouter from './routes/project-management.routes'
 import taskManagementRouter from './routes/task-management.routes';
 
-
-
-
 (async function () {
   const credentials = await nodemailer.createTestAccount();
   console.log(credentials);
@@ -78,7 +75,6 @@ AppDataSource.initialize()
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
     
-
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
 
