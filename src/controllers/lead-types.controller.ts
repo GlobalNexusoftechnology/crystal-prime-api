@@ -1,22 +1,22 @@
 import { Request, Response, NextFunction } from "express";
-import { LeadSourceService } from "../services/lead-sources.service";
 import {
-  createLeadSourceSchema,
-  updateLeadSourceSchema,
-} from "../schemas/lead-sources.schema";
+  createLeadTypeSchema,
+  updateLeadTypeSchema,
+} from "../schemas/lead-type.schema";
+import { LeadTypeService } from "../services/lead-types.service";
 
-const service = LeadSourceService();
+const service = LeadTypeService();
 
-export const leadSourceController = () => {
-  // Create Lead Source
-  const createLeadSource = async (
+export const leadTypeController = () => {
+  // Create Lead Type
+  const createLeadType = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
-      const parsedData = createLeadSourceSchema.parse(req.body); // Validating input data
-      const result = await service.createLeadSource(parsedData);
+      const parsedData = createLeadTypeSchema.parse(req.body); // Validating input data
+      const result = await service.createLeadType(parsedData);
       res.status(201).json({
         status: "success",
         message: `${result.name} created`,
@@ -27,14 +27,14 @@ export const leadSourceController = () => {
     }
   };
 
-  // Get All Lead Sources
-  const getAllLeadSources = async (
+  // Get All Lead Types
+  const getAllLeadTypes = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllLeadSources();
+      const result = await service.getAllLeadTypes();
       res.status(200).json({
         status: "success",
         ...result,
@@ -44,18 +44,18 @@ export const leadSourceController = () => {
     }
   };
 
-  // Get Lead Source by ID
-  const getLeadSourceById = async (
+  // Get Lead Type by ID
+  const getLeadTypeById = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
       const { id } = req.params;
-      const result = await service.getLeadSourceById(id);
+      const result = await service.getLeadTypeById(id);
       res.status(200).json({
         status: "success",
-        message: "Lead Source fetched by id",
+        message: "Lead Type fetched by id",
         data: result,
       });
     } catch (error) {
@@ -63,16 +63,16 @@ export const leadSourceController = () => {
     }
   };
 
-  // Update Lead Source
-  const updateLeadSource = async (
+  // Update Lead Type
+  const updateLeadType = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
       const { id } = req.params;
-      const parsedData = updateLeadSourceSchema.parse(req.body); // Validating input data
-      const result = await service.updateLeadSource(id, parsedData);
+      const parsedData = updateLeadTypeSchema.parse(req.body); // Validating input data
+      const result = await service.updateLeadType(id, parsedData);
       res.status(200).json({
         status: "success",
         message: `${result.name} updated`,
@@ -83,18 +83,18 @@ export const leadSourceController = () => {
     }
   };
 
-  // Soft Delete Lead Source
-  const softDeleteLeadSource = async (
+  // Soft Delete Lead Type
+  const softDeleteLeadType = async (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
     try {
       const { id } = req.params;
-      const result = await service.softDeleteLeadSource(id);
+      const result = await service.softDeleteLeadType(id);
       res.status(200).json({
         status: "success",
-        message: "Lead Source deleted",
+        message: "Lead Type deleted",
         data: result,
       });
     } catch (error) {
@@ -104,10 +104,10 @@ export const leadSourceController = () => {
 
   // Return the controller methods
   return {
-    createLeadSource,
-    getAllLeadSources,
-    getLeadSourceById,
-    updateLeadSource,
-    softDeleteLeadSource,
+    createLeadType,
+    getAllLeadTypes,
+    getLeadTypeById,
+    updateLeadType,
+    softDeleteLeadType,
   };
 };

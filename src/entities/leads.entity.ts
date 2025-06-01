@@ -7,6 +7,7 @@ import { User } from "./user.entity";
 import { LeadFollowup } from "./lead-followups.entity";
 import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
+import { LeadTypes } from "./lead-type.entity";
 
 @Entity('leads')
 export class Leads extends Model {
@@ -22,13 +23,19 @@ export class Leads extends Model {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ nullable: true, type: 'boolean', default: false })
+  escalate_to?: boolean;
+
+  @Column({ nullable: true })
+  other_contact: string;
+
   @Column({ nullable: true, unique: true })
   email: string;
 
   @Column({ nullable: true })
   location: string;
 
-  @Column('decimal', { precision: 12, scale: 2, nullable: true })
+  @Column('decimal', { nullable: true })
   budget: number;
 
   @Column('text', { nullable: true })
@@ -37,6 +44,10 @@ export class Leads extends Model {
   @ManyToOne(() => LeadSources, (source) => source.leads, { nullable: true })
   @JoinColumn({ name: "source_id" })
   source: LeadSources | null;
+
+  @ManyToOne(() => LeadTypes, (type) => type.leads, { nullable: true })
+  @JoinColumn({ name: "type_id" })
+  type: LeadTypes | null;
 
   @ManyToOne(() => LeadStatuses, (status) => status.leads, { nullable: true })
   @JoinColumn({ name: 'status_id' })

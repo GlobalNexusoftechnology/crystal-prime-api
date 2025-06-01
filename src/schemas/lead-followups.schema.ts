@@ -5,7 +5,6 @@ export const CreateLeadFollowupSchema = z.object({
   user_id: z.string().uuid().optional().nullable(),
   status: z.enum(["RESCHEDULE", "PENDING", "AWAITING RESPONSE", "NO RESPONSE", "FAILED", "COMPLETED"]).optional().default("PENDING"),
   due_date: z.coerce.date().optional().nullable(),
-  completed_date: z.coerce.date().optional().nullable(),
   remarks: z.string().optional().nullable(),
 });
 
@@ -14,7 +13,6 @@ export const UpdateLeadFollowupSchema = z.object({
   user_id: z.string().uuid().optional().nullable(),
   status: z.enum(["RESCHEDULE", "PENDING", "AWAITING RESPONSE", "NO RESPONSE", "FAILED", "COMPLETED"]).optional(),
   due_date: z.coerce.date().optional().nullable(),
-  completed_date: z.coerce.date().optional().nullable(),
   remarks: z.string().optional().nullable(),
 });
 

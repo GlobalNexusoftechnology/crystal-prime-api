@@ -18,7 +18,6 @@ export const LeadFollowupService = () => {
       user_id,
       status = FollowupStatus.PENDING,
       due_date,
-      completed_date,
       remarks,
     } = data;
 
@@ -36,18 +35,34 @@ export const LeadFollowupService = () => {
     leadFollowup.user = user;
     leadFollowup.status = status;
     leadFollowup.due_date = due_date ?? null;
-    leadFollowup.completed_date = completed_date ?? null;
+    if(leadFollowup.status === FollowupStatus.COMPLETED) {
+      leadFollowup.completed_date = new Date();
+    }
     leadFollowup.remarks = remarks ?? "";
 
     return await leadFollowupRepo.save(leadFollowup);
   };
 
   // Get All Lead Followups
+  // Get All Lead Followups
   const getAllLeadFollowups = async () => {
     return await leadFollowupRepo.find({
       where: { deleted: false },
       relations: ["lead", "user"],
     });
+  };
+
+  const getLeadFollowupsByLeadId = async (leadId: string) => {
+    const followups = await leadFollowupRepo.find({
+      where: {
+        deleted: false,
+        lead: { id: leadId },
+      },
+      relations: ["lead", "user"],
+      order: { created_at: "DESC" }, // Optional: Latest first
+    });
+
+    return followups;
   };
 
   // Get Lead Followup By ID
@@ -114,6 +129,7 @@ export const LeadFollowupService = () => {
     getLeadFollowupById,
     updateLeadFollowup,
     softDeleteLeadFollowup,
+    getLeadFollowupsByLeadId
   };
 };
 

@@ -22,4 +22,10 @@ const singleUpload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
 }).single("image");
 
-export { upload, singleUpload };
+
+const singleDocumentUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+}).single("document");
+
+export { upload, singleUpload,singleDocumentUpload };

@@ -14,14 +14,14 @@ import userRouter from './routes/user.routes';
 import validateEnv from './utils/validateEnv';
 import leadSourcesRouter from './routes/lead-sources.routes';
 import leadStatusesRouter from './routes/lead-statuses.routes';
+import leadTypesRouter from './routes/lead-types.routes';
 import leadsRouter from './routes/leads.routes';
 import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
 import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
-import staffManagementRouter from './routes/staff-management.routes';
-
-
+import projectManagementRouter from './routes/project-management.routes'
+import taskManagementRouter from './routes/task-management.routes';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -38,6 +38,8 @@ AppDataSource.initialize()
 
     // Inside src/app.ts or main file
     app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
+
+    
 
 
     // MIDDLEWARE
@@ -63,14 +65,16 @@ AppDataSource.initialize()
     app.use('/api/auth', authRouter);
     app.use('/api/users', userRouter);
     app.use('/api/lead-sources', leadSourcesRouter);
+    app.use('/api/lead-types', leadTypesRouter);
     app.use('/api/lead-statuses', leadStatusesRouter);
     app.use('/api/leads', leadsRouter);
     app.use('/api/lead-followup', leadFollowupsRouter);
     app.use('/api/lead-attachments', leadAttachmentsRouter);
     app.use('/api/lead-status-history', leadStatusHistoryRouter);
     app.use('/api/roles', rolesRouter);
-    app.use('/api/staff-management', staffManagementRouter);
-
+    app.use('/api/project-management', projectManagementRouter);
+    app.use('/api/task-management', taskManagementRouter);
+    
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
 

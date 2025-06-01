@@ -17,11 +17,28 @@ export const leadFollowupController = () => {
     }
   };
 
+
   //  Get All
-  const getAllLeadFollowups = async (req: Request, res: Response, next: NextFunction) => {
+  const getAllLeadFollowups = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
     try {
-      const result = await service.getAllLeadFollowups();
-      res.status(200).json({ status: "success", message: "All Lead Followups fetched", data: result });
+      const { leadId } = req.query;
+      let result;
+
+      if (leadId) {
+        result = await service.getLeadFollowupsByLeadId(leadId as string);
+      } else {
+        result = await service.getAllLeadFollowups();
+      }
+
+      res.status(200).json({
+        status: "success",
+        message: "Lead Followups fetched",
+        data: result,
+      });
     } catch (error) {
       next(error);
     }

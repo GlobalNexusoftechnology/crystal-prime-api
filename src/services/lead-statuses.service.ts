@@ -3,106 +3,97 @@ import { LeadStatuses } from "../entities/lead-statuses.entity";
 import AppError from "../utils/appError";
 
 interface LeadStatusInput {
-    name: string;
+  name: string;
 }
 
 export interface GetLeadStatusesQuery {
   search?: string;
   page?: number;
   limit?: number;
-  sortBy?: 'id' | 'name' | 'created_at' | 'updated_at';
-  sortOrder?: 'ASC' | 'DESC';
+  sortBy?: "id" | "name" | "created_at" | "updated_at";
+  sortOrder?: "ASC" | "DESC";
 }
-
-
 
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 
 export const LeadStatusService = () => {
+  // Create Lead Status
+  const createLeadStatus = async (data: LeadStatusInput) => {
+    const { name } = data;
 
-    // Create Lead Status
-    const createLeadStatus = async (data: LeadStatusInput) => {
-        const { name } = data;
+    const existingLeadStatus = await leadStatusRepo.findOne({
+      where: { name },
+    });
+    if (existingLeadStatus)
+      throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
-        const existingLeadStatus = await leadStatusRepo.findOne({ where: { name } });
-        if (existingLeadStatus) throw new AppError(400, "Lead Status already exists");
+    const leadStatus = leadStatusRepo.create({ name });
+    return await leadStatusRepo.save(leadStatus);
+  };
 
-        const leadStatus = leadStatusRepo.create({ name });
-        return await leadStatusRepo.save(leadStatus);
-    };
+  // Get All Lead Statuses
+  const getAllLeadStatuses = async () => {
+    const data = await leadStatusRepo.find({
+      where: { deleted: false },
+    });
 
-    // Get All Lead Statuses
-    const getAllLeadStatuses = async (params: GetLeadStatusesQuery) => {
-        const {
-            search = '',
-            page = 1,
-            limit = 10,
-            sortBy = 'created_at',
-            sortOrder = 'DESC',
-        } = params;
-
-        const query = leadStatusRepo
-            .createQueryBuilder('leadStatus')
-            .where('leadStatus.deleted = :deleted', { deleted: false });
-
-        if (search) {
-            query.andWhere('leadStatus.name ILIKE :search', { search: `%${search}%` });
-        }
-
-        // Sorting
-        query.orderBy(`leadStatus.${sortBy}`, sortOrder as 'ASC' | 'DESC');
-
-        // Pagination
-        query.skip((page - 1) * limit).take(limit);
-
-        const [data, total] = await query.getManyAndCount();
-
-        return {
-            data,
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit),
-        };
-    };
-
-
-    // Get Lead Status by ID
-    const getLeadStatusById = async (id: string) => {
-        const leadStatus = await leadStatusRepo.findOne({ where: { id, deleted: false } });
-        if (!leadStatus) throw new AppError(404, "Lead Status not found");
-        return leadStatus;
-    };
-
-    // Update Lead Status
-    const updateLeadStatus = async (id: string, data: Partial<LeadStatusInput>) => {
-        const leadStatus = await leadStatusRepo.findOne({ where: { id, deleted: false } });
-        if (!leadStatus) throw new AppError(404, "Lead Status not found");
-
-        const { name } = data;
-
-        if (name !== undefined) leadStatus.name = name;
-
-        return await leadStatusRepo.save(leadStatus);
-    };
-
-    // Soft Delete Lead Status
-    const softDeleteLeadStatus = async (id: string) => {
-        const leadStatus = await leadStatusRepo.findOne({ where: { id, deleted: false } });
-        if (!leadStatus) throw new AppError(404, "Lead Status not found");
-
-        leadStatus.deleted = true;
-        leadStatus.deleted_at = new Date();
-
-        return await leadStatusRepo.save(leadStatus);
-    };
-
-    // Return all methods
     return {
-        createLeadStatus,
-        getAllLeadStatuses,
-        getLeadStatusById,
-        updateLeadStatus,
-        softDeleteLeadStatus,
+      data,
+      total: data.length,
     };
+  };
+
+  // Get Lead Status by ID
+  const getLeadStatusById = async (id: string) => {
+    const leadStatus = await leadStatusRepo.findOne({
+      where: { id, deleted: false },
+    });
+    if (!leadStatus) throw new AppError(404, "Lead Status not found");
+    return leadStatus;
+  };
+
+  // Update Lead Status
+  const updateLeadStatus = async (
+    id: string,
+    data: Partial<LeadStatusInput>
+  ) => {
+    const leadStatus = await leadStatusRepo.findOne({
+      where: { id, deleted: false },
+    });
+    if (!leadStatus) throw new AppError(404, "Lead Status not found");
+
+    const existingLeadStatus = await leadStatusRepo.findOne({
+      where: { name: data.name },
+    });
+    if (existingLeadStatus)
+      throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
+
+    const { name } = data;
+
+    if (name !== undefined) leadStatus.name = name;
+
+    return await leadStatusRepo.save(leadStatus);
+  };
+
+  // Soft Delete Lead Status
+  const softDeleteLeadStatus = async (id: string) => {
+    const leadStatus = await leadStatusRepo.findOne({
+      where: { id, deleted: false },
+    });
+    if (!leadStatus) throw new AppError(404, "Lead Status not found");
+
+    leadStatus.deleted = true;
+    leadStatus.deleted_at = new Date();
+
+    return await leadStatusRepo.save(leadStatus);
+  };
+
+  // Return all methods
+  return {
+    createLeadStatus,
+    getAllLeadStatuses,
+    getLeadStatusById,
+    updateLeadStatus,
+    softDeleteLeadStatus,
+  };
 };

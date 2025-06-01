@@ -1,26 +1,14 @@
-import { Entity, Column, Index, BeforeInsert, OneToMany } from "typeorm";
+import { Entity, Column, Index, BeforeInsert, OneToMany, ManyToOne, JoinColumn } from "typeorm";
 import bcrypt from "bcryptjs";
 import Model from "./model.entity";
 import { Leads } from "./leads.entity";
 import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
-
-export enum RoleEnumType {
-  DEVELOPER = "developer",
-  ADMIN = "admin",
-  CUSTOMER = "customer",
-}
+import { Task } from "./task-management.entity";
+import { Role } from "./roles.entity";
 
 @Entity("users")
 export class User extends Model {
- 
-  @Column({
-    type: "enum",
-    enum: RoleEnumType,
-    default: RoleEnumType.DEVELOPER,
-  })
-  role: RoleEnumType;
-
   @Column({ nullable: true })
   email: string;
 
@@ -31,23 +19,14 @@ export class User extends Model {
   last_name?: string;
 
   @Column({ nullable: true })
-  number: string;
+  phone_number: string;
 
-  @Column({ nullable: true })
-  role_id: number;
+  @ManyToOne(() => Role, (role) => role.users)
+  @JoinColumn({ name: 'role_id' })
+  role: Role;
 
   @Column({ type: "timestamp", nullable: true })
   dob: Date;
-
-  @Index("verificationCode_index")
-  @Column({ type: "text", nullable: true })
-  verificationCode!: string | null;
-
-  @Column({ nullable: true })
-  authToken: string;
-
-  @Column({ nullable: true })
-  refreshToken: string;
 
   @Column({ type: "varchar", length: 6, nullable: true })
   otp: string | null;
@@ -61,20 +40,23 @@ export class User extends Model {
   @Column({ nullable: false })
   password: string;
 
+  @OneToMany(() => Leads, (lead) => lead.assigned_to)
+  assignedLeads: Leads[];
+
   @OneToMany(() => LeadAttachments, (attachment) => attachment.uploaded_by)
   lead_attachments: LeadAttachments[];
 
   @OneToMany(() => LeadStatusHistory, (status) => status.changed_by)
   changed_statuses: LeadStatusHistory[];
 
+  @OneToMany(() => Task, (task) => task.assignedTo)
+  assignedTasks: Task[];
+
   @BeforeInsert()
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 12);
   }
-
-  @OneToMany(() => Leads, (lead) => lead.assigned_to)
-  assignedLeads: Leads[];
-
+  
   static async comparePasswords(
     candidatePassword: string,
     hashedPassword: string
