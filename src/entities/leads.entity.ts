@@ -18,6 +18,12 @@ export class Leads extends Model {
   last_name: string;
 
   @Column({ nullable: true })
+  created_by: string;
+
+  @Column({ nullable: true })
+  updated_by: string;
+
+  @Column({ nullable: true })
   company: string;
 
   @Column({ nullable: true })

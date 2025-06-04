@@ -16,7 +16,7 @@ const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
 // Create lead
 export const LeadService = () => {
   // Create Lead
-  const createLead = async (data: any) => {
+  const createLead = async (data: any, userData: any) => {
     const {
       first_name,
       last_name,
@@ -43,6 +43,8 @@ export const LeadService = () => {
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
     lead.other_contact = other_contact ?? "";
+    lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
+    lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
 
     if (source_id) {
       const source = await leadSourceRepo.findOne({ where: { id: source_id } });
@@ -128,7 +130,7 @@ export const LeadService = () => {
   };
 
   // Update Lead
-  const updateLead = async (id: string, data: any) => {
+  const updateLead = async (id: string, data: any, userData: any) => {
     const {
       first_name,
       last_name,
@@ -163,6 +165,7 @@ export const LeadService = () => {
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
     lead.other_contact = other_contact ?? lead.other_contact;
+    lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
 
     if (source_id !== undefined) {
       lead.source =
