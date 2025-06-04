@@ -51,7 +51,14 @@ export const LeadStatusHistoryService = () => {
   };
 
   // Get All
-  const getAllStatusHistories = async () => {
+  const getAllStatusHistories = async (leadId?: string) => {
+    if (leadId) {
+      return await historyRepo.find({
+        where: { deleted: false, lead: { id: leadId } },
+        relations: ["lead", "status", "changed_by"],
+        order: { created_at: "DESC" },
+      });
+    }
     return await historyRepo.find({
       where: { deleted: false },
       relations: ["lead", "status", "changed_by"],
@@ -119,12 +126,25 @@ export const LeadStatusHistoryService = () => {
     return await historyRepo.save(record);
   };
 
+  // Get by Lead ID
+  const getStatusHistoriesByLeadId = async (leadId: string) => {
+    const lead = await leadRepo.findOne({ where: { id: leadId, deleted: false } });
+    if (!lead) throw new AppError(404, "Lead not found");
+
+    return await historyRepo.find({
+      where: { deleted: false, lead: { id: leadId } },
+      relations: ["lead", "status", "changed_by"],
+      order: { created_at: "DESC" },
+    });
+  };
+
   return {
     createStatusHistory,
     getAllStatusHistories,
     getStatusHistoryById,
     updateStatusHistory,
     softDeleteStatusHistory,
+    getStatusHistoriesByLeadId,
   };
 };
 
