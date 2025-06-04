@@ -239,8 +239,10 @@ export const changePasswordController = async (
     // Send success response
     res.status(200).json({
       status: "success",
-      response,
+      message: "Password changed successfully",
+      data: response,
     });
+    
   } catch (error) {
     next(error);
   }
