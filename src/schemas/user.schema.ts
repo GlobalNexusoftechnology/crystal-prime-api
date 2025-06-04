@@ -62,10 +62,19 @@ export const loginUserSchema = object({
   }),
 });
 
+/**
+ * @schema change password
+ * @description Validation schema for change password.
+ */
 export const changePasswordSchema = z.object({
-  currentPassword: z.string().min(6, "Current password is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  oldPassword: z.string({
+    required_error: 'Old Password is required',
+  }),
+  newPassword: z.string({
+    required_error: 'Password is required',
+  }).min(8, 'Password must be at least 8 characters long'),
 });
 
 export type CreateUserInput = TypeOf<typeof createUserSchema>["body"];
 export type LoginUserInput = TypeOf<typeof loginUserSchema>["body"];
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

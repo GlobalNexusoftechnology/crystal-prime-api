@@ -6,6 +6,8 @@ import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { Role } from "../entities/roles.entity";
+import { ChangePasswordInput } from "../schemas/user.schema";
+import bcrypt from "bcryptjs";
 
 const userRepository = AppDataSource.getRepository(User);
 const roleRepository = AppDataSource.getRepository(Role);
@@ -176,7 +178,35 @@ export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
   return workbook;
 };
 
+//change password service
+export const changePassword = async (
+  userId: string,
+  data: ChangePasswordInput
+): Promise<string> => {
+  const user = await userRepository.findOne({ where: { id: userId } });
+  if (!user) {
+    throw new AppError(404, "User not found");
+  }
 
+  //verify the old password
+  const isMatch = await bcrypt.compare(data.oldPassword, user.password);
+  if (!isMatch) {
+    throw new AppError(401, "Old password is incorrect");
+  }
 
+  //ensure the new password meets minimum length requirements
+  if (data.newPassword.length < 6) {
+    throw new AppError(400, "New password must be at least 6 characters long.");
+  }
+
+  //hash the new password
+  const hashedPassword = await bcrypt.hash(data.newPassword, 12);
+
+  //update the user's password in the database
+  user.password = hashedPassword;
+  await User.save(user);
+
+  return "Password changed successfully!";
+};
 
 
