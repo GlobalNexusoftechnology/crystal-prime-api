@@ -50,7 +50,7 @@ export const signJwt = (
 
 export const verifyJwt = <T>(
   token: string,
-  keyName: "accessTokenPrivateKey" | "refreshTokenPrivateKey" // use same key as signing
+  keyName: "accessTokenPublicKey" | "refreshTokenPublicKey" // use same key as signing
 ): T | null => {
   try {
     const secret = config.get<string>(keyName); // no base64 decoding, just get raw string
