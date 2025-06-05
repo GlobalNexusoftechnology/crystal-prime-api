@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from 'express';
-import { findUserById } from '../services/user.service';
-import AppError from '../utils/appError';
-import { verifyJwt } from '../utils/jwt';
+import { NextFunction, Request, Response } from "express";
+import { findUserById } from "../services/user.service";
+import AppError from "../utils/appError";
+import { verifyJwt } from "../utils/jwt";
 
 export const deserializeUser = async (
   req: Request,
@@ -14,19 +14,19 @@ export const deserializeUser = async (
     // Extract the access token from the Authorization header
     if (
       req.headers.authorization &&
-      req.headers.authorization.startsWith('Bearer')
+      req.headers.authorization.startsWith("Bearer")
     ) {
-      access_token = req.headers.authorization.split(' ')[1];
+      access_token = req.headers.authorization.split(" ")[1];
     }
 
     if (!access_token) {
-      return next(new AppError(401, 'You are not logged in'));
+      return next(new AppError(401, "You are not logged in"));
     }
 
     // Validate the access token
     const decoded = verifyJwt<{ sub: string }>(
       access_token,
-      'accessTokenPublicKey'
+      "accessTokenPublicKey"
     );
 
     if (!decoded) {

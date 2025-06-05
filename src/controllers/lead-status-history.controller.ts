@@ -23,8 +23,20 @@ export const leadStatusHistoryController = () => {
   //  Get All
   const getAllLeadStatusHistories = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await service.getAllStatusHistories();
-      res.status(200).json({ status: "success", message: "All Lead Status Histories fetched", data: result });
+      const { leadId } = req.query;
+      let result;
+
+      if (leadId) {
+        result = await service.getAllStatusHistories(leadId as string);
+      } else {
+        result = await service.getAllStatusHistories();
+      }
+
+      res.status(200).json({ 
+        status: "success", 
+        message: "Lead Status Histories fetched", 
+        data: result 
+      });
     } catch (error) {
       next(error);
     }

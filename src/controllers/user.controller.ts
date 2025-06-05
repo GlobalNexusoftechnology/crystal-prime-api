@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber } from "../services/user.service";
-import { createUserSchema, updateUserSchema } from "../schemas/user.schema";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber, changePassword } from "../services/user.service";
+import { changePasswordSchema, createUserSchema, updateUserSchema } from "../schemas/user.schema";
 
 // create user
 export const createUserController = async (
@@ -222,6 +222,29 @@ export const exportUsersExcelController = async (
   } catch (error) {
     console.error("Error exporting users:", error);
     res.status(500).json({ status: "error", message: "Failed to export user data" });
+  }
+};
+
+
+//change password
+export const changePasswordController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id: userId } = res.locals.user;
+    const validatedData = changePasswordSchema.parse(req.body);
+    const response = await changePassword(userId, validatedData);
+    // Send success response
+    res.status(200).json({
+      status: "success",
+      message: "Password changed successfully",
+      data: response,
+    });
+    
+  } catch (error) {
+    next(error);
   }
 };
 

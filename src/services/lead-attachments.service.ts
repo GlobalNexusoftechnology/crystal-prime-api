@@ -40,9 +40,28 @@ export const LeadAttachmentService = () => {
   };
 
   //  Get All
-  const getAllAttachments = async () => {
+  const getAllAttachments = async (leadId?: string) => {
+    if (leadId) {
+      return await attachmentRepo.find({
+        where: { deleted: false, lead: { id: leadId } },
+        relations: ["lead", "uploaded_by"],
+        order: { created_at: "DESC" },
+      });
+    }
     return await attachmentRepo.find({
       where: { deleted: false },
+      relations: ["lead", "uploaded_by"],
+      order: { created_at: "DESC" },
+    });
+  };
+
+  // Get by Lead ID
+  const getAttachmentsByLeadId = async (leadId: string) => {
+    const lead = await leadRepo.findOne({ where: { id: leadId, deleted: false } });
+    if (!lead) throw new AppError(404, "Lead not found");
+
+    return await attachmentRepo.find({
+      where: { deleted: false, lead: { id: leadId } },
       relations: ["lead", "uploaded_by"],
       order: { created_at: "DESC" },
     });
@@ -64,6 +83,7 @@ export const LeadAttachmentService = () => {
     createAttachment,
     getAllAttachments,
     getAttachmentById,
+    getAttachmentsByLeadId,
   };
 }
 

@@ -13,29 +13,35 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
-    const parsed = createLeadSchema.parse(req.body);
+      const userData = res?.locals?.user;
+      const parsed = createLeadSchema.parse(req.body);
 
-    // Check if user already exists by email
-    const existingLeadByEmail = await service.findLeadByEmail({ email: parsed.email });
-    if (existingLeadByEmail) {
-      return res.status(409).json({
-        status: "fail",
-        message: "Lead with that email already exists",
+      // Check if user already exists by email
+      const existingLeadByEmail = await service.findLeadByEmail({
+        email: parsed.email,
       });
-    }
-
-    // Check if phone number is provided
-    if (parsed.phone) {
-      const existingLeadByPhone = await service.findLeadByPhoneNumber({ phone: parsed.phone });
-      if (existingLeadByPhone) {
+      if (existingLeadByEmail) {
         return res.status(409).json({
           status: "fail",
-          message: "Lead with that phone number already exists",
+          message: "Lead with that email already exists",
         });
       }
-    }
 
-      const result = await service.createLead(parsed);
+      // Check if phone number is provided
+      if (parsed.phone) {
+        const existingLeadByPhone = await service.findLeadByPhoneNumber({
+          phone: parsed.phone,
+        });
+        if (existingLeadByPhone) {
+          return res.status(409).json({
+            status: "fail",
+            message: "Lead with that phone number already exists",
+          });
+        }
+      }
+
+      const result = await service.createLead(parsed, userData);
+
       res
         .status(201)
         .json({ status: "success", message: "Lead created", data: result });
@@ -55,12 +61,12 @@ export const leadController = () => {
       const role = res?.locals?.user?.role?.role;
       let result;
 
-      if(role === 'Admin' || role === 'admin') {
+      if (role === "Admin" || role === "admin") {
         result = await service.getAllLeads();
       } else {
         result = await service.getLeadById(userId);
       }
-      
+
       const leadStats = await service.getLeadStats(userId);
 
       res.status(200).json({
@@ -97,9 +103,11 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
+      const userData = res?.locals?.user;
       const { id } = req.params;
       const parsed = updateLeadSchema.parse(req.body);
-      const result = await service.updateLead(id, parsed);
+      const result = await service.updateLead(id, parsed, userData);
+
       res
         .status(200)
         .json({ status: "success", message: "Lead updated", data: result });
@@ -129,8 +137,8 @@ export const leadController = () => {
   const exportLeadsExcelController = async (req: Request, res: Response) => {
     try {
       const userId = res.locals.user.id;
-      const userData = await findUserById(userId)
-      const userRole = userData.role.role
+      const userData = await findUserById(userId);
+      const userRole = userData.role.role;
 
       const workbook = await service.exportLeadsToExcel(userId, userRole);
 
@@ -179,14 +187,17 @@ export const leadController = () => {
     next: NextFunction
   ) => {
     try {
-      const user = res.locals.user
+      const user = res.locals.user;
       if (!req.file) {
         return res
           .status(400)
           .json({ status: "error", message: "No file uploaded" });
       }
 
-      const result = await service.uploadLeadsFromExcelService(req.file.buffer, user);
+      const result = await service.uploadLeadsFromExcelService(
+        req.file.buffer,
+        user
+      );
       res.status(201).json({
         status: "success",
         message: "Leads uploaded successfully",

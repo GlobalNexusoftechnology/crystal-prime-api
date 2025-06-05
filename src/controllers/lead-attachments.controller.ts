@@ -38,14 +38,22 @@ export const leadAttachmentController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllAttachments()
+      const { leadId } = req.query;
+      let result;
+
+      if (leadId) {
+        result = await service.getAllAttachments(leadId as string);
+      } else {
+        result = await service.getAllAttachments();
+      }
+
       res.status(200).json({
         status: "success",
-        message: "All Attachment get",
+        message: "Attachments fetched",
         data: result,
-      })
+      });
     } catch (error) {
-      next(error)
+      next(error);
     }
   }
 
