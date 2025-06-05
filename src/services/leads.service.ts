@@ -376,6 +376,8 @@ export const LeadService = () => {
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
+        created_by: `${user.first_name} ${user.last_name}` || "",
+        updated_by: `${user.first_name} ${user.last_name}` || "",
       });
 
       // Find Source by Name
