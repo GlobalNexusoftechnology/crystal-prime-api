@@ -20,7 +20,7 @@ export const signJwt = (
 
   return jwt.sign(payload, privateKey, {
     ...(options && options),
-    algorithm: "RSA256", // Use RSA algorithm for signing
+    algorithm: "RS256", // Use RSA algorithm for signing
   });
 };
 
