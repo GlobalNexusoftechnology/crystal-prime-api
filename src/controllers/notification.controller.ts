@@ -10,8 +10,11 @@ export const getNotifications = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user.id;
-    const notifications = await notificationService.getUserNotifications(userId);
+    if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
+
+    const notifications = await notificationService.getUserNotifications(req.user.id);
     res.status(200).json({
       status: 'success',
       data: notifications,
@@ -28,9 +31,11 @@ export const markAsRead = async (
 ) => {
   try {
     const { notificationId } = req.params;
-    const userId = req.user.id;
+    if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
 
-    const notification = await notificationService.markAsRead(notificationId, userId);
+    const notification = await notificationService.markAsRead(notificationId, req.user.id);
     res.status(200).json({
       status: 'success',
       data: notification,
@@ -46,8 +51,10 @@ export const markAllAsRead = async (
   next: NextFunction
 ) => {
   try {
-    const userId = req.user.id;
-    await notificationService.markAllAsRead(userId);
+ if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
+    await notificationService.markAllAsRead(req.user.id);
     res.status(200).json({
       status: 'success',
       message: 'All notifications marked as read',
@@ -64,9 +71,11 @@ export const deleteNotification = async (
 ) => {
   try {
     const { notificationId } = req.params;
-    const userId = req.user.id;
+ if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
 
-    await notificationService.deleteNotification(notificationId, userId);
+    await notificationService.deleteNotification(notificationId, req.user.id);
     res.status(200).json({
       status: 'success',
       message: 'Notification deleted successfully',
