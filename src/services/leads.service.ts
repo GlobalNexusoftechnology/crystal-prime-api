@@ -38,7 +38,11 @@ export const LeadService = () => {
     lead.last_name = last_name;
     lead.company = company ?? "";
     lead.phone = phone ?? "";
-    lead.email = email ?? "";
+    lead.email = Array.isArray(email)
+      ? email
+      : typeof email === "string"
+        ? [email]
+        : [];
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
@@ -150,12 +154,27 @@ export const LeadService = () => {
     const lead = await leadRepo.findOne({ where: { id, deleted: false } });
     if (!lead) throw new AppError(400, "Lead not found");
 
-    if (email && email !== lead.email) {
-      const existing = await leadRepo.findOne({ where: { email } });
-      if (existing)
-        throw new AppError(400, "Lead with this email already exists");
-      lead.email = email;
+    if (email) {
+      const newEmailArray = Array.isArray(email)
+        ? email
+        : typeof email === "string"
+          ? [email]
+          : [];
+
+      // Optionally check for duplicate emails in the array
+      const existing = await leadRepo
+        .createQueryBuilder("lead")
+        .where("lead.id != :id", { id })
+        .andWhere(":emailList && lead.email", { emailList: newEmailArray })
+        .getOne();
+
+      if (existing) {
+        throw new AppError(400, "One or more emails already exist in another lead");
+      }
+
+      lead.email = newEmailArray;
     }
+
 
     lead.first_name = first_name ?? lead.first_name;
     lead.last_name = last_name ?? lead.last_name;
@@ -271,7 +290,7 @@ export const LeadService = () => {
         company: lead.company ?? "",
         phone: lead.phone ?? "",
         other_contact: lead.other_contact ?? "",
-        email: lead.email ?? "",
+        email: lead.email?.join(", ") ?? "",
         location: lead.location ?? "",
         budget: lead.budget ?? 0,
         requirement: lead.requirement ?? "",
@@ -354,9 +373,17 @@ export const LeadService = () => {
 
       // Check if email already exists
       const email = data.email?.text || data.email || "";
-      const existingEmail = await leadRepo.findOne({
-        where: { email: String(email).trim(), deleted: false },
-      });
+      const emailList = String(email)
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean);
+
+      const existingEmail = await leadRepo
+        .createQueryBuilder("lead")
+        .where("lead.deleted = false")
+        .andWhere(":emailList && lead.email", { emailList })
+        .getOne();
+
 
       if (existingEmail) {
         throw new AppError(
@@ -372,13 +399,15 @@ export const LeadService = () => {
         company: data.company || "",
         phone: data.phone || "",
         other_contact: data.other_contact || "",
-        email: String(email).trim(),
+        email: String(email).split(",").map((e) => e.trim()).filter(Boolean),
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
+
+       lead.email = emailList;
 
       // Find Source by Name
       if (data.source) {
@@ -430,11 +459,14 @@ export const LeadService = () => {
     return { total: savedLeads.length, leads: savedLeads };
   };
 
-  const findLeadByEmail = async ({ email }: { email: string | undefined }) => {
-    return await leadRepo.findOne({
-      where: { email, deleted: false },
-    });
-  };
+  const findLeadByEmail = async ({ emailList }: { emailList: string[] }) => {
+  return await leadRepo
+    .createQueryBuilder("lead")
+    .where("lead.deleted = false")
+    .andWhere(":emailList && lead.email", { emailList })
+    .getOne();
+};
+
 
   const findLeadByPhoneNumber = async ({ phone }: { phone: string }) => {
     return await leadRepo.findOne({
