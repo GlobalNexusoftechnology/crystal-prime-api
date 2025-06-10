@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
 import path from 'path';
+import { createServer } from 'http';
 
 import { AppDataSource } from './utils/data-source';
 import AppError from './utils/appError';
@@ -20,8 +21,10 @@ import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
 import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
-import projectManagementRouter from './routes/project-management.routes'
+import projectManagementRouter from './routes/project-management.routes';
 import taskManagementRouter from './routes/task-management.routes';
+import notificationRouter from './routes/notification.routes';
+import { WebSocketService } from './services/websocket.service';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -35,12 +38,13 @@ AppDataSource.initialize()
     validateEnv();
 
     const app = express();
+    const httpServer = createServer(app);
+
+    // Initialize WebSocket service
+    const wsService = new WebSocketService(httpServer);
 
     // Inside src/app.ts or main file
     app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
-
-    
-
 
     // MIDDLEWARE
 
@@ -74,10 +78,10 @@ AppDataSource.initialize()
     app.use('/api/roles', rolesRouter);
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
+    app.use('/api/notifications', notificationRouter);
     
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
-
       res.status(200).json({
         status: 'success',
         message: 'Welcome to Node.js, we are happy to see you',
@@ -103,7 +107,8 @@ AppDataSource.initialize()
     );
 
     const port = config.get<number>('port');
-    app.listen(port);
-    console.log(`Server started with pid: ${process.pid} on port: ${port}`);
+    app.listen(port, () => {
+      console.log(`Server started with pid: ${process.pid} on port: ${port}`);
+    });
   })
   .catch((error) => console.log("Connection Failed::", error));

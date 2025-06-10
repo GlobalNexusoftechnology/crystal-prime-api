@@ -6,12 +6,16 @@ import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { LeadTypes } from "../entities/lead-type.entity";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
+
+const notificationService = NotificationService();
 
 // Create lead
 export const LeadService = () => {
@@ -70,7 +74,23 @@ export const LeadService = () => {
       lead.assigned_to = user;
     }
 
-    return await leadRepo.save(lead);
+    const savedLead = await leadRepo.save(lead);
+
+    // Send notification to assigned user if any
+    if (lead.assigned_to) {
+      await notificationService.createNotification(
+        lead.assigned_to.id,
+        NotificationType.LEAD_ASSIGNED,
+        `You have been assigned a new lead: ${first_name} ${last_name}`,
+        {
+          leadId: savedLead.id,
+          leadName: `${first_name} ${last_name}`,
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+        }
+      );
+    }
+
+    return savedLead;
   };
 
   // Get All Leads
@@ -195,7 +215,23 @@ export const LeadService = () => {
           : await userRepo.findOne({ where: { id: assigned_to } });
     }
 
-    return await leadRepo.save(lead);
+    const savedLead = await leadRepo.save(lead);
+
+    // Send notification to assigned user if any
+    if (lead.assigned_to) {
+      await notificationService.createNotification(
+        lead.assigned_to.id,
+        NotificationType.LEAD_ASSIGNED,
+        `You have been assigned a new lead: ${first_name} ${last_name}`,
+        {
+          leadId: savedLead.id,
+          leadName: `${first_name} ${last_name}`,
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+        }
+      );
+    }
+
+    return savedLead;
   };
 
   // Soft Delete Lead
