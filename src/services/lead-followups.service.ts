@@ -4,10 +4,13 @@ import { LeadFollowup, FollowupStatus } from "../entities/lead-followups.entity"
 import { Leads } from "../entities/leads.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
 
 const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
+const notificationService = NotificationService();
 
 export const LeadFollowupService = () => {
 
@@ -40,7 +43,49 @@ export const LeadFollowupService = () => {
     }
     leadFollowup.remarks = remarks ?? "";
 
-    return await leadFollowupRepo.save(leadFollowup);
+    const savedFollowup = await leadFollowupRepo.save(leadFollowup);
+
+    // Send notification to assigned user
+    if (user) {
+      await notificationService.createNotification(
+        user.id,
+        NotificationType.FOLLOWUP_CREATED,
+        `New followup scheduled for lead: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+        {
+          followupId: savedFollowup.id,
+          leadId: lead.id,
+          leadName: `${lead.first_name} ${lead.last_name}`,
+          leadContact: lead.phone || lead.email,
+          dueDate: due_date,
+          remarks: remarks
+        }
+      );
+    }
+
+    // Notify all staff members
+    const staffMembers = await userRepo.find({
+      where: { role: { role: "staff" } },
+      relations: ["role"]
+    });
+
+    for (const staff of staffMembers) {
+      await notificationService.createNotification(
+        staff.id,
+        NotificationType.FOLLOWUP_CREATED,
+        `New followup scheduled for lead: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+        {
+          followupId: savedFollowup.id,
+          leadId: lead.id,
+          leadName: `${lead.first_name} ${lead.last_name}`,
+          leadContact: lead.phone || lead.email,
+          assignedTo: user ? `${user.first_name} ${user.last_name}` : 'Unassigned',
+          dueDate: due_date,
+          remarks: remarks
+        }
+      );
+    }
+
+    return savedFollowup;
   };
 
   // Get All Lead Followups
@@ -85,8 +130,14 @@ export const LeadFollowupService = () => {
       remarks,
     } = data;
 
-    const leadFollowup = await leadFollowupRepo.findOne({ where: { id, deleted: false } });
+    const leadFollowup = await leadFollowupRepo.findOne({ 
+      where: { id, deleted: false },
+      relations: ["lead", "user"]
+    });
     if (!leadFollowup) throw new AppError(404, "Lead Followup not found");
+
+    const oldUser = leadFollowup.user;
+    const oldDueDate = leadFollowup.due_date;
 
     if (user_id !== undefined) {
       if (user_id === null) {
@@ -103,7 +154,47 @@ export const LeadFollowupService = () => {
     if (completed_date !== undefined) leadFollowup.completed_date = completed_date;
     if (remarks !== undefined) leadFollowup.remarks = remarks;
 
-    return await leadFollowupRepo.save(leadFollowup);
+    const savedFollowup = await leadFollowupRepo.save(leadFollowup);
+
+    // Send notifications for changes
+    if (leadFollowup.user) {
+      // Notify new assigned user if changed
+      if (!oldUser || oldUser.id !== leadFollowup.user.id) {
+        await notificationService.createNotification(
+          leadFollowup.user.id,
+          NotificationType.FOLLOWUP_UPDATED,
+          `You have been assigned a followup for lead: ${leadFollowup.lead.first_name} ${leadFollowup.lead.last_name} (${leadFollowup.lead.phone || leadFollowup.lead.email})`,
+          {
+            followupId: savedFollowup.id,
+            leadId: leadFollowup.lead.id,
+            leadName: `${leadFollowup.lead.first_name} ${leadFollowup.lead.last_name}`,
+            leadContact: leadFollowup.lead.phone || leadFollowup.lead.email,
+            dueDate: leadFollowup.due_date,
+            remarks: leadFollowup.remarks
+          }
+        );
+      }
+
+      // Notify about rescheduled followup
+      if (oldDueDate && due_date && oldDueDate.getTime() !== due_date.getTime()) {
+        await notificationService.createNotification(
+          leadFollowup.user.id,
+          NotificationType.FOLLOWUP_UPDATED,
+          `Followup rescheduled for lead: ${leadFollowup.lead.first_name} ${leadFollowup.lead.last_name} (${leadFollowup.lead.phone || leadFollowup.lead.email})`,
+          {
+            followupId: savedFollowup.id,
+            leadId: leadFollowup.lead.id,
+            leadName: `${leadFollowup.lead.first_name} ${leadFollowup.lead.last_name}`,
+            leadContact: leadFollowup.lead.phone || leadFollowup.lead.email,
+            oldDueDate: oldDueDate,
+            newDueDate: due_date,
+            remarks: leadFollowup.remarks
+          }
+        );
+      }
+    }
+
+    return savedFollowup;
   };
 
   // Soft Delete Lead Followup
