@@ -45,6 +45,51 @@ export const LeadFollowupService = () => {
 
     const savedFollowup = await leadFollowupRepo.save(leadFollowup);
 
+    // Get all admin users for notifications
+    const adminUsers = await userRepo.find({
+      where: { role: { role: "admin" } },
+      relations: ["role"]
+    });
+
+    // Handle specific status notifications
+    if (status === FollowupStatus.AWAITING_RESPONSE) {
+      // Notify all admins about quotation sent
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.FOLLOWUP_CREATED,
+          `Lead Quotation Sent: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          {
+            followupId: savedFollowup.id,
+            leadId: lead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            status: status,
+            remarks: remarks,
+            assignedBy: user ? `${user.first_name} ${user.last_name}` : 'Unassigned'
+          }
+        );
+      }
+    } else if (status === FollowupStatus.COMPLETED) {
+      // Notify all admins about business done
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.FOLLOWUP_CREATED,
+          `Business Done: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          {
+            followupId: savedFollowup.id,
+            leadId: lead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            status: status,
+            remarks: remarks,
+            assignedBy: user ? `${user.first_name} ${user.last_name}` : 'Unassigned'
+          }
+        );
+      }
+    }
+
     // Send notification to assigned user
     if (user) {
       await notificationService.createNotification(
