@@ -30,9 +30,27 @@ export const NotificationService = () => {
 
   // Get all notifications for a user
   const getUserNotifications = async (userId: string) => {
+    const user = await userRepo.findOne({
+      where: { id: userId },
+      relations: ['role']
+    });
+
+    if (!user) throw new AppError(404, 'User not found');
+
+    // If user is admin, show all notifications
+    if (user.role.role === 'admin') {
+      return await notificationRepo.find({
+        where: { deleted: false },
+        order: { created_at: 'DESC' },
+        relations: ['user']
+      });
+    }
+
+    // For regular users, show only their notifications
     return await notificationRepo.find({
       where: { userId, deleted: false },
       order: { created_at: 'DESC' },
+      relations: ['user']
     });
   };
 
