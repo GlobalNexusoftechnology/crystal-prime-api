@@ -57,9 +57,9 @@ export const NotificationService = () => {
   };
 
   // Delete a notification
-  const deleteNotification = async (notificationId: string, userId: string) => {
+  const deleteNotification = async (notificationId: string) => {
     const notification = await notificationRepo.findOne({
-      where: { id: notificationId, userId },
+      where: { id: notificationId, deleted: false },
     });
 
     if (!notification) throw new AppError(404, 'Notification not found');
