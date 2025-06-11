@@ -31,7 +31,7 @@ export const NotificationService = () => {
   // Get all notifications for a user
   const getUserNotifications = async (userId: string) => {
     return await notificationRepo.find({
-      where: { userId, deleted: false },
+      where: {  deleted: false },
       order: { created_at: 'DESC' },
     });
   };
@@ -51,15 +51,15 @@ export const NotificationService = () => {
   // Mark all notifications as read for a user
   const markAllAsRead = async (userId: string) => {
     return await notificationRepo.update(
-      { userId, isRead: false },
+      {  isRead: false },
       { isRead: true }
     );
   };
 
   // Delete a notification
-  const deleteNotification = async (notificationId: string, userId: string) => {
+  const deleteNotification = async (notificationId: string) => {
     const notification = await notificationRepo.findOne({
-      where: { id: notificationId, userId },
+      where: { id: notificationId, deleted: false },
     });
 
     if (!notification) throw new AppError(404, 'Notification not found');
