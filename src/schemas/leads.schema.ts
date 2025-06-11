@@ -4,7 +4,7 @@ import { z } from "zod";
 // Create Lead Schema
 export const createLeadSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+  last_name: z.string().optional(),
   company: z.string().optional(),
   phone: z.string().optional(),
   other_contact: z.string().optional(),
@@ -24,7 +24,7 @@ export const createLeadSchema = z.object({
 // Update Lead Schema (all optional)
 export const updateLeadSchema = z.object({
   first_name: z.string().min(1).optional(),
-  last_name: z.string().min(1).optional(),
+  last_name: z.string().optional(),
   company: z.string().optional(),
   phone: z.string().optional(),
   other_contact: z.string().optional(),
@@ -44,7 +44,7 @@ export const updateLeadSchema = z.object({
 // Lead Upload Schema (fields expected in Excel)
 export const excelLeadSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
-  last_name: z.string().min(1, "Last name is required"),
+  last_name: z.string().optional(),
   company: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email("Invalid email format").optional(),

@@ -63,7 +63,6 @@ export const markAllAsRead = async (
     next(error);
   }
 };
-
 export const deleteNotification = async (
   req: Request,
   res: Response,
