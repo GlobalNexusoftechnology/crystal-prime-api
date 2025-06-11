@@ -75,7 +75,7 @@ export const deleteNotification = async (
       throw new AppError(401, 'User not authenticated');
     }
 
-    await notificationService.deleteNotification(notificationId, req.user.id);
+    await notificationService.deleteNotification(notificationId);
     res.status(200).json({
       status: 'success',
       message: 'Notification deleted successfully',
