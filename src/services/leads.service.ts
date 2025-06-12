@@ -19,7 +19,6 @@ const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
 const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 
 const notificationService = NotificationService();
-
 // Create lead
 export const LeadService = () => {
   // Create Lead
@@ -46,12 +45,12 @@ export const LeadService = () => {
     }
 
     // Check if any email already exists
-    for (const emailStr of email) {
-      const existing = await leadRepo.findOne({ where: { email: emailStr } });
-      if (existing) {
-        throw new AppError(400, `Email ${emailStr} already exists`);
-      }
-    }
+    // for (const emailStr of email) {
+    //   const existing = await leadRepo.findOne({ where: { email: emailStr } });
+    //   if (existing) {
+    //     throw new AppError(400, `Email ${emailStr} already exists`);
+    //   }
+    // }
 
     const lead = new Leads();
     lead.first_name = first_name;
@@ -131,6 +130,11 @@ export const LeadService = () => {
   };
 
   const getLeadStats = async (userId: string) => {
+    // Get today's start and end timestamps in UTC
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+
     const [totalLeads, assignedToMe, profileSent, businessDone, notInterested, todayFollowups] =
       await Promise.all([
         leadRepo.count({ where: { deleted: false } }),
@@ -160,10 +164,7 @@ export const LeadService = () => {
           where: {
             deleted: false,
             user: { id: userId },
-            due_date: Between(
-              new Date(new Date().setHours(0, 0, 0, 0)),
-              new Date(new Date().setHours(23, 59, 59, 999))
-            ),
+            due_date: Between(today, tomorrow),
             status: Not(FollowupStatus.COMPLETED)
           },
           relations: ["user"]
@@ -204,18 +205,18 @@ export const LeadService = () => {
     // Handle emails update if provided
     if (email && Array.isArray(email)) {
       // Check if any email already exists in other leads
-      for (const emailStr of email) {
-        const existing = await leadRepo.findOne({ 
-          where: { 
-            email: emailStr,
-            id: Not(id),
-            deleted: false
-          }
-        });
-        if (existing) {
-          throw new AppError(400, `Email ${emailStr} already exists in another lead`);
-        }
-      }
+      // for (const emailStr of email) {
+      //   const existing = await leadRepo.findOne({ 
+      //     where: { 
+      //       email: emailStr,
+      //       id: Not(id),
+      //       deleted: false
+      //     }
+      //   });
+      //   if (existing) {
+      //     throw new AppError(400, `Email ${emailStr} already exists in another lead`);
+      //   }
+      // }
       lead.email = email.join(","); // Join emails with comma
     }
 
