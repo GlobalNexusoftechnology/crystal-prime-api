@@ -40,12 +40,25 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
+    // Validate emails
+    if (!email || !Array.isArray(email) || email.length === 0) {
+      throw new AppError(400, "At least one email is required");
+    }
+
+    // Check if any email already exists
+    for (const emailStr of email) {
+      const existing = await leadRepo.findOne({ where: { email: emailStr } });
+      if (existing) {
+        throw new AppError(400, `Email ${emailStr} already exists`);
+      }
+    }
+
     const lead = new Leads();
     lead.first_name = first_name;
     lead.last_name = last_name;
     lead.company = company ?? "";
     lead.phone = phone ?? "";
-    lead.email = email ?? "";
+    lead.email = email.join(","); // Join emails with comma
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
@@ -188,11 +201,22 @@ export const LeadService = () => {
     const lead = await leadRepo.findOne({ where: { id, deleted: false } });
     if (!lead) throw new AppError(400, "Lead not found");
 
-    if (email && email !== lead.email) {
-      const existing = await leadRepo.findOne({ where: { email } });
-      if (existing)
-        throw new AppError(400, "Lead with this email already exists");
-      lead.email = email;
+    // Handle emails update if provided
+    if (email && Array.isArray(email)) {
+      // Check if any email already exists in other leads
+      for (const emailStr of email) {
+        const existing = await leadRepo.findOne({ 
+          where: { 
+            email: emailStr,
+            id: Not(id),
+            deleted: false
+          }
+        });
+        if (existing) {
+          throw new AppError(400, `Email ${emailStr} already exists in another lead`);
+        }
+      }
+      lead.email = email.join(","); // Join emails with comma
     }
 
     lead.first_name = first_name ?? lead.first_name;

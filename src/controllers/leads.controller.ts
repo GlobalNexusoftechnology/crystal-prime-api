@@ -16,15 +16,17 @@ export const leadController = () => {
       const userData = res?.locals?.user;
       const parsed = createLeadSchema.parse(req.body);
 
-      // Check if user already exists by email
-      const existingLeadByEmail = await service.findLeadByEmail({
-        email: parsed.email,
-      });
-      if (existingLeadByEmail) {
-        return res.status(409).json({
-          status: "fail",
-          message: "Lead with that email already exists",
+      // Check if any email already exists
+      for (const email of parsed.email) {
+        const existingLeadByEmail = await service.findLeadByEmail({
+          email: email,
         });
+        if (existingLeadByEmail) {
+          return res.status(409).json({
+            status: "fail",
+            message: `Lead with email ${email} already exists`,
+          });
+        }
       }
 
       // Check if phone number is provided
