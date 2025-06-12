@@ -8,12 +8,15 @@ import ExcelJS from "exceljs";
 import { LeadTypes } from "../entities/lead-type.entity";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
+import { LeadFollowup, FollowupStatus } from "../entities/lead-followups.entity";
+import { Between, Not } from "typeorm";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
+const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 
 const notificationService = NotificationService();
 
@@ -115,7 +118,7 @@ export const LeadService = () => {
   };
 
   const getLeadStats = async (userId: string) => {
-    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested] =
+    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested, todayFollowups] =
       await Promise.all([
         leadRepo.count({ where: { deleted: false } }),
 
@@ -138,6 +141,20 @@ export const LeadService = () => {
           where: { deleted: false, status: { name: "Not Interested" } },
           relations: ["status"],
         }),
+
+        // Get today's followups count
+        leadFollowupRepo.count({
+          where: {
+            deleted: false,
+            user: { id: userId },
+            due_date: Between(
+              new Date(new Date().setHours(0, 0, 0, 0)),
+              new Date(new Date().setHours(23, 59, 59, 999))
+            ),
+            status: Not(FollowupStatus.COMPLETED)
+          },
+          relations: ["user"]
+        })
       ]);
 
     return {
@@ -146,6 +163,7 @@ export const LeadService = () => {
       profileSent,
       businessDone,
       notInterested,
+      todayFollowups
     };
   };
 
