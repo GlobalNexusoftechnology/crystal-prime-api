@@ -25,7 +25,7 @@ import taskManagementRouter from './routes/task-management.routes';
 import clientRoutes from "./routes/clients.routes";
 import ProjectRoutes from "./routes/Project.routes";
 import projectTemplateRoutes from "./routes/project-templates.routes";
-// import milestoneRoutes from "./routes/project-milestone.routes";
+import milestoneRoutes from "./routes/project-milestone.routes";
 import taskRoutes from "./routes/project-task.routes";
 
 
@@ -83,7 +83,7 @@ AppDataSource.initialize()
     app.use("/api/clients", clientRoutes);
     app.use("/api/Project",ProjectRoutes);
     app.use("/api/project-templates", projectTemplateRoutes);
-    // app.use("/api/project-milestones", milestoneRoutes);
+    app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
     
     // HEALTH CHECKER
