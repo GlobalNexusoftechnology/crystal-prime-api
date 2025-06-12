@@ -57,8 +57,8 @@ export const LeadFollowupService = () => {
       for (const admin of adminUsers) {
         await notificationService.createNotification(
           admin.id,
-          NotificationType.FOLLOWUP_CREATED,
-          `Lead Quotation Sent: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          NotificationType.QUOTATION_SENT,
+          `${user ? `${user.first_name} ${user.last_name}` : 'Staff'} has sent Quotation to ${lead.first_name} ${lead.last_name}, to know more click here`,
           {
             followupId: savedFollowup.id,
             leadId: lead.id,
@@ -75,8 +75,8 @@ export const LeadFollowupService = () => {
       for (const admin of adminUsers) {
         await notificationService.createNotification(
           admin.id,
-          NotificationType.FOLLOWUP_CREATED,
-          `Business Done: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          NotificationType.BUSINESS_DONE,
+          `${user ? `${user.first_name} ${user.last_name}` : 'Staff'} has completed business with ${lead.first_name} ${lead.last_name}, to know more click here`,
           {
             followupId: savedFollowup.id,
             leadId: lead.id,
@@ -95,13 +95,36 @@ export const LeadFollowupService = () => {
       await notificationService.createNotification(
         user.id,
         NotificationType.FOLLOWUP_CREATED,
-        `New followup scheduled for lead: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+        `Dear ${user.first_name} ${user.last_name}, you have got new lead: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
         {
           followupId: savedFollowup.id,
           leadId: lead.id,
           leadName: `${lead.first_name} ${lead.last_name}`,
           leadContact: lead.phone || lead.email,
           dueDate: due_date,
+          remarks: remarks
+        }
+      );
+    }
+
+    // If there's a due date, schedule a reminder notification
+    if (due_date) {
+      // Schedule a reminder notification for the due date
+      const reminderDate = new Date(due_date);
+      reminderDate.setHours(0, 0, 0, 0); // Set to start of day
+      
+      // Store the reminder in metadata for processing by a scheduled task
+      await notificationService.createNotification(
+        user?.id || 'system',
+        NotificationType.FOLLOWUP_REMINDER,
+        `You have to take follow-up for lead: ${lead.first_name} ${lead.last_name} today, click here to get more details`,
+        {
+          followupId: savedFollowup.id,
+          leadId: lead.id,
+          leadName: `${lead.first_name} ${lead.last_name}`,
+          leadContact: lead.phone || lead.email,
+          dueDate: due_date,
+          reminderDate: reminderDate,
           remarks: remarks
         }
       );

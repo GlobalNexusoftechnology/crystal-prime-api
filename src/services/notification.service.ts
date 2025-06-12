@@ -41,18 +41,21 @@ export const NotificationService = () => {
     
     if (user.role?.role === 'admin') {
       // For admin users, show:
-      // 1. Quotation sent notifications (FOLLOWUP_CREATED with AWAITING_RESPONSE status)
-      // 2. Business done notifications (FOLLOWUP_CREATED with COMPLETED status)
+      // 1. Quotation sent notifications
+      // 2. Business done notifications
+      // 3. Lead escalation notifications
       notifications = await notificationRepo.find({
         where: [
           {
-            type: NotificationType.FOLLOWUP_CREATED,
-            metadata: { status: 'AWAITING RESPONSE' },
+            type: NotificationType.QUOTATION_SENT,
             deleted: false
           },
           {
-            type: NotificationType.FOLLOWUP_CREATED,
-            metadata: { status: 'COMPLETED' },
+            type: NotificationType.BUSINESS_DONE,
+            deleted: false
+          },
+          {
+            type: NotificationType.LEAD_ESCALATED,
             deleted: false
           }
         ],
@@ -61,8 +64,9 @@ export const NotificationService = () => {
       });
     } else if (user.role?.role === 'staff') {
       // For staff users, show:
-      // 1. Lead assigned notifications (LEAD_ASSIGNED)
-      // 2. Lead escalated notifications (LEAD_UPDATED with escalate_to)
+      // 1. Lead assigned notifications
+      // 2. Lead escalated notifications
+      // 3. Followup reminder notifications
       notifications = await notificationRepo.find({
         where: [
           {
@@ -70,8 +74,12 @@ export const NotificationService = () => {
             deleted: false
           },
           {
-            type: NotificationType.LEAD_UPDATED,
-            metadata: { escalatedBy: { $exists: true } },
+            type: NotificationType.LEAD_ESCALATED,
+            deleted: false
+          },
+          {
+            type: NotificationType.FOLLOWUP_REMINDER,
+            userId: userId,
             deleted: false
           }
         ],
@@ -104,45 +112,11 @@ export const NotificationService = () => {
 
   // Mark all notifications as read for a user
   const markAllAsRead = async (userId: string) => {
-    const user = await userRepo.findOne({
-      where: { id: userId },
-      relations: ['role']
-    });
-
-    if (!user) throw new AppError(404, 'User not found');
-
-    if (user.role?.role === 'admin') {
-      // For admin users, mark as read:
-      // 1. Quotation sent notifications
-      // 2. Business done notifications
-      return await notificationRepo.update(
-        {
-          type: NotificationType.FOLLOWUP_CREATED,
-          metadata: { status: In(['AWAITING RESPONSE', 'COMPLETED']) },
-          isRead: false,
-          deleted: false
-        },
-        { isRead: true }
-      );
-    } else if (user.role?.role === 'staff') {
-      // For staff users, mark as read:
-      // 1. Lead assigned notifications
-      // 2. Lead escalated notifications
-      return await notificationRepo.update(
-        {
-          type: In([NotificationType.LEAD_ASSIGNED, NotificationType.LEAD_UPDATED]),
-          isRead: false,
-          deleted: false
-        },
-        { isRead: true }
-      );
-    } else {
-      // For other users, mark all their notifications as read
-      return await notificationRepo.update(
-        { userId, isRead: false, deleted: false },
-        { isRead: true }
-      );
-    }
+    return await notificationRepo.update(
+      
+      {  isRead: false },
+      { isRead: true }
+    );
   };
 
   // Delete a notification

@@ -229,7 +229,28 @@ export const LeadService = () => {
       for (const staff of staffMembers) {
         await notificationService.createNotification(
           staff.id,
-          NotificationType.LEAD_UPDATED,
+          NotificationType.LEAD_ESCALATED,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          {
+            leadId: lead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
+            requirement: lead.requirement
+          }
+        );
+      }
+
+      // Notify all admins about the escalated lead
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" } },
+        relations: ["role"]
+      });
+
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.LEAD_ESCALATED,
           `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
           {
             leadId: lead.id,
