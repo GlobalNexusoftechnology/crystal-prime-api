@@ -27,6 +27,7 @@ import ProjectRoutes from "./routes/Project.routes";
 import projectTemplateRoutes from "./routes/project-templates.routes";
 import milestoneRoutes from "./routes/project-milestone.routes";
 import taskRoutes from "./routes/project-task.routes";
+import projectAttachmentsRouter from './routes/project-attachments.routes';
 
 
 (async function () {
@@ -85,6 +86,7 @@ AppDataSource.initialize()
     app.use("/api/project-templates", projectTemplateRoutes);
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
+    app.use('/api/project-attachments', projectAttachmentsRouter);
     
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
