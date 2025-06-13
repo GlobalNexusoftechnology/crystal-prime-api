@@ -13,7 +13,7 @@ export enum ProjectStatus {
 
 @Entity('projects')
 export class Project extends Model {
-    @Column({ type: 'varchar', length: 255, nullable: false })
+    @Column({ type: 'varchar', length: 255, nullable: true })
     name: string;
 
     @Column({ type: 'varchar', length: 255, nullable: true })
