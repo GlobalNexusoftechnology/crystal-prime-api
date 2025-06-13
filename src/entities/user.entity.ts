@@ -6,6 +6,7 @@ import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
 import { Task } from "./task-management.entity";
 import { Role } from "./roles.entity";
+import { projectAttachments } from "./project-attachments.entity";
 
 @Entity("users")
 export class User extends Model {
@@ -45,6 +46,9 @@ export class User extends Model {
 
   @OneToMany(() => LeadAttachments, (attachment) => attachment.uploaded_by)
   lead_attachments: LeadAttachments[];
+
+  @OneToMany(() => projectAttachments, (attachment) => attachment.uploaded_by)
+  project_attachments: projectAttachments[];
 
   @OneToMany(() => LeadStatusHistory, (status) => status.changed_by)
   changed_statuses: LeadStatusHistory[];
