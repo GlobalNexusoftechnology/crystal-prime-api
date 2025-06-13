@@ -1,9 +1,10 @@
-import { Column, Entity, ManyToOne, JoinColumn } from "typeorm";
+import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Clients } from "./clients.entity";
+import { projectAttachments } from "./project-attachments.entity";
 
 @Entity("Project ")
-export class Project  extends Model {
+export class Project extends Model {
   @ManyToOne(() => Clients, (client) => client.id, { nullable: true })
   @JoinColumn({ name: "client_id" })
   client: Clients;
@@ -34,4 +35,7 @@ export class Project  extends Model {
 
   @Column({ type: "timestamp", nullable: true })
   actual_end_date: Date;
+
+  @OneToMany(() => projectAttachments, (attachment) => attachment.Project)
+  attachments: projectAttachments[];
 }
