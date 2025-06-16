@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import nodemailer from 'nodemailer';
 import path from 'path';
+import { createServer } from 'http';
 
 import { AppDataSource } from './utils/data-source';
 import AppError from './utils/appError';
@@ -20,8 +21,19 @@ import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
 import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
-import projectManagementRouter from './routes/project-management.routes'
+import projectManagementRouter from './routes/project-management.routes';
 import taskManagementRouter from './routes/task-management.routes';
+import clientRoutes from "./routes/clients.routes";
+import ProjectRoutes from "./routes/Project.routes";
+import projectTemplateRoutes from "./routes/project-templates.routes";
+import milestoneRoutes from "./routes/project-milestone.routes";
+import taskRoutes from "./routes/project-task.routes";
+import projectAttachmentsRouter from './routes/project-attachments.routes';
+import milestoneMasterRouter from './routes/milestone-master.routes';
+import taskMasterRouter from './routes/task-master.routes';
+
+import notificationRouter from './routes/notification.routes';
+import { WebSocketService } from './services/websocket.service';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -35,12 +47,13 @@ AppDataSource.initialize()
     validateEnv();
 
     const app = express();
+    const httpServer = createServer(app);
+
+    // Initialize WebSocket service
+    const wsService = new WebSocketService(httpServer);
 
     // Inside src/app.ts or main file
     app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
-
-    
-
 
     // MIDDLEWARE
 
@@ -74,10 +87,18 @@ AppDataSource.initialize()
     app.use('/api/roles', rolesRouter);
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
+    app.use("/api/clients", clientRoutes);
+    app.use("/api/Project",ProjectRoutes);
+    app.use("/api/project-templates", projectTemplateRoutes);
+    app.use("/api/project-milestones", milestoneRoutes);
+    app.use("/api/project-task", taskRoutes);
+    app.use('/api/project-attachments', projectAttachmentsRouter);
+    app.use('/api/milestone-master', milestoneMasterRouter);
+    app.use('/api/task-master', taskMasterRouter);
+    app.use('/api/notifications', notificationRouter);
     
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
-
       res.status(200).json({
         status: 'success',
         message: 'Welcome to Node.js, we are happy to see you',
@@ -103,7 +124,8 @@ AppDataSource.initialize()
     );
 
     const port = config.get<number>('port');
-    app.listen(port);
-    console.log(`Server started with pid: ${process.pid} on port: ${port}`);
+    app.listen(port, () => {
+      console.log(`Server started with pid: ${process.pid} on port: ${port}`);
+    });
   })
   .catch((error) => console.log("Connection Failed::", error));

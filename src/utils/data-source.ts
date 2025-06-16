@@ -22,9 +22,7 @@ export const AppDataSource = new DataSource({
   entities: [`${isProd ? "build" : "src"}/entities/**/*.entity{.ts,.js}`],
   migrations: [`${isProd ? "build" : "src"}/migrations/**/*{.ts,.js}`],
   subscribers: [`${isProd ? "build" : "src"}/subscribers/**/*{.ts,.js}`],
-  // ...(!isProd && {
-  ssl: {
-    rejectUnauthorized: false, // Set to true in production with a valid certificate
-  },
-  // }),
+  ssl: isProd ? {
+    rejectUnauthorized: true
+  } : false
 });

@@ -9,14 +9,14 @@ export class LeadAttachments extends Model {
   @JoinColumn({ name: "lead_id" })
   lead: Leads;
 
-  @ManyToOne(() => User, (user) => user.lead_attachments, { nullable: false })
+  @ManyToOne(() => User, (user) => user.lead_attachments, { nullable: true })
   @JoinColumn({ name: "uploaded_by" })
   uploaded_by: User;
 
-  @Column()
+  @Column({ nullable: true })
   file_path: string;
 
-  @Column()
+  @Column({ nullable: true })
   file_type: string;
 
   @Column({nullable: true})
