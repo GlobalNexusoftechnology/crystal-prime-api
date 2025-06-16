@@ -23,6 +23,15 @@ import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
 import projectManagementRouter from './routes/project-management.routes';
 import taskManagementRouter from './routes/task-management.routes';
+import clientRoutes from "./routes/clients.routes";
+import ProjectRoutes from "./routes/Project.routes";
+import projectTemplateRoutes from "./routes/project-templates.routes";
+import milestoneRoutes from "./routes/project-milestone.routes";
+import taskRoutes from "./routes/project-task.routes";
+import projectAttachmentsRouter from './routes/project-attachments.routes';
+import milestoneMasterRouter from './routes/milestone-master.routes';
+import taskMasterRouter from './routes/task-master.routes';
+
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
 
@@ -78,6 +87,14 @@ AppDataSource.initialize()
     app.use('/api/roles', rolesRouter);
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
+    app.use("/api/clients", clientRoutes);
+    app.use("/api/Project",ProjectRoutes);
+    app.use("/api/project-templates", projectTemplateRoutes);
+    app.use("/api/project-milestones", milestoneRoutes);
+    app.use("/api/project-task", taskRoutes);
+    app.use('/api/project-attachments', projectAttachmentsRouter);
+    app.use('/api/milestone-master', milestoneMasterRouter);
+    app.use('/api/task-master', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
     
     // HEALTH CHECKER

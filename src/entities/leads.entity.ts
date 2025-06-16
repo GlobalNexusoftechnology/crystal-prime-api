@@ -35,8 +35,9 @@ export class Leads extends Model {
   @Column({ nullable: true })
   other_contact: string;
 
-  @Column({ nullable: true, unique: true })
-  email: string;
+  // Replace the existing email column
+  @Column({ type: 'text', array: true, nullable: true })
+  email: string[];
 
   @Column({ nullable: true })
   location: string;

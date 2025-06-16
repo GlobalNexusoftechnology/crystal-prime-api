@@ -16,31 +16,13 @@ export const leadController = () => {
       const userData = res?.locals?.user;
       const parsed = createLeadSchema.parse(req.body);
 
-      // Check if any email already exists
-      // for (const email of parsed.email) {
-      //   const existingLeadByEmail = await service.findLeadByEmail({
-      //     email: email,
-      //   });
-      //   if (existingLeadByEmail) {
-      //     return res.status(409).json({
-      //       status: "fail",
-      //       message: `Lead with email ${email} already exists`,
-      //     });
-      //   }
-      // }
+      const emailList = String(parsed.email)
+        .split(",")
+        .map((e) => e.trim())
+        .filter(Boolean);
 
-      // Check if phone number is provided
-      // if (parsed.phone) {
-      //   const existingLeadByPhone = await service.findLeadByPhoneNumber({
-      //     phone: parsed.phone,
-      //   });
-      //   if (existingLeadByPhone) {
-      //     return res.status(409).json({
-      //       status: "fail",
-      //       message: "Lead with that phone number already exists",
-      //     });
-      //   }
-      // }
+      // Replace email field with array version before passing to service
+      parsed.email = emailList;
 
       const result = await service.createLead(parsed, userData);
 
@@ -52,7 +34,7 @@ export const leadController = () => {
     }
   };
 
-  // Get All Lead
+  // Get All Leads
   const getAllLeads = async (
     req: Request,
     res: Response,
@@ -108,6 +90,14 @@ export const leadController = () => {
       const userData = res?.locals?.user;
       const { id } = req.params;
       const parsed = updateLeadSchema.parse(req.body);
+
+      if (parsed.email) {
+        parsed.email = String(parsed.email)
+          .split(",")
+          .map((e) => e.trim())
+          .filter(Boolean);
+      }
+
       const result = await service.updateLead(id, parsed, userData);
 
       res
@@ -135,7 +125,7 @@ export const leadController = () => {
     }
   };
 
-  // Export Lead Excel file
+  // Export Leads to Excel
   const exportLeadsExcelController = async (req: Request, res: Response) => {
     try {
       const userId = res.locals.user.id;
@@ -161,7 +151,7 @@ export const leadController = () => {
     }
   };
 
-  // Download lead template file.
+  // Download Lead Template
   const downloadLeadTemplate = async (req: Request, res: Response) => {
     try {
       const workbook = await service.generateLeadTemplate();
@@ -183,6 +173,7 @@ export const leadController = () => {
     }
   };
 
+  // Upload Leads from Excel
   const uploadLeadsFromExcel = async (
     req: Request,
     res: Response,
@@ -221,3 +212,4 @@ export const leadController = () => {
     uploadLeadsFromExcel,
   };
 };
+
