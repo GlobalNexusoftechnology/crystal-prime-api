@@ -6,13 +6,19 @@ import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { LeadTypes } from "../entities/lead-type.entity";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
+import { LeadFollowup, FollowupStatus } from "../entities/lead-followups.entity";
+import { Between, Not } from "typeorm";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
+const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 
+const notificationService = NotificationService();
 // Create lead
 export const LeadService = () => {
   // Create Lead
@@ -32,6 +38,19 @@ export const LeadService = () => {
       type_id,
       assigned_to,
     } = data;
+
+    // Validate emails
+    if (!email || !Array.isArray(email) || email.length === 0) {
+      throw new AppError(400, "At least one email is required");
+    }
+
+    // Check if any email already exists
+    // for (const emailStr of email) {
+    //   const existing = await leadRepo.findOne({ where: { email: emailStr } });
+    //   if (existing) {
+    //     throw new AppError(400, `Email ${emailStr} already exists`);
+    //   }
+    // }
 
     const lead = new Leads();
     lead.first_name = first_name;
@@ -74,7 +93,23 @@ export const LeadService = () => {
       lead.assigned_to = user;
     }
 
-    return await leadRepo.save(lead);
+    const savedLead = await leadRepo.save(lead);
+
+    // Send notification to assigned user if any
+    if (lead.assigned_to) {
+      await notificationService.createNotification(
+        lead.assigned_to.id,
+        NotificationType.LEAD_ASSIGNED,
+        `You have been assigned a new lead: ${first_name} ${last_name}`,
+        {
+          leadId: savedLead.id,
+          leadName: `${first_name} ${last_name}`,
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+        }
+      );
+    }
+
+    return savedLead;
   };
 
   // Get All Leads
@@ -99,7 +134,12 @@ export const LeadService = () => {
   };
 
   const getLeadStats = async (userId: string) => {
-    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested] =
+    // Get today's start and end timestamps in UTC
+    const now = new Date();
+    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+
+    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested, todayFollowups] =
       await Promise.all([
         leadRepo.count({ where: { deleted: false } }),
 
@@ -122,6 +162,17 @@ export const LeadService = () => {
           where: { deleted: false, status: { name: "Not Interested" } },
           relations: ["status"],
         }),
+
+        // Get today's followups count
+        leadFollowupRepo.count({
+          where: {
+            deleted: false,
+            user: { id: userId },
+            due_date: Between(today, tomorrow),
+            status: Not(FollowupStatus.COMPLETED)
+          },
+          relations: ["user"]
+        })
       ]);
 
     return {
@@ -130,6 +181,7 @@ export const LeadService = () => {
       profileSent,
       businessDone,
       notInterested,
+      todayFollowups
     };
   };
 
@@ -214,7 +266,71 @@ export const LeadService = () => {
           : await userRepo.findOne({ where: { id: assigned_to } });
     }
 
-    return await leadRepo.save(lead);
+    // Handle lead escalation
+    if (data.escalate_to === true && !lead.escalate_to) {
+      lead.escalate_to = true;
+      
+      // Get all staff members to notify
+      const staffMembers = await userRepo.find({
+        where: { role: { role: "staff" } },
+        relations: ["role"]
+      });
+
+      // Notify all staff members about the escalated lead
+      for (const staff of staffMembers) {
+        await notificationService.createNotification(
+          staff.id,
+          NotificationType.LEAD_ESCALATED,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          {
+            leadId: lead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
+            requirement: lead.requirement
+          }
+        );
+      }
+
+      // Notify all admins about the escalated lead
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" } },
+        relations: ["role"]
+      });
+
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.LEAD_ESCALATED,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          {
+            leadId: lead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
+            requirement: lead.requirement
+          }
+        );
+      }
+    }
+
+    const savedLead = await leadRepo.save(lead);
+
+    // Send notification to assigned user if any
+    if (lead.assigned_to) {
+      await notificationService.createNotification(
+        lead.assigned_to.id,
+        NotificationType.LEAD_ASSIGNED,
+        `You have been assigned a new lead: ${first_name} ${last_name}`,
+        {
+          leadId: savedLead.id,
+          leadName: `${first_name} ${last_name}`,
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+        }
+      );
+    }
+
+    return savedLead;
   };
 
   // Soft Delete Lead
