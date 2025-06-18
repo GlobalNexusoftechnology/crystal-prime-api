@@ -7,8 +7,6 @@ import AppError from "../utils/appError";
 
 interface ProjectInput {
   client_id?: string;
-  milestone_id?: string;
-  task_id?: string;
   name: string;
   project_type?: string;
   budget?: number;
@@ -30,8 +28,6 @@ export const ProjectService = () => {
   const createProject = async (data: ProjectInput) => {
     const {
       client_id,
-      milestone_id,
-      task_id,
       name,
       project_type,
       budget,
@@ -49,18 +45,6 @@ export const ProjectService = () => {
       if (!client) throw new AppError(404, "Client not found");
     }
 
-    let milestone;
-    if (milestone_id) {
-      milestone = await milestoneRepo.findOne({ where: { id: milestone_id } });
-      if (!milestone) throw new AppError(404, "Milestone not found");
-    }
-
-    let task;
-    if (task_id) {
-      task = await taskRepo.findOne({ where: { id: task_id } });
-      if (!task) throw new AppError(404, "Task not found");
-    }
-
     const project = ProjectRepo.create({
       name,
       project_type,
@@ -72,8 +56,6 @@ export const ProjectService = () => {
       actual_start_date,
       actual_end_date,
       client,
-      milestone,
-      task,
     });
 
     return await ProjectRepo.save(project);
@@ -109,8 +91,6 @@ export const ProjectService = () => {
 
     const {
       client_id,
-      milestone_id,
-      task_id,
       name,
       project_type,
       budget,
@@ -128,18 +108,6 @@ export const ProjectService = () => {
       project.client = client;
     }
 
-    if (milestone_id) {
-      const milestone = await milestoneRepo.findOne({ where: { id: milestone_id } });
-      if (!milestone) throw new AppError(404, "Milestone not found");
-      project.milestone = milestone;
-    }
-
-    if (task_id) {
-      const task = await taskRepo.findOne({ where: { id: task_id } });
-      if (!task) throw new AppError(404, "Task not found");
-      project.task = task;
-    }
-
     if (name !== undefined) project.name = name;
     if (project_type !== undefined) project.project_type = project_type;
     if (budget !== undefined) project.budget = budget;
@@ -147,15 +115,19 @@ export const ProjectService = () => {
     if (actual_cost !== undefined) project.actual_cost = actual_cost;
     if (start_date !== undefined) project.start_date = start_date;
     if (end_date !== undefined) project.end_date = end_date;
-    if (actual_start_date !== undefined) project.actual_start_date = actual_start_date;
-    if (actual_end_date !== undefined) project.actual_end_date = actual_end_date;
+    if (actual_start_date !== undefined)
+      project.actual_start_date = actual_start_date;
+    if (actual_end_date !== undefined)
+      project.actual_end_date = actual_end_date;
 
     return await ProjectRepo.save(project);
   };
 
   // Soft Delete Project
   const softDeleteProject = async (id: string) => {
-    const project = await ProjectRepo.findOne({ where: { id, deleted: false } });
+    const project = await ProjectRepo.findOne({
+      where: { id, deleted: false },
+    });
     if (!project) throw new AppError(404, "Project record not found");
 
     project.deleted = true;

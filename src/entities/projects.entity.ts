@@ -40,12 +40,4 @@ export class Project extends Model {
 
   @OneToMany(() => projectAttachments, (attachment) => attachment.Project)
   attachments: projectAttachments[];
-
-  @ManyToOne(() => ProjectMilestones, (milestone) => milestone.id, { nullable: true })
-  @JoinColumn({ name: "milestone_id" })
-  milestone: ProjectMilestones;
-
-  @ManyToOne(() => ProjectTasks, (task) => task.id, { nullable: true })
-  @JoinColumn({ name: "task_id" })
-  task: ProjectTasks;
 }
