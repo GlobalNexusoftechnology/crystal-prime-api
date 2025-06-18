@@ -2,6 +2,8 @@ import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Clients } from "./clients.entity";
 import { projectAttachments } from "./project-attachments.entity";
+import { ProjectMilestones } from "./project-milestone.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 @Entity("Project ")
 export class Project extends Model {
@@ -38,4 +40,12 @@ export class Project extends Model {
 
   @OneToMany(() => projectAttachments, (attachment) => attachment.Project)
   attachments: projectAttachments[];
+
+  @ManyToOne(() => ProjectMilestones, (milestone) => milestone.id, { nullable: true })
+  @JoinColumn({ name: "milestone_id" })
+  milestone: ProjectMilestones;
+
+  @ManyToOne(() => ProjectTasks, (task) => task.id, { nullable: true })
+  @JoinColumn({ name: "task_id" })
+  task: ProjectTasks;
 }
