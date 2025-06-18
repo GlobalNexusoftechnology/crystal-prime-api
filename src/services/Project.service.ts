@@ -7,8 +7,6 @@ import AppError from "../utils/appError";
 
 interface ProjectInput {
   client_id?: string;
-  milestone_id?: string;
-  task_id?: string;
   name: string;
   project_type?: string;
   budget?: number;
@@ -22,16 +20,12 @@ interface ProjectInput {
 
 const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
-const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
-const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const ProjectService = () => {
   // Create Project
   const createProject = async (data: ProjectInput) => {
     const {
       client_id,
-      milestone_id,
-      task_id,
       name,
       project_type,
       budget,
@@ -49,18 +43,6 @@ export const ProjectService = () => {
       if (!client) throw new AppError(404, "Client not found");
     }
 
-    let milestone;
-    if (milestone_id) {
-      milestone = await milestoneRepo.findOne({ where: { id: milestone_id } });
-      if (!milestone) throw new AppError(404, "Milestone not found");
-    }
-
-    let task;
-    if (task_id) {
-      task = await taskRepo.findOne({ where: { id: task_id } });
-      if (!task) throw new AppError(404, "Task not found");
-    }
-
     const project = ProjectRepo.create({
       name,
       project_type,
@@ -72,8 +54,6 @@ export const ProjectService = () => {
       actual_start_date,
       actual_end_date,
       client,
-      milestone,
-      task,
     });
 
     return await ProjectRepo.save(project);
@@ -83,7 +63,7 @@ export const ProjectService = () => {
   const getAllProject = async () => {
     const data = await ProjectRepo.find({
       where: { deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client",],
     });
     return data;
   };
@@ -92,7 +72,7 @@ export const ProjectService = () => {
   const getProjectById = async (id: string) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client",],
     });
 
     if (!project) throw new AppError(404, "Project record not found");
@@ -103,14 +83,12 @@ export const ProjectService = () => {
   const updateProject = async (id: string, data: Partial<ProjectInput>) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client",],
     });
     if (!project) throw new AppError(404, "Project record not found");
 
     const {
       client_id,
-      milestone_id,
-      task_id,
       name,
       project_type,
       budget,
@@ -126,18 +104,6 @@ export const ProjectService = () => {
       const client = await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
       project.client = client;
-    }
-
-    if (milestone_id) {
-      const milestone = await milestoneRepo.findOne({ where: { id: milestone_id } });
-      if (!milestone) throw new AppError(404, "Milestone not found");
-      project.milestone = milestone;
-    }
-
-    if (task_id) {
-      const task = await taskRepo.findOne({ where: { id: task_id } });
-      if (!task) throw new AppError(404, "Task not found");
-      project.task = task;
     }
 
     if (name !== undefined) project.name = name;
