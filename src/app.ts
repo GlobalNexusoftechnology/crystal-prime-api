@@ -35,6 +35,7 @@ import clientFollowupRoutes from "./routes/clients-followups.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
+import clientsDetailsRouter from './routes/clients-details.routes';
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
 
@@ -100,6 +101,7 @@ AppDataSource.initialize()
     app.use('/api/task-master', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
+    app.use('/api/clients-details', clientsDetailsRouter);
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
 
