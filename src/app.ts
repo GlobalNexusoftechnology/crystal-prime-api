@@ -33,6 +33,7 @@ import milestoneMasterRouter from './routes/milestone-master.routes';
 import taskMasterRouter from './routes/task-master.routes';
 import clientFollowupRoutes from "./routes/clients-followups.routes";
 
+import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
@@ -90,7 +91,7 @@ AppDataSource.initialize()
     app.use('/api/project-management', projectManagementRouter);
     app.use('/api/task-management', taskManagementRouter);
     app.use("/api/clients", clientRoutes);
-    app.use("/api/Project",ProjectRoutes);
+    app.use("/api/Project", ProjectRoutes);
     app.use("/api/project-templates", projectTemplateRoutes);
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
@@ -100,6 +101,8 @@ AppDataSource.initialize()
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
     
+    app.use("/api/daily-task", dailyTaskEntryRoutes);
+
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
       res.status(200).json({
