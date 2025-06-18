@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
-import { Project } from "./Project.entity";
+import { Project } from "./projects.entity";
 import { User } from "./user.entity";
 
 @Entity('daily_task_entries')

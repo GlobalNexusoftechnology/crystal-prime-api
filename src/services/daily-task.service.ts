@@ -1,6 +1,6 @@
 import { AppDataSource } from "../utils/data-source";
 import { DailyTaskEntries } from "../entities/daily-task.entity";
-import { Project } from "../entities/Project.entity";
+import { Project } from "../entities/projects.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 

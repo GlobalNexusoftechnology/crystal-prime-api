@@ -1,6 +1,6 @@
 import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
-import { Project } from "./Project.entity";
+import { Project } from "./projects.entity";
 
 @Entity("project_milestones")
 export class ProjectMilestones extends Model {
