@@ -31,14 +31,6 @@ export const ClientService = () => {
       website,
     } = data;
 
-    const existingClient = await clientRepo.findOne({
-      where: [{ email }, { contact_number }],
-    });
-
-    if (existingClient) {
-      throw new AppError(400, "Client with this email or contact number already exists");
-    }
-
     let lead = undefined;
     if (lead_id) {
       lead = await leadRepo.findOne({ where: { id: lead_id } });
@@ -99,21 +91,6 @@ export const ClientService = () => {
       contact_person,
       website,
     } = data;
-
-    // Check for conflicts
-    if (email) {
-      const existingEmail = await clientRepo.findOne({ where: { email } });
-      if (existingEmail && existingEmail.id !== client.id) {
-        throw new AppError(400, "Email already exists");
-      }
-    }
-
-    if (contact_number) {
-      const existingContact = await clientRepo.findOne({ where: { contact_number } });
-      if (existingContact && existingContact.id !== client.id) {
-        throw new AppError(400, "Contact number already exists");
-      }
-    }
 
     if (lead_id) {
       const lead = await leadRepo.findOne({ where: { id: lead_id } });
