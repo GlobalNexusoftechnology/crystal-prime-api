@@ -20,8 +20,6 @@ interface ProjectInput {
 
 const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
-const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
-const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const ProjectService = () => {
   // Create Project
@@ -65,7 +63,7 @@ export const ProjectService = () => {
   const getAllProject = async () => {
     const data = await ProjectRepo.find({
       where: { deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client"],
     });
     return data;
   };
@@ -74,7 +72,7 @@ export const ProjectService = () => {
   const getProjectById = async (id: string) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client"],
     });
 
     if (!project) throw new AppError(404, "Project record not found");
@@ -85,7 +83,7 @@ export const ProjectService = () => {
   const updateProject = async (id: string, data: Partial<ProjectInput>) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
-      relations: ["client", "milestone", "task"],
+      relations: ["client"],
     });
     if (!project) throw new AppError(404, "Project record not found");
 
