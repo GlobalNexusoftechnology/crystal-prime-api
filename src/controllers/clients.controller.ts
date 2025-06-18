@@ -4,6 +4,7 @@ import {
   createClientSchema,
   updateClientSchema,
 } from "../schemas/clients.schema";
+import { findUserById } from "../services/user.service";
 
 const service = ClientService();
 
@@ -23,11 +24,11 @@ export const clientController = () => {
         data: result,
       });
     } catch (error) {
-      next(error); 
+      next(error);
     }
   };
 
-  
+
   // Get All Clients
   const getAllClients = async (
     req: Request,
@@ -37,7 +38,7 @@ export const clientController = () => {
     try {
       const result = await service.getAllClients();
       res.status(200).json({
-       status: "success",
+        status: "success",
         message: "All Client fetched",
         data: result,
       });
@@ -65,7 +66,7 @@ export const clientController = () => {
     }
   };
 
-  
+
   // Update Client
   const updateClient = async (
     req: Request,
@@ -105,12 +106,64 @@ export const clientController = () => {
     }
   };
 
+
+  const exportClientsExcelController = async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.user.id;
+      const userData = await findUserById(userId);
+      const userRole = userData.role.role;
+
+      const workbook = await service.exportClientsToExcel(userId, userRole);
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=clients_${Date.now()}.xlsx`
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Error exporting clients:", error);
+      res.status(500).json({ message: "Failed to export clients" });
+    }
+  };
+
+  // controllers/clients.controller.ts
+  const downloadClientTemplate = async (req: Request, res: Response) => {
+    try {
+      const workbook = await service.generateClientTemplate();
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=clients_template.xlsx"
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Error generating client template:", error);
+      res.status(500).json({ message: "Failed to download client template" });
+    }
+  };
+
+
+
   // Return all controller methods
   return {
     createClient,
     getAllClients,
     getClientById,
     updateClient,
-    softDeleteClient
+    softDeleteClient,
+    exportClientsExcelController,
+    downloadClientTemplate
   };
 };

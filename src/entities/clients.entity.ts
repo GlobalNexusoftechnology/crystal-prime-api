@@ -11,10 +11,10 @@ export class Clients extends Model {
   @Column({ type: 'varchar', length: 100 })
   name: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   email: string;
 
-  @Column({ type: 'varchar', length: 20, unique: true })
+  @Column({ type: 'varchar', length: 20, })
   contact_number: string;
 
   @Column({ type: 'text', nullable: true })
