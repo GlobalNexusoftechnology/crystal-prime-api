@@ -4,13 +4,13 @@ export default {
   refreshTokenExpiresIn: 1440,
   emailFrom: "developmentbyjuned@gmail.com",
   port: 5000,
-  wsPort: 5012,
+  wsPort: 5011,
   postgresConfig: {
     host: "localhost",
     port: 5432,
-    username: "postgres",
-    password: "postgres",
-    database: "satkar_db",
+    username: "satkar",
+    password: "satkar",
+    database: "satkar_prod",
   },
-  frontendUrl: "http://localhost:3000",
+  frontendUrl: "https://erp.satkarsoftwares.com/",
 };

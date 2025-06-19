@@ -51,8 +51,7 @@ export const LeadStatusHistoryService = () => {
     if (status) {
       lead.status = status;
       await leadRepo.save(lead);
-    }
-
+    }    
     return await historyRepo.save(record);
   };
 
