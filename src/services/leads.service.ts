@@ -8,7 +8,10 @@ import ExcelJS from "exceljs";
 import { LeadTypes } from "../entities/lead-type.entity";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
-import { LeadFollowup, FollowupStatus } from "../entities/lead-followups.entity";
+import {
+  LeadFollowup,
+  FollowupStatus,
+} from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
 
 const leadRepo = AppDataSource.getRepository(Leads);
@@ -60,8 +63,8 @@ export const LeadService = () => {
     lead.email = Array.isArray(email)
       ? email
       : typeof email === "string"
-        ? [email]
-        : [];
+      ? [email]
+      : [];
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
@@ -104,7 +107,7 @@ export const LeadService = () => {
         {
           leadId: savedLead.id,
           leadName: `${first_name} ${last_name}`,
-          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`,
         }
       );
     }
@@ -136,44 +139,70 @@ export const LeadService = () => {
   const getLeadStats = async (userId: string) => {
     // Get today's start and end timestamps in UTC
     const now = new Date();
-    const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
-    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+    const today = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    );
+    const tomorrow = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate() + 1,
+        0,
+        0,
+        0,
+        0
+      )
+    );
 
-    const [totalLeads, assignedToMe, profileSent, businessDone, notInterested, todayFollowups] =
-      await Promise.all([
-        leadRepo.count({ where: { deleted: false } }),
+    const [
+      totalLeads,
+      assignedToMe,
+      profileSent,
+      businessDone,
+      notInterested,
+      todayFollowups,
+    ] = await Promise.all([
+      leadRepo.count({ where: { deleted: false } }),
 
-        leadRepo.count({
-          where: { deleted: false, assigned_to: { id: userId } },
-          relations: ["assigned_to"],
-        }),
+      leadRepo.count({
+        where: { deleted: false, assigned_to: { id: userId } },
+        relations: ["assigned_to"],
+      }),
 
-        leadRepo.count({
-          where: { deleted: false, status: { name: "Profile Sent" } },
-          relations: ["status"],
-        }),
+      leadRepo.count({
+        where: { deleted: false, status: { name: "Profile Sent" } },
+        relations: ["status"],
+      }),
 
-        leadRepo.count({
-          where: { deleted: false, status: { name: "Business Done" } },
-          relations: ["status"],
-        }),
+      leadRepo.count({
+        where: { deleted: false, status: { name: "Business Done" } },
+        relations: ["status"],
+      }),
 
-        leadRepo.count({
-          where: { deleted: false, status: { name: "Not Interested" } },
-          relations: ["status"],
-        }),
+      leadRepo.count({
+        where: { deleted: false, status: { name: "Not Interested" } },
+        relations: ["status"],
+      }),
 
-        // Get today's followups count
-        leadFollowupRepo.count({
-          where: {
-            deleted: false,
-            user: { id: userId },
-            due_date: Between(today, tomorrow),
-            status: Not(FollowupStatus.COMPLETED)
-          },
-          relations: ["user"]
-        })
-      ]);
+      // Get today's followups count
+      leadFollowupRepo.count({
+        where: {
+          deleted: false,
+          user: { id: userId },
+          due_date: Between(today, tomorrow),
+          status: Not(FollowupStatus.COMPLETED),
+        },
+        relations: ["user"],
+      }),
+    ]);
 
     return {
       totalLeads,
@@ -181,7 +210,7 @@ export const LeadService = () => {
       profileSent,
       businessDone,
       notInterested,
-      todayFollowups
+      todayFollowups,
     };
   };
 
@@ -210,8 +239,8 @@ export const LeadService = () => {
       const newEmailArray = Array.isArray(email)
         ? email
         : typeof email === "string"
-          ? [email]
-          : [];
+        ? [email]
+        : [];
 
       // Optionally check for duplicate emails in the array
       // const existing = await leadRepo
@@ -226,7 +255,6 @@ export const LeadService = () => {
 
       lead.email = newEmailArray;
     }
-
 
     lead.first_name = first_name ?? lead.first_name;
     lead.last_name = last_name ?? lead.last_name;
@@ -269,11 +297,11 @@ export const LeadService = () => {
     // Handle lead escalation
     if (data.escalate_to === true && !lead.escalate_to) {
       lead.escalate_to = true;
-      
+
       // Get all staff members to notify
       const staffMembers = await userRepo.find({
         where: { role: { role: "staff" } },
-        relations: ["role"]
+        relations: ["role"],
       });
 
       // Notify all staff members about the escalated lead
@@ -281,13 +309,15 @@ export const LeadService = () => {
         await notificationService.createNotification(
           staff.id,
           NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
+            lead.phone || lead.email
+          })`,
           {
             leadId: lead.id,
             leadName: `${lead.first_name} ${lead.last_name}`,
             leadContact: lead.phone || lead.email,
             escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
-            requirement: lead.requirement
+            requirement: lead.requirement,
           }
         );
       }
@@ -295,20 +325,22 @@ export const LeadService = () => {
       // Notify all admins about the escalated lead
       const adminUsers = await userRepo.find({
         where: { role: { role: "admin" } },
-        relations: ["role"]
+        relations: ["role"],
       });
 
       for (const admin of adminUsers) {
         await notificationService.createNotification(
           admin.id,
           NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email})`,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
+            lead.phone || lead.email
+          })`,
           {
             leadId: lead.id,
             leadName: `${lead.first_name} ${lead.last_name}`,
             leadContact: lead.phone || lead.email,
             escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
-            requirement: lead.requirement
+            requirement: lead.requirement,
           }
         );
       }
@@ -325,7 +357,7 @@ export const LeadService = () => {
         {
           leadId: savedLead.id,
           leadName: `${first_name} ${last_name}`,
-          assignedBy: `${userData?.first_name} ${userData?.last_name}`
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`,
         }
       );
     }
@@ -500,7 +532,6 @@ export const LeadService = () => {
         .andWhere(":emailList && lead.email", { emailList })
         .getOne();
 
-
       if (existingEmail) {
         throw new AppError(
           400,
@@ -515,7 +546,10 @@ export const LeadService = () => {
         company: data.company || "",
         phone: data.phone || "",
         other_contact: data.other_contact || "",
-        email: String(email).split(",").map((e) => e.trim()).filter(Boolean),
+        email: String(email)
+          .split(",")
+          .map((e) => e.trim())
+          .filter(Boolean),
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
@@ -523,7 +557,7 @@ export const LeadService = () => {
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
 
-       lead.email = emailList;
+      lead.email = emailList;
 
       // Find Source by Name
       if (data.source) {
@@ -576,13 +610,12 @@ export const LeadService = () => {
   };
 
   const findLeadByEmail = async ({ emailList }: { emailList: string[] }) => {
-  return await leadRepo
-    .createQueryBuilder("lead")
-    .where("lead.deleted = false")
-    .andWhere(":emailList && lead.email", { emailList })
-    .getOne();
-};
-
+    return await leadRepo
+      .createQueryBuilder("lead")
+      .where("lead.deleted = false")
+      .andWhere(":emailList && lead.email", { emailList })
+      .getOne();
+  };
 
   const findLeadByPhoneNumber = async ({ phone }: { phone: string }) => {
     return await leadRepo.findOne({
