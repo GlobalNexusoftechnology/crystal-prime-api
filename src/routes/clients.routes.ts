@@ -8,7 +8,7 @@ const controller = clientController();
 router.use(deserializeUser, requireUser);
 
 // Routes
-router.post("/create-client", controller.createClient);
+router.post("/", controller.createClient);
 router.get("/", controller.getAllClients);
 router.get("/:id", controller.getClientById);
 router.put("/:id", controller.updateClient);      
