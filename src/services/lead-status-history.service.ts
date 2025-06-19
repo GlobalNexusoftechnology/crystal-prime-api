@@ -47,6 +47,12 @@ export const LeadStatusHistoryService = () => {
       status_remarks,
     });
 
+    // Update lead status if status is provided
+    if (status) {
+      lead.status = status;
+      await leadRepo.save(lead);
+    }    
+
     return await historyRepo.save(record);
   };
 
