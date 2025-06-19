@@ -1,12 +1,12 @@
 import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
-import { Project } from "./Project.entity";
 import { User } from "./user.entity";
+import { Project } from "./projects.entity";
 
 @Entity("project_attachments")
 export class projectAttachments extends Model {
   @ManyToOne(() => Project, (Project) => Project.attachments, { nullable: false })
-  @JoinColumn({ name: "Project_id" })
+  @JoinColumn({ name: "project_id" })
   Project: Project;
 
   @ManyToOne(() => User, (user) => user.project_attachments, { nullable: true })

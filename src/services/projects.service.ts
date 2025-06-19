@@ -1,6 +1,8 @@
 import { AppDataSource } from "../utils/data-source";
-import { Project } from "../entities/Project.entity";
+import { Project } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
+import { ProjectMilestones } from "../entities/project-milestone.entity";
+import { ProjectTasks } from "../entities/project-task.entity";
 import AppError from "../utils/appError";
 
 interface ProjectInput {
@@ -35,13 +37,13 @@ export const ProjectService = () => {
       actual_end_date,
     } = data;
 
-    let client = undefined;
+    let client;
     if (client_id) {
       client = await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
     }
 
-    const Project = ProjectRepo.create({
+    const project = ProjectRepo.create({
       name,
       project_type,
       budget,
@@ -54,10 +56,10 @@ export const ProjectService = () => {
       client,
     });
 
-    return await ProjectRepo.save(Project);
+    return await ProjectRepo.save(project);
   };
 
-  // Get All Project
+  // Get All Projects
   const getAllProject = async () => {
     const data = await ProjectRepo.find({
       where: { deleted: false },
@@ -66,7 +68,7 @@ export const ProjectService = () => {
     return data;
   };
 
-  // Get by ID Project
+  // Get Project by ID
   const getProjectById = async (id: string) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
@@ -79,7 +81,10 @@ export const ProjectService = () => {
 
   // Update Project
   const updateProject = async (id: string, data: Partial<ProjectInput>) => {
-    const project = await ProjectRepo.findOne({ where: { id, deleted: false }, relations: ["client"] });
+    const project = await ProjectRepo.findOne({
+      where: { id, deleted: false },
+      relations: ["client"],
+    });
     if (!project) throw new AppError(404, "Project record not found");
 
     const {
@@ -108,20 +113,23 @@ export const ProjectService = () => {
     if (actual_cost !== undefined) project.actual_cost = actual_cost;
     if (start_date !== undefined) project.start_date = start_date;
     if (end_date !== undefined) project.end_date = end_date;
-    if (actual_start_date !== undefined) project.actual_start_date = actual_start_date;
-    if (actual_end_date !== undefined) project.actual_end_date = actual_end_date;
+    if (actual_start_date !== undefined)
+      project.actual_start_date = actual_start_date;
+    if (actual_end_date !== undefined)
+      project.actual_end_date = actual_end_date;
 
     return await ProjectRepo.save(project);
   };
 
   // Soft Delete Project
   const softDeleteProject = async (id: string) => {
-    const project = await ProjectRepo.findOne({ where: { id, deleted: false } });
+    const project = await ProjectRepo.findOne({
+      where: { id, deleted: false },
+    });
     if (!project) throw new AppError(404, "Project record not found");
 
     project.deleted = true;
     project.deleted_at = new Date();
-    project.deleted = true;
 
     return await ProjectRepo.save(project);
   };

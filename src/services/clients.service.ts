@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { Leads } from "../entities/leads.entity";
+import ExcelJS from "exceljs";
 
 interface ClientInput {
   lead_id?: string;
@@ -30,14 +31,6 @@ export const ClientService = () => {
       contact_person,
       website,
     } = data;
-
-    const existingClient = await clientRepo.findOne({
-      where: [{ email }, { contact_number }],
-    });
-
-    if (existingClient) {
-      throw new AppError(400, "Client with this email or contact number already exists");
-    }
 
     let lead = undefined;
     if (lead_id) {
@@ -100,21 +93,6 @@ export const ClientService = () => {
       website,
     } = data;
 
-    // Check for conflicts
-    if (email) {
-      const existingEmail = await clientRepo.findOne({ where: { email } });
-      if (existingEmail && existingEmail.id !== client.id) {
-        throw new AppError(400, "Email already exists");
-      }
-    }
-
-    if (contact_number) {
-      const existingContact = await clientRepo.findOne({ where: { contact_number } });
-      if (existingContact && existingContact.id !== client.id) {
-        throw new AppError(400, "Contact number already exists");
-      }
-    }
-
     if (lead_id) {
       const lead = await leadRepo.findOne({ where: { id: lead_id } });
       if (!lead) throw new AppError(404, "Lead not found");
@@ -144,11 +122,89 @@ export const ClientService = () => {
     return await clientRepo.save(client);
   };
 
+
+ const exportClientsToExcel = async (
+  userId: string,
+  userRole: string
+): Promise<ExcelJS.Workbook> => {
+  const clientRepo = AppDataSource.getRepository(Clients);
+
+  let clients: Clients[];
+
+  if (userRole.toLowerCase() === "admin") {
+    clients = await clientRepo.find({
+      where: { deleted: false },
+      relations: ["lead"],
+      order: { created_at: "DESC" },
+    });
+  } else {
+    clients = await clientRepo.find({
+      where: { deleted: false },
+      relations: ["lead"],
+      order: { created_at: "DESC" },
+    });
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Clients");
+
+  worksheet.columns = [
+    { header: "Sr No", key: "sr_no", width: 6 },
+    { header: "Client Name", key: "name", width: 25 },
+    { header: "Email", key: "email", width: 30 },
+    { header: "Contact Number", key: "contact_number", width: 20 },
+    { header: "Company Name", key: "company_name", width: 30 },
+    { header: "Website", key: "website", width: 30 },
+    { header: "Contact Person", key: "contact_person", width: 25 },
+    { header: "Address", key: "address", width: 40 },
+    { header: "Created At", key: "created_at", width: 25 },
+  ];
+
+  clients.forEach((client, index) => {
+    worksheet.addRow({
+      sr_no: index + 1,
+      name: client.name,
+      email: client.email ?? "",
+      contact_number: client.contact_number,
+      company_name: client.company_name ?? "",
+      website: client.website ?? "",
+      contact_person: client.contact_person ?? "",
+      address: client.address ?? "",
+      created_at: client.created_at?.toLocaleString() ?? "",
+    });
+  });
+
+  return workbook;
+};
+
+// services/client.service.ts
+const generateClientTemplate = async (): Promise<ExcelJS.Workbook> => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Clients");
+
+  worksheet.columns = [
+    { header: "name", key: "name", width: 25 },
+    { header: "email", key: "email", width: 30 },
+    { header: "contact_number", key: "contact_number", width: 20 },
+    { header: "company_name", key: "company_name", width: 25 },
+    { header: "website", key: "website", width: 30 },
+    { header: "contact_person", key: "contact_person", width: 25 },
+    { header: "address", key: "address", width: 40 },
+    { header: "lead_id", key: "lead_id", width: 36 },
+  ];
+
+  return workbook;
+};
+
+
+
   return {
     createClient,
     getAllClients,
     getClientById,
     updateClient,
     softDeleteClient,
+    exportClientsToExcel,
+    generateClientTemplate
   };
 };

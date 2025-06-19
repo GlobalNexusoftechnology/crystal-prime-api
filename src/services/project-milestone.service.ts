@@ -1,6 +1,6 @@
 import { AppDataSource } from "../utils/data-source";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
-import { Project } from "../entities/Project.entity";
+import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
 
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
