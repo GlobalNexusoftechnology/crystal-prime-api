@@ -28,4 +28,22 @@ export const updateProjectTemplateSchema = z.object({
   description: z.string().optional(),
   project_type: z.string().optional(),
   estimated_days: z.number().int().positive().optional(),
+  milestones: z.array(
+    z.object({
+      id: z.string().optional(), // for existing milestones
+      name: z.string().min(1).optional(),
+      description: z.string().optional(),
+      estimated_days: z.number().int().positive().optional(),
+      tasks: z.array(
+        z.object({
+          id: z.string().optional(), // for existing tasks
+          title: z.string().min(1).optional(),
+          description: z.string().optional(),
+          estimated_days: z.number().int().positive().optional(),
+          _delete: z.boolean().optional(), // flag to delete task
+        })
+      ).optional(),
+      _delete: z.boolean().optional(), // flag to delete milestone
+    })
+  ).optional(),
 });
