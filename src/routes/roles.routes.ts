@@ -7,7 +7,7 @@ const router = express.Router();
 // Call the controller function to get the methods
 const controller = roleController();
 
-// router.use(deserializeUser, requireUser);
+router.use(deserializeUser, requireUser);
 
 router.post("/", controller.createRole);
 router.get("/", controller.getAllRoles);
