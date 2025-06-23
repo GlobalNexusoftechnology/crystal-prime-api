@@ -19,10 +19,7 @@ export class ClientDetails extends Model {
   email: string;
 
   @Column({ type: "varchar", length: 20, nullable: true })
-  contact1: string;
-
-  @Column({ type: "varchar", length: 20, nullable: true })
-  contact2: string;
+  other_contact: string;
 
   @Column({ type: "varchar", length: 100, nullable: true })
   designation: string;

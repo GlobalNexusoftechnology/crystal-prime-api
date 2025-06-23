@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
 import Model from './model.entity';
 import { Leads } from './leads.entity';
+import { ClientDetails } from './clients-details.entity';
 
 @Entity('clients')
 export class Clients extends Model {
@@ -29,4 +30,6 @@ export class Clients extends Model {
   @Column({ type: 'varchar', length: 100, nullable: true })
   contact_person: string;
 
+  @OneToMany(() => ClientDetails, (detail) => detail.client)
+  client_details: ClientDetails[];
 }

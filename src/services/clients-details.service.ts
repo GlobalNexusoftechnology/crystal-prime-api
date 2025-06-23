@@ -9,8 +9,7 @@ interface ClientDetailsInput {
     client_contact: string;
     contact_person?: string;
     email?: string;
-    contact1?: string;
-    contact2?: string;
+    other_contact?: string;
     designation?: string;
 }
 
@@ -25,8 +24,7 @@ export const ClientDetailsService = () => {
             client_contact,
             contact_person,
             email,
-            contact1,
-            contact2,
+            other_contact,
             designation,
         } = data;
 
@@ -38,8 +36,7 @@ export const ClientDetailsService = () => {
             client_contact,
             contact_person,
             email,
-            contact1,
-            contact2,
+            other_contact,
             designation,
         });
 
@@ -84,8 +81,7 @@ export const ClientDetailsService = () => {
         if (data.client_contact !== undefined) detail.client_contact = data.client_contact;
         if (data.contact_person !== undefined) detail.contact_person = data.contact_person;
         if (data.email !== undefined) detail.email = data.email;
-        if (data.contact1 !== undefined) detail.contact1 = data.contact1;
-        if (data.contact2 !== undefined) detail.contact2 = data.contact2;
+        if (data.other_contact !== undefined) detail.other_contact = data.other_contact;
         if (data.designation !== undefined) detail.designation = data.designation;
 
         return await clientDetailsRepo.save(detail);

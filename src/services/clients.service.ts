@@ -3,6 +3,8 @@ import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { Leads } from "../entities/leads.entity";
 import ExcelJS from "exceljs";
+import { ClientDetailsService } from "./clients-details.service";
+import { ClientDetails } from "entities/clients-details.entity";
 
 interface ClientInput {
   lead_id?: string;
@@ -20,7 +22,7 @@ const leadRepo = AppDataSource.getRepository(Leads);
 
 export const ClientService = () => {
   // Create Client
-  const createClient = async (data: ClientInput) => {
+  const createClient = async (data: ClientInput & { client_details?: ClientDetails[] }) => {
     const {
       name,
       email,
@@ -30,6 +32,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      client_details,
     } = data;
 
     let lead = undefined;
@@ -49,14 +52,27 @@ export const ClientService = () => {
       website,
     });
 
-    return await clientRepo.save(client);
+    const savedClient = await clientRepo.save(client);
+
+    // Create client details if provided
+    if (Array.isArray(client_details) && client_details.length > 0) {
+      const clientDetailsService = ClientDetailsService();
+      for (const detail of client_details) {
+        await clientDetailsService.createClientDetail({
+          ...detail,
+          client_id: savedClient.id,
+        });
+      }
+    }
+
+    return savedClient;
   };
 
   // Get All Clients
   const getAllClients = async () => {
     const data = await clientRepo.find({
       where: { deleted: false },
-      relations: ["lead"],
+      relations: ["lead", "client_details"],
     });
 
     // return {
@@ -78,7 +94,7 @@ export const ClientService = () => {
   };
 
   //  Update Client
-  const updateClient = async (id: string, data: Partial<ClientInput>) => {
+  const updateClient = async (id: string, data: Partial<ClientInput> & { client_details?: ClientDetails[] }) => {
     const client = await clientRepo.findOne({ where: { id, deleted: false } });
     if (!client) throw new AppError(404, "Client not found");
 
@@ -91,6 +107,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      client_details,
     } = data;
 
     if (lead_id) {
@@ -108,7 +125,34 @@ export const ClientService = () => {
     if (contact_person !== undefined) client.contact_person = contact_person;
     if (website !== undefined) client.website = website;
 
-    return await clientRepo.save(client);
+    const savedClient = await clientRepo.save(client);
+
+    // Update client details if provided
+    if (Array.isArray(client_details)) {
+      const clientDetailsService = ClientDetailsService();
+      for (const detail of client_details) {
+        if (detail.deleted && detail.id) {
+          await clientDetailsService.deleteClientDetail(detail.id);
+          continue;
+        }
+        if (detail.id) {
+          await clientDetailsService.updateClientDetail(detail.id, {
+            client_contact: detail.client_contact,
+            contact_person: detail.contact_person,
+            email: detail.email,
+            other_contact: detail.other_contact,
+            designation: detail.designation,
+          });
+        } else {
+          await clientDetailsService.createClientDetail({
+            ...detail,
+            client_id: savedClient.id,
+          });
+        }
+      }
+    }
+
+    return savedClient;
   };
 
   //  Soft Delete
