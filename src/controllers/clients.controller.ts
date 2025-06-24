@@ -5,8 +5,10 @@ import {
   updateClientSchema,
 } from "../schemas/clients.schema";
 import { findUserById } from "../services/user.service";
+import multer from "multer";
 
 const service = ClientService();
+const upload = multer();
 
 export const clientController = () => {
   // Create Client
@@ -173,7 +175,26 @@ export const clientController = () => {
     }
   };
 
-
+  // Upload Clients from Excel
+  const uploadClientsFromExcelController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ status: "error", message: "No file uploaded" });
+      }
+      const result = await service.uploadClientsFromExcelService(req.file.buffer);
+      res.status(200).json({
+        status: "success",
+        message: "Clients uploaded from Excel successfully",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
 
   // Return all controller methods
   return {
@@ -183,6 +204,7 @@ export const clientController = () => {
     updateClient,
     softDeleteClient,
     exportClientsExcelController,
-    downloadClientTemplate
+    downloadClientTemplate,
+    uploadClientsFromExcelController,
   };
 };

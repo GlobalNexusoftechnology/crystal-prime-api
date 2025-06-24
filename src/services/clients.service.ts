@@ -278,7 +278,103 @@ export const ClientService = () => {
     return workbook;
   };
 
+  // Service to handle Excel upload for Clients
+  const uploadClientsFromExcelService = async (
+    fileBuffer: Buffer
+  ) => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(fileBuffer);
+    const worksheet = workbook.worksheets[0];
 
+    const headers: string[] = [];
+    worksheet.getRow(1).eachCell((cell) => {
+      headers.push(cell.text.toLowerCase().trim());
+    });
+
+    // Define required fields
+    const requiredFields = ["name", "contact_number"];
+    const missingFields = requiredFields.filter(
+      (field) => !headers.includes(field)
+    );
+    if (missingFields.length > 0) {
+      throw new AppError(
+        400,
+        `Missing required fields: ${missingFields.join(", ")}`
+      );
+    }
+
+    const clientsToInsert: any[] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header row
+
+      const clientData: any = {};
+      headers.forEach((header, colIndex) => {
+        clientData[header] = row.getCell(colIndex + 1).value || "";
+      });
+
+      clientData._rowNumber = rowNumber; // Attach row number for error tracking
+      clientsToInsert.push(clientData);
+    });
+
+    const savedClients = [];
+    for (const data of clientsToInsert) {
+      const rowNumber = data._rowNumber;
+
+      // Check if client with same name and contact_number already exists
+      const existingClient = await clientRepo.findOne({
+        where: { name: data.name, contact_number: data.contact_number, deleted: false },
+      });
+      if (existingClient) {
+        throw new AppError(
+          400,
+          `Client already exists at row ${rowNumber}: ${data.name} (${data.contact_number})`
+        );
+      }
+
+      // Prepare client details array (up to 2 details)
+      const client_details = [];
+      for (let i = 1; i <= 2; i++) {
+        if (data[`client_detail_contact_${i}`] || data[`client_detail_person_${i}`] || data[`client_detail_email_${i}`] || data[`client_detail_other_contact_${i}`] || data[`client_detail_designation_${i}`]) {
+          client_details.push({
+            client_contact: data[`client_detail_contact_${i}`] || "",
+            contact_person: data[`client_detail_person_${i}`] || "",
+            email: data[`client_detail_email_${i}`] || "",
+            other_contact: data[`client_detail_other_contact_${i}`] || "",
+            designation: data[`client_detail_designation_${i}`] || "",
+          });
+        }
+      }
+
+      // Create client object
+      const client = clientRepo.create({
+        name: data.name || "",
+        email: data.email || "",
+        contact_number: data.contact_number || "",
+        company_name: data.company_name || "",
+        website: data.website || "",
+        contact_person: data.contact_person || "",
+        address: data.address || "",
+        lead: data.lead_id ? { id: data.lead_id } : undefined,
+      });
+
+      const savedClient = await clientRepo.save(client);
+
+      // Save client details
+      if (client_details.length > 0) {
+        const clientDetailsService = ClientDetailsService();
+        for (const detail of client_details) {
+          await clientDetailsService.createClientDetail({
+            ...detail,
+            client_id: savedClient.id,
+          });
+        }
+      }
+
+      savedClients.push(savedClient);
+    }
+
+    return { total: savedClients.length, clients: savedClients };
+  };
 
   return {
     createClient,
@@ -287,6 +383,7 @@ export const ClientService = () => {
     updateClient,
     softDeleteClient,
     exportClientsToExcel,
-    generateClientTemplate
+    generateClientTemplate,
+    uploadClientsFromExcelService,
   };
 };
