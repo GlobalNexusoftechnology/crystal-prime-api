@@ -309,7 +309,31 @@ export const ClientService = () => {
 
       const clientData: any = {};
       headers.forEach((header, colIndex) => {
-        clientData[header] = row.getCell(colIndex + 1).value || "";
+        const cell = row.getCell(colIndex + 1);
+        const cellValue = cell.value;
+
+        let value = "";
+        if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          cellValue.text &&
+          typeof cellValue.text === "object" &&
+          "richText" in (cellValue.text as any) &&
+          Array.isArray((cellValue.text as any).richText)
+        ) {
+          value = ((cellValue.text as any).richText as any[]).map((rt: any) => rt.text).join("");
+        } else if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          typeof (cellValue as any).text === "string"
+        ) {
+          value = (cellValue as any).text;
+        } else {
+          value = cell.text || "";
+        }
+        clientData[header] = value;
       });
 
       clientData._rowNumber = rowNumber; // Attach row number for error tracking
@@ -336,24 +360,24 @@ export const ClientService = () => {
       for (let i = 1; i <= 2; i++) {
         if (data[`client_detail_contact_${i}`] || data[`client_detail_person_${i}`] || data[`client_detail_email_${i}`] || data[`client_detail_other_contact_${i}`] || data[`client_detail_designation_${i}`]) {
           client_details.push({
-            client_contact: data[`client_detail_contact_${i}`] || "",
-            contact_person: data[`client_detail_person_${i}`] || "",
-            email: data[`client_detail_email_${i}`] || "",
-            other_contact: data[`client_detail_other_contact_${i}`] || "",
-            designation: data[`client_detail_designation_${i}`] || "",
+            client_contact: String(data[`client_detail_contact_${i}`] || "").slice(0, 100),
+            contact_person: String(data[`client_detail_person_${i}`] || "").slice(0, 100),
+            email: String(data[`client_detail_email_${i}`] || "").slice(0, 100),
+            other_contact: String(data[`client_detail_other_contact_${i}`] || "").slice(0, 20),
+            designation: String(data[`client_detail_designation_${i}`] || "").slice(0, 100),
           });
         }
       }
 
       // Create client object
       const client = clientRepo.create({
-        name: data.name || "",
-        email: data.email || "",
-        contact_number: data.contact_number || "",
-        company_name: data.company_name || "",
-        website: data.website || "",
-        contact_person: data.contact_person || "",
-        address: data.address || "",
+        name: String(data.name || "").slice(0, 100),
+        email: String(data.email || "").slice(0, 100),
+        contact_number: String(data.contact_number || "").slice(0, 20),
+        company_name: String(data.company_name || "").slice(0, 150),
+        website: String(data.website || ""), // text, no limit
+        contact_person: String(data.contact_person || "").slice(0, 100),
+        address: String(data.address || ""), // text, no limit
         lead: data.lead_id ? { id: data.lead_id } : undefined,
       });
 
