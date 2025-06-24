@@ -4,7 +4,6 @@ import AppError from "../utils/appError";
 import { Leads } from "../entities/leads.entity";
 import ExcelJS from "exceljs";
 import { ClientDetailsService } from "./clients-details.service";
-import { ClientDetails } from "entities/clients-details.entity";
 
 interface ClientInput {
   lead_id?: string;
