@@ -40,4 +40,7 @@ export class Project extends Model {
 
   @OneToMany(() => projectAttachments, (attachment) => attachment.Project)
   attachments: projectAttachments[];
+
+  @OneToMany(() => ProjectMilestones, (milestone) => milestone.project)
+  milestones: ProjectMilestones[];
 }

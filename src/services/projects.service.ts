@@ -70,7 +70,12 @@ export const ProjectService = () => {
   const getAllProject = async () => {
     const data = await ProjectRepo.find({
       where: { deleted: false },
-      relations: ["client"],
+      relations: [
+        "client",
+        "milestones",
+        "milestones.tasks",
+        "attachments"
+      ],
     });
     return data;
   };
@@ -79,7 +84,12 @@ export const ProjectService = () => {
   const getProjectById = async (id: string) => {
     const project = await ProjectRepo.findOne({
       where: { id, deleted: false },
-      relations: ["client"],
+      relations: [
+        "client",
+        "milestones",
+        "milestones.tasks",
+        "attachments"
+      ],
     });
 
     if (!project) throw new AppError(404, "Project record not found");
