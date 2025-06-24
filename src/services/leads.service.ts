@@ -197,7 +197,8 @@ export const LeadService = () => {
         where: {
           deleted: false,
           user: { id: userId },
-          due_date: Between(today, tomorrow),
+          // due_date: Between(today, tomorrow),
+          due_date: today,
           status: Not(FollowupStatus.COMPLETED),
         },
         relations: ["user"],
