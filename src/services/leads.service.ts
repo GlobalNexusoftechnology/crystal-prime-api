@@ -249,10 +249,10 @@ export const LeadService = () => {
       //   .where("lead.id != :id", { id })
       //   .andWhere(":emailList && lead.email", { emailList: newEmailArray })
       //   .getOne();
-
       // if (existing) {
       //   throw new AppError(400, "One or more emails already exist in another lead");
       // }
+
 
       lead.email = newEmailArray;
     }
