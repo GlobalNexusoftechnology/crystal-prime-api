@@ -15,7 +15,7 @@ export const projectTemplateController = () => {
       const result = await service.createTemplate(parsed);
       res.status(201).json({
         status: "success",
-        message: "Project template created",
+        message: "Project template, milestones, and tasks created",
         data: result,
       });
     } catch (err) {

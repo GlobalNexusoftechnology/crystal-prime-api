@@ -4,8 +4,11 @@ import {
   createClientSchema,
   updateClientSchema,
 } from "../schemas/clients.schema";
+import { findUserById } from "../services/user.service";
+import multer from "multer";
 
 const service = ClientService();
+const upload = multer();
 
 export const clientController = () => {
   // Create Client
@@ -20,14 +23,15 @@ export const clientController = () => {
       res.status(201).json({
         status: "success",
         message: "clients created",
+        client_id: result.id,
         data: result,
       });
     } catch (error) {
-      next(error); 
+      next(error);
     }
   };
 
-  
+
   // Get All Clients
   const getAllClients = async (
     req: Request,
@@ -37,7 +41,7 @@ export const clientController = () => {
     try {
       const result = await service.getAllClients();
       res.status(200).json({
-       status: "success",
+        status: "success",
         message: "All Client fetched",
         data: result,
       });
@@ -65,7 +69,7 @@ export const clientController = () => {
     }
   };
 
-  
+
   // Update Client
   const updateClient = async (
     req: Request,
@@ -75,10 +79,28 @@ export const clientController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateClientSchema.parse(req.body); // Validate input
-      const result = await service.updateClient(id, parsedData);
+
+      // Ensure client_details, if present, are mapped to the correct type
+      let updateData = { ...parsedData };
+      if (Array.isArray(parsedData.client_details)) {
+        updateData = {
+          ...parsedData,
+          client_details: parsedData.client_details.map((detail: any) => ({
+            ...detail,
+            client: detail.client ?? undefined,
+            created_at: detail.created_at ?? undefined,
+            updated_at: detail.updated_at ?? undefined,
+            deleted: detail.deleted ?? undefined,
+            // add other required ClientDetails fields with default or undefined if missing
+          })),
+        };
+      }
+
+      const result = await service.updateClient(id, updateData);
       res.status(200).json({
         status: "success",
         message: "client updated",
+        client_id: result.id,
         data: result,
       });
     } catch (error) {
@@ -105,12 +127,84 @@ export const clientController = () => {
     }
   };
 
+
+  const exportClientsExcelController = async (req: Request, res: Response) => {
+    try {
+      const userId = res.locals.user.id;
+      const userData = await findUserById(userId);
+      const userRole = userData.role.role;
+
+      const workbook = await service.exportClientsToExcel(userId, userRole);
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=clients_${Date.now()}.xlsx`
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Error exporting clients:", error);
+      res.status(500).json({ message: "Failed to export clients" });
+    }
+  };
+
+  // controllers/clients.controller.ts
+  const downloadClientTemplate = async (req: Request, res: Response) => {
+    try {
+      const workbook = await service.generateClientTemplate();
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=clients_template.xlsx"
+      );
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      console.error("Error generating client template:", error);
+      res.status(500).json({ message: "Failed to download client template" });
+    }
+  };
+
+  // Upload Clients from Excel
+  const uploadClientsFromExcelController = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ status: "error", message: "No file uploaded" });
+      }
+      const result = await service.uploadClientsFromExcelService(req.file.buffer);
+      res.status(200).json({
+        status: "success",
+        message: "Clients uploaded from Excel successfully",
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   // Return all controller methods
   return {
     createClient,
     getAllClients,
     getClientById,
     updateClient,
-    softDeleteClient
+    softDeleteClient,
+    exportClientsExcelController,
+    downloadClientTemplate,
+    uploadClientsFromExcelController,
   };
 };

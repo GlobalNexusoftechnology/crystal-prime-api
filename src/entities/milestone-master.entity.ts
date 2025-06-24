@@ -1,6 +1,7 @@
-import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { ProjectTemplates } from "./project-templates.entity";
+import { ProjectTaskMaster } from "./task-master.entity";
 
 @Entity("project_milestone_master")
 export class ProjectMilestoneMaster extends Model {
@@ -16,4 +17,7 @@ export class ProjectMilestoneMaster extends Model {
 
   @Column({ type: "int", nullable: true })
   estimated_days: number;
+
+  @OneToMany(() => ProjectTaskMaster, (task) => task.milestone)
+  project_task_master: ProjectTaskMaster[];
 }

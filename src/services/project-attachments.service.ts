@@ -1,6 +1,6 @@
 import { AppDataSource } from "../utils/data-source";
 import { projectAttachments } from "../entities/project-attachments.entity";
-import { Project } from "../entities/Project.entity";
+import { Project } from "../entities/projects.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 

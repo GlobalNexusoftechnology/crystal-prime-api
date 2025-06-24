@@ -2,6 +2,8 @@ import { Column, Entity, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Clients } from "./clients.entity";
 import { projectAttachments } from "./project-attachments.entity";
+import { ProjectMilestones } from "./project-milestone.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 @Entity("Project ")
 export class Project extends Model {

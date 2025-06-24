@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
-import { ProjectService } from "../services/Project.service";
+import { ProjectService } from "../services/projects.service";
 import {
   createProjectSchema,
   updateProjectSchema,
-} from "../schemas/Project.schema";
+} from "../schemas/projects.schema";
 
 const service = ProjectService();
 

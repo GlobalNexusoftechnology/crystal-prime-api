@@ -21,17 +21,19 @@ import leadFollowupsRouter from './routes/lead-followups.routes';
 import leadAttachmentsRouter from './routes/lead-attachments.routes';
 import leadStatusHistoryRouter from './routes/lead-status-history.routes';
 import rolesRouter from './routes/roles.routes';
-import projectManagementRouter from './routes/project-management.routes';
-import taskManagementRouter from './routes/task-management.routes';
 import clientRoutes from "./routes/clients.routes";
-import ProjectRoutes from "./routes/Project.routes";
+import projectRoutes from "./routes/projects.routes";
 import projectTemplateRoutes from "./routes/project-templates.routes";
 import milestoneRoutes from "./routes/project-milestone.routes";
 import taskRoutes from "./routes/project-task.routes";
 import projectAttachmentsRouter from './routes/project-attachments.routes';
 import milestoneMasterRouter from './routes/milestone-master.routes';
 import taskMasterRouter from './routes/task-master.routes';
+import clientFollowupRoutes from "./routes/clients-followups.routes";
 
+import dailyTaskEntryRoutes from "./routes/daily-task.routes";
+
+import clientsDetailsRouter from './routes/clients-details.routes';
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
 
@@ -85,18 +87,20 @@ AppDataSource.initialize()
     app.use('/api/lead-attachments', leadAttachmentsRouter);
     app.use('/api/lead-status-history', leadStatusHistoryRouter);
     app.use('/api/roles', rolesRouter);
-    app.use('/api/project-management', projectManagementRouter);
-    app.use('/api/task-management', taskManagementRouter);
     app.use("/api/clients", clientRoutes);
-    app.use("/api/Project",ProjectRoutes);
+    app.use("/api/projects", projectRoutes);
     app.use("/api/project-templates", projectTemplateRoutes);
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
     app.use('/api/project-attachments', projectAttachmentsRouter);
-    app.use('/api/milestone-master', milestoneMasterRouter);
-    app.use('/api/task-master', taskMasterRouter);
+    app.use('/api/project-template-milestone', milestoneMasterRouter);
+    app.use('/api/project-template-milestone-task', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
+    app.use("/api/client-followups", clientFollowupRoutes);
+    app.use('/api/clients-details', clientsDetailsRouter);
     
+    app.use("/api/daily-task", dailyTaskEntryRoutes);
+
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
       res.status(200).json({

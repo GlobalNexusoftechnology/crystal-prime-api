@@ -244,18 +244,15 @@ export const LeadService = () => {
         : [];
 
       // Optionally check for duplicate emails in the array
-      const existing = await leadRepo
-        .createQueryBuilder("lead")
-        .where("lead.id != :id", { id })
-        .andWhere(":emailList && lead.email", { emailList: newEmailArray })
-        .getOne();
+      // const existing = await leadRepo
+      //   .createQueryBuilder("lead")
+      //   .where("lead.id != :id", { id })
+      //   .andWhere(":emailList && lead.email", { emailList: newEmailArray })
+      //   .getOne();
+      // if (existing) {
+      //   throw new AppError(400, "One or more emails already exist in another lead");
+      // }
 
-      if (existing) {
-        throw new AppError(
-          400,
-          "One or more emails already exist in another lead"
-        );
-      }
 
       lead.email = newEmailArray;
     }

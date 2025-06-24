@@ -10,10 +10,31 @@ export const createClientSchema = z.object({
   company_name: z.string().optional(),
   contact_person: z.string().optional(),
   website: z.string().url("Invalid website URL").optional(),
+  client_details: z.array(
+    z.object({
+      client_contact: z.string().min(1, "Contact is required"),
+      contact_person: z.string().optional(),
+      email: z.string().email("Invalid email").optional(),
+      other_contact: z.string().optional(),
+      designation: z.string().optional(),
+    })
+  ).optional(),
 });
 
 // Update Schema (partial of create)
-export const updateClientSchema = createClientSchema.partial();
+export const updateClientSchema = createClientSchema.partial().extend({
+  client_details: z.array(
+    z.object({
+      id: z.string().optional(), // for updating existing details
+      client_contact: z.string().min(1, "Contact is required").optional(),
+      contact_person: z.string().optional(),
+      email: z.string().email("Invalid email").optional(),
+      other_contact: z.string().optional(),
+      designation: z.string().optional(),
+      _delete: z.boolean().optional(), // flag to delete detail
+    })
+  ).optional(),
+});
 
 
 
