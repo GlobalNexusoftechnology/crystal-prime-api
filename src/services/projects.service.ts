@@ -22,8 +22,12 @@ const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
 
 export const ProjectService = () => {
+  const getQueryRunner = () => {
+    return AppDataSource.createQueryRunner();
+  };
+
   // Create Project
-  const createProject = async (data: ProjectInput) => {
+  const createProject = async (data: ProjectInput, queryRunner?: any) => {
     const {
       client_id,
       name,
@@ -39,11 +43,14 @@ export const ProjectService = () => {
 
     let client;
     if (client_id) {
-      client = await clientRepo.findOne({ where: { id: client_id } });
+      client = queryRunner
+        ? await queryRunner.manager.findOne(Clients, { where: { id: client_id } })
+        : await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
     }
 
-    const project = ProjectRepo.create({
+    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
+    const project = repo.create({
       name,
       project_type,
       budget,
@@ -56,7 +63,7 @@ export const ProjectService = () => {
       client,
     });
 
-    return await ProjectRepo.save(project);
+    return await repo.save(project);
   };
 
   // Get All Projects
@@ -80,8 +87,10 @@ export const ProjectService = () => {
   };
 
   // Update Project
-  const updateProject = async (id: string, data: Partial<ProjectInput>) => {
-    const project = await ProjectRepo.findOne({
+  const updateProject = async (id: string, data: Partial<ProjectInput>, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
+    const clientRepository = queryRunner ? queryRunner.manager.getRepository(Clients) : clientRepo;
+    const project = await repo.findOne({
       where: { id, deleted: false },
       relations: ["client"],
     });
@@ -101,7 +110,7 @@ export const ProjectService = () => {
     } = data;
 
     if (client_id) {
-      const client = await clientRepo.findOne({ where: { id: client_id } });
+      const client = await clientRepository.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
       project.client = client;
     }
@@ -118,7 +127,7 @@ export const ProjectService = () => {
     if (actual_end_date !== undefined)
       project.actual_end_date = actual_end_date;
 
-    return await ProjectRepo.save(project);
+    return await repo.save(project);
   };
 
   // Soft Delete Project
@@ -140,5 +149,6 @@ export const ProjectService = () => {
     getProjectById,
     updateProject,
     softDeleteProject,
+    getQueryRunner,
   };
 };

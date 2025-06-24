@@ -19,11 +19,13 @@ interface MilestoneInput {
 }
 
 export const MilestoneService = () => {
-  const createMilestone = async (data: MilestoneInput) => {
-    const project = await projectRepo.findOne({ where: { id: data.project_id } });
+  const createMilestone = async (data: MilestoneInput, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
+    const project = await projectRepository.findOne({ where: { id: data.project_id } });
     if (!project) throw new AppError(404, "Project not found");
 
-    const milestone = milestoneRepo.create({
+    const milestone = repo.create({
       name: data.name,
       start_date: data.start_date,
       end_date: data.end_date,
@@ -35,7 +37,7 @@ export const MilestoneService = () => {
       project,
     });
 
-    return await milestoneRepo.save(milestone);
+    return await repo.save(milestone);
   };
 
   const getAllMilestones = async () => {
@@ -55,12 +57,14 @@ export const MilestoneService = () => {
     return milestone;
   };
 
-  const updateMilestone = async (id: string, data: Partial<MilestoneInput>) => {
-    const milestone = await milestoneRepo.findOne({ where: { id, deleted: false }, relations: ["project"] });
+  const updateMilestone = async (id: string, data: Partial<MilestoneInput>, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
+    const milestone = await repo.findOne({ where: { id, deleted: false }, relations: ["project"] });
     if (!milestone) throw new AppError(404, "Milestone not found");
 
     if (data.project_id) {
-      const project = await projectRepo.findOne({ where: { id: data.project_id } });
+      const project = await projectRepository.findOne({ where: { id: data.project_id } });
       if (!project) throw new AppError(404, "Project not found");
       milestone.project = project;
     }
@@ -74,7 +78,7 @@ export const MilestoneService = () => {
     if (data.status !== undefined) milestone.status = data.status;
     if (data.remark !== undefined) milestone.remark = data.remark;
 
-    return await milestoneRepo.save(milestone);
+    return await repo.save(milestone);
   };
 
   const deleteMilestone = async (id: string) => {

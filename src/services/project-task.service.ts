@@ -16,11 +16,13 @@ interface TaskInput {
 }
 
 export const ProjectTaskService = () => {
-  const createTask = async (data: TaskInput) => {
-    const milestone = await milestoneRepo.findOne({ where: { id: data.milestone_id } });
+  const createTask = async (data: TaskInput, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
     if (!milestone) throw new AppError(404, "Milestone not found");
 
-    const task = taskRepo.create({
+    const task = repo.create({
       milestone,
       title: data.title,
       description: data.description,
@@ -29,7 +31,7 @@ export const ProjectTaskService = () => {
       assigned_to: data.assigned_to,
     });
 
-    return await taskRepo.save(task);
+    return await repo.save(task);
   };
 
   const getAllTasks = async () => {
@@ -46,12 +48,14 @@ export const ProjectTaskService = () => {
     return task;
   };
 
-  const updateTask = async (id: string, data: Partial<TaskInput>) => {
-    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone"] });
+  const updateTask = async (id: string, data: Partial<TaskInput>, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const task = await repo.findOne({ where: { id, deleted: false }, relations: ["milestone"] });
     if (!task) throw new AppError(404, "Task not found");
 
     if (data.milestone_id) {
-      const milestone = await milestoneRepo.findOne({ where: { id: data.milestone_id } });
+      const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
       if (!milestone) throw new AppError(404, "Milestone not found");
       task.milestone = milestone;
     }
@@ -62,7 +66,7 @@ export const ProjectTaskService = () => {
     if (data.status !== undefined) task.status = data.status;
     if (data.assigned_to !== undefined) task.assigned_to = data.assigned_to;
 
-    return await taskRepo.save(task);
+    return await repo.save(task);
   };
 
   const deleteTask = async (id: string) => {
