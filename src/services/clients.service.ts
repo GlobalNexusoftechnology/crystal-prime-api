@@ -172,13 +172,13 @@ export const ClientService = () => {
     if (userRole.toLowerCase() === "admin") {
       clients = await clientRepo.find({
         where: { deleted: false },
-        relations: ["lead"],
+        relations: ["lead", "client_details"],
         order: { created_at: "DESC" },
       });
     } else {
       clients = await clientRepo.find({
         where: { deleted: false },
-        relations: ["lead"],
+        relations: ["lead", "client_details"],
         order: { created_at: "DESC" },
       });
     }
@@ -196,20 +196,53 @@ export const ClientService = () => {
       { header: "Contact Person", key: "contact_person", width: 25 },
       { header: "Address", key: "address", width: 40 },
       { header: "Created At", key: "created_at", width: 25 },
+      // Client Details columns
+      { header: "Client Detail Contact", key: "client_detail_contact", width: 20 },
+      { header: "Client Detail Person", key: "client_detail_person", width: 20 },
+      { header: "Client Detail Email", key: "client_detail_email", width: 25 },
+      { header: "Client Detail Other Contact", key: "client_detail_other_contact", width: 20 },
+      { header: "Client Detail Designation", key: "client_detail_designation", width: 20 },
     ];
 
-    clients.forEach((client, index) => {
-      worksheet.addRow({
-        sr_no: index + 1,
-        name: client.name,
-        email: client.email ?? "",
-        contact_number: client.contact_number,
-        company_name: client.company_name ?? "",
-        website: client.website ?? "",
-        contact_person: client.contact_person ?? "",
-        address: client.address ?? "",
-        created_at: client.created_at?.toLocaleString() ?? "",
-      });
+    let rowIndex = 1;
+    clients.forEach((client) => {
+      if (Array.isArray(client.client_details) && client.client_details.length > 0) {
+        client.client_details.forEach((detail) => {
+          worksheet.addRow({
+            sr_no: rowIndex++,
+            name: client.name,
+            email: client.email ?? "",
+            contact_number: client.contact_number,
+            company_name: client.company_name ?? "",
+            website: client.website ?? "",
+            contact_person: client.contact_person ?? "",
+            address: client.address ?? "",
+            created_at: client.created_at?.toLocaleString() ?? "",
+            client_detail_contact: detail.client_contact ?? "",
+            client_detail_person: detail.contact_person ?? "",
+            client_detail_email: detail.email ?? "",
+            client_detail_other_contact: detail.other_contact ?? "",
+            client_detail_designation: detail.designation ?? "",
+          });
+        });
+      } else {
+        worksheet.addRow({
+          sr_no: rowIndex++,
+          name: client.name,
+          email: client.email ?? "",
+          contact_number: client.contact_number,
+          company_name: client.company_name ?? "",
+          website: client.website ?? "",
+          contact_person: client.contact_person ?? "",
+          address: client.address ?? "",
+          created_at: client.created_at?.toLocaleString() ?? "",
+          client_detail_contact: "",
+          client_detail_person: "",
+          client_detail_email: "",
+          client_detail_other_contact: "",
+          client_detail_designation: "",
+        });
+      }
     });
 
     return workbook;
@@ -229,6 +262,17 @@ export const ClientService = () => {
       { header: "contact_person", key: "contact_person", width: 25 },
       { header: "address", key: "address", width: 40 },
       { header: "lead_id", key: "lead_id", width: 36 },
+      // Client Details columns (example for 2 details)
+      { header: "client_detail_contact_1", key: "client_detail_contact_1", width: 20 },
+      { header: "client_detail_person_1", key: "client_detail_person_1", width: 20 },
+      { header: "client_detail_email_1", key: "client_detail_email_1", width: 25 },
+      { header: "client_detail_other_contact_1", key: "client_detail_other_contact_1", width: 20 },
+      { header: "client_detail_designation_1", key: "client_detail_designation_1", width: 20 },
+      { header: "client_detail_contact_2", key: "client_detail_contact_2", width: 20 },
+      { header: "client_detail_person_2", key: "client_detail_person_2", width: 20 },
+      { header: "client_detail_email_2", key: "client_detail_email_2", width: 25 },
+      { header: "client_detail_other_contact_2", key: "client_detail_other_contact_2", width: 20 },
+      { header: "client_detail_designation_2", key: "client_detail_designation_2", width: 20 },
     ];
 
     return workbook;
