@@ -21,6 +21,7 @@ export const clientController = () => {
       res.status(201).json({
         status: "success",
         message: "clients created",
+        client_id: result.id,
         data: result,
       });
     } catch (error) {
@@ -76,10 +77,28 @@ export const clientController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateClientSchema.parse(req.body); // Validate input
-      const result = await service.updateClient(id, parsedData);
+
+      // Ensure client_details, if present, are mapped to the correct type
+      let updateData = { ...parsedData };
+      if (Array.isArray(parsedData.client_details)) {
+        updateData = {
+          ...parsedData,
+          client_details: parsedData.client_details.map((detail: any) => ({
+            ...detail,
+            client: detail.client ?? undefined,
+            created_at: detail.created_at ?? undefined,
+            updated_at: detail.updated_at ?? undefined,
+            deleted: detail.deleted ?? undefined,
+            // add other required ClientDetails fields with default or undefined if missing
+          })),
+        };
+      }
+
+      const result = await service.updateClient(id, updateData);
       res.status(200).json({
         status: "success",
         message: "client updated",
+        client_id: result.id,
         data: result,
       });
     } catch (error) {

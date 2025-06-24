@@ -22,7 +22,7 @@ const leadRepo = AppDataSource.getRepository(Leads);
 
 export const ClientService = () => {
   // Create Client
-  const createClient = async (data: ClientInput & { client_details?: ClientDetails[] }) => {
+  const createClient = async (data: ClientInput & { client_details?: any[] }) => {
     const {
       name,
       email,
@@ -74,11 +74,6 @@ export const ClientService = () => {
       where: { deleted: false },
       relations: ["lead", "client_details"],
     });
-
-    // return {
-    //   data,
-    //   total: data.length,
-    // };
     return data
   };
 
@@ -86,7 +81,7 @@ export const ClientService = () => {
   const getClientById = async (id: string) => {
     const client = await clientRepo.findOne({
       where: { id, deleted: false },
-      relations: ["lead"],
+      relations: ["lead","client_details"],
     });
 
     if (!client) throw new AppError(404, "Client not found");
@@ -94,7 +89,7 @@ export const ClientService = () => {
   };
 
   //  Update Client
-  const updateClient = async (id: string, data: Partial<ClientInput> & { client_details?: ClientDetails[] }) => {
+  const updateClient = async (id: string, data: Partial<ClientInput> & { client_details?: any[] }) => {
     const client = await clientRepo.findOne({ where: { id, deleted: false } });
     if (!client) throw new AppError(404, "Client not found");
 
@@ -167,78 +162,78 @@ export const ClientService = () => {
   };
 
 
- const exportClientsToExcel = async (
-  userId: string,
-  userRole: string
-): Promise<ExcelJS.Workbook> => {
-  const clientRepo = AppDataSource.getRepository(Clients);
+  const exportClientsToExcel = async (
+    userId: string,
+    userRole: string
+  ): Promise<ExcelJS.Workbook> => {
+    const clientRepo = AppDataSource.getRepository(Clients);
 
-  let clients: Clients[];
+    let clients: Clients[];
 
-  if (userRole.toLowerCase() === "admin") {
-    clients = await clientRepo.find({
-      where: { deleted: false },
-      relations: ["lead"],
-      order: { created_at: "DESC" },
+    if (userRole.toLowerCase() === "admin") {
+      clients = await clientRepo.find({
+        where: { deleted: false },
+        relations: ["lead"],
+        order: { created_at: "DESC" },
+      });
+    } else {
+      clients = await clientRepo.find({
+        where: { deleted: false },
+        relations: ["lead"],
+        order: { created_at: "DESC" },
+      });
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Clients");
+
+    worksheet.columns = [
+      { header: "Sr No", key: "sr_no", width: 6 },
+      { header: "Client Name", key: "name", width: 25 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Contact Number", key: "contact_number", width: 20 },
+      { header: "Company Name", key: "company_name", width: 30 },
+      { header: "Website", key: "website", width: 30 },
+      { header: "Contact Person", key: "contact_person", width: 25 },
+      { header: "Address", key: "address", width: 40 },
+      { header: "Created At", key: "created_at", width: 25 },
+    ];
+
+    clients.forEach((client, index) => {
+      worksheet.addRow({
+        sr_no: index + 1,
+        name: client.name,
+        email: client.email ?? "",
+        contact_number: client.contact_number,
+        company_name: client.company_name ?? "",
+        website: client.website ?? "",
+        contact_person: client.contact_person ?? "",
+        address: client.address ?? "",
+        created_at: client.created_at?.toLocaleString() ?? "",
+      });
     });
-  } else {
-    clients = await clientRepo.find({
-      where: { deleted: false },
-      relations: ["lead"],
-      order: { created_at: "DESC" },
-    });
-  }
 
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Clients");
+    return workbook;
+  };
 
-  worksheet.columns = [
-    { header: "Sr No", key: "sr_no", width: 6 },
-    { header: "Client Name", key: "name", width: 25 },
-    { header: "Email", key: "email", width: 30 },
-    { header: "Contact Number", key: "contact_number", width: 20 },
-    { header: "Company Name", key: "company_name", width: 30 },
-    { header: "Website", key: "website", width: 30 },
-    { header: "Contact Person", key: "contact_person", width: 25 },
-    { header: "Address", key: "address", width: 40 },
-    { header: "Created At", key: "created_at", width: 25 },
-  ];
+  // services/client.service.ts
+  const generateClientTemplate = async (): Promise<ExcelJS.Workbook> => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Clients");
 
-  clients.forEach((client, index) => {
-    worksheet.addRow({
-      sr_no: index + 1,
-      name: client.name,
-      email: client.email ?? "",
-      contact_number: client.contact_number,
-      company_name: client.company_name ?? "",
-      website: client.website ?? "",
-      contact_person: client.contact_person ?? "",
-      address: client.address ?? "",
-      created_at: client.created_at?.toLocaleString() ?? "",
-    });
-  });
+    worksheet.columns = [
+      { header: "name", key: "name", width: 25 },
+      { header: "email", key: "email", width: 30 },
+      { header: "contact_number", key: "contact_number", width: 20 },
+      { header: "company_name", key: "company_name", width: 25 },
+      { header: "website", key: "website", width: 30 },
+      { header: "contact_person", key: "contact_person", width: 25 },
+      { header: "address", key: "address", width: 40 },
+      { header: "lead_id", key: "lead_id", width: 36 },
+    ];
 
-  return workbook;
-};
-
-// services/client.service.ts
-const generateClientTemplate = async (): Promise<ExcelJS.Workbook> => {
-  const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("Clients");
-
-  worksheet.columns = [
-    { header: "name", key: "name", width: 25 },
-    { header: "email", key: "email", width: 30 },
-    { header: "contact_number", key: "contact_number", width: 20 },
-    { header: "company_name", key: "company_name", width: 25 },
-    { header: "website", key: "website", width: 30 },
-    { header: "contact_person", key: "contact_person", width: 25 },
-    { header: "address", key: "address", width: 40 },
-    { header: "lead_id", key: "lead_id", width: 36 },
-  ];
-
-  return workbook;
-};
+    return workbook;
+  };
 
 
 

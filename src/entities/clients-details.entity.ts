@@ -21,6 +21,7 @@ export class ClientDetails extends Model {
   @Column({ type: "varchar", length: 20, nullable: true })
   other_contact: string;
 
+
   @Column({ type: "varchar", length: 100, nullable: true })
   designation: string;
 }
