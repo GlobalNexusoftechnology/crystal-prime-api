@@ -116,14 +116,92 @@ export const LeadService = () => {
   };
 
   // Get All Leads
-  const getAllLeads = async () => {
-    return await leadRepo.find({
-      where: { deleted: false },
-      relations: ["source", "status", "assigned_to", "type"],
-      order: {
-        created_at: "DESC",
-      },
-    });
+  const getAllLeads = async (
+    searchText?: string,
+    statusId?: string,
+    typeId?: string,
+    dateRange?: "All" | "Daily" | "Weekly" | "Monthly",
+    referenceDate?: Date,
+    followupFrom?: Date,
+    followupTo?: Date,
+    sourceId?: string,
+    assignedToId?: string
+  ) => {
+    let query = leadRepo.createQueryBuilder("lead")
+      .leftJoinAndSelect("lead.source", "source")
+      .leftJoinAndSelect("lead.status", "status")
+      .leftJoinAndSelect("lead.assigned_to", "assigned_to")
+      .leftJoinAndSelect("lead.type", "type")
+      .leftJoinAndSelect("lead.followups", "followup")
+      .where("lead.deleted = false");
+  
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(lead.first_name) LIKE :search OR LOWER(lead.last_name) LIKE :search OR LOWER(lead.company) LIKE :search OR LOWER(lead.phone) LIKE :search OR LOWER(lead.location) LIKE :search OR LOWER(lead.requirement) LIKE :search OR EXISTS (SELECT 1 FROM unnest(lead.email) AS e WHERE LOWER(e) LIKE :search)`,
+        { search }
+      );
+    }
+  
+    if (statusId && statusId !== "All Status") {
+      query = query.andWhere("status.id = :statusId", { statusId });
+    }
+  
+    if (typeId && typeId !== "All Type") {
+      query = query.andWhere("type.id = :typeId", { typeId });
+    }
+  
+    if (sourceId && sourceId !== "All Source") {
+      query = query.andWhere("source.id = :sourceId", { sourceId });
+    }
+  
+    if (assignedToId && assignedToId !== "All Assigned") {
+      query = query.andWhere("assigned_to.id = :assignedToId", { assignedToId });
+    }
+  
+    const now = referenceDate ? new Date(referenceDate) : new Date();
+  
+    if (dateRange && dateRange !== "All") {
+      let start: Date | undefined = undefined;
+      let end: Date | undefined = undefined;
+  
+      if (dateRange === "Daily") {
+        start = new Date(now);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+      } else if (dateRange === "Weekly") {
+        start = new Date(now);
+        start.setDate(now.getDate() - now.getDay());
+        start.setHours(0, 0, 0, 0);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+      } else if (dateRange === "Monthly") {
+        start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      }
+  
+      if (start && end) {
+        query = query.andWhere("lead.created_at BETWEEN :start AND :end", {
+          start,
+          end,
+        });
+      }
+    }
+  
+    if (followupFrom && followupTo) {
+      query = query.andWhere("followup.due_date BETWEEN :followupFrom AND :followupTo", {
+        followupFrom,
+        followupTo,
+      });
+    } else if (followupFrom) {
+      query = query.andWhere("followup.due_date >= :followupFrom", { followupFrom });
+    } else if (followupTo) {
+      query = query.andWhere("followup.due_date <= :followupTo", { followupTo });
+    }
+  
+    return await query.orderBy("lead.created_at", "DESC").getMany();
   };
 
   // Get Lead By ID
@@ -390,24 +468,42 @@ export const LeadService = () => {
   //  Export Leads to Excel
   const exportLeadsToExcel = async (
     userId: string,
-    userRole: string
+    userRole: string,
+    searchText?: string,
+    statusId?: string,
+    typeId?: string,
+    dateRange?: "All" | "Daily" | "Weekly" | "Monthly",
+    referenceDate?: Date,
+    followupFrom?: Date,
+    followupTo?: Date,
+    sourceId?: string,
+    assignedToId?: string
   ): Promise<ExcelJS.Workbook> => {
-    const leadRepo = AppDataSource.getRepository(Leads);
-
     let leads: Leads[];
-
     if (userRole === "admin" || userRole === "Admin") {
-      leads = await leadRepo.find({
-        where: { deleted: false },
-        relations: ["source", "status", "assigned_to", "type"],
-        order: { created_at: "DESC" },
-      });
+      leads = await getAllLeads(
+        searchText,
+        statusId,
+        typeId,
+        dateRange,
+        referenceDate,
+        followupFrom,
+        followupTo,
+        sourceId,
+        assignedToId
+      );
     } else {
-      leads = await leadRepo.find({
-        where: { deleted: false, assigned_to: { id: userId } },
-        relations: ["source", "status", "assigned_to", "type"],
-        order: { created_at: "DESC" },
-      });
+      leads = await getAllLeads(
+        searchText,
+        statusId,
+        typeId,
+        dateRange,
+        referenceDate,
+        followupFrom,
+        followupTo,
+        sourceId,
+        userId // force assignedToId to userId for non-admins
+      );
     }
 
     const workbook = new ExcelJS.Workbook();
