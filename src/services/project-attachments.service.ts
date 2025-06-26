@@ -18,31 +18,34 @@ const UserRepo = AppDataSource.getRepository(User);
 
 export const ProjectAttachmentService = () => {
     // Create
-    const createAttachment = async (data: IAttachmentInput) => {
+    const createAttachment = async (data: IAttachmentInput, queryRunner?: any) => {
+        const repo = queryRunner ? queryRunner.manager.getRepository(projectAttachments) : attachmentRepo;
+        const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
+        const userRepository = queryRunner ? queryRunner.manager.getRepository(User) : UserRepo;
         const { Project_id, uploaded_by, file_path, file_type, file_name } = data;
 
-        const Project = await ProjectRepo.findOne({ where: { id: Project_id, deleted: false } });
-        if (!Project) {
+        const project = await projectRepository.findOne({ where: { id: Project_id, deleted: false } });
+        if (!project) {
             throw new AppError(404, "Project not found");
         }
 
         let user = null;
         if (uploaded_by) {
-            user = await UserRepo.findOne({ where: { id: uploaded_by, deleted: false } });
+            user = await userRepository.findOne({ where: { id: uploaded_by, deleted: false } });
             if (!user) {
                 throw new AppError(404, "User not found");
             }
         }
 
-        const attachment = attachmentRepo.create({
-            Project,
+        const attachment = repo.create({
+            Project: project,
             uploaded_by: user,
             file_path,
             file_type,
             file_name
         });
 
-        return await attachmentRepo.save(attachment);
+        return await repo.save(attachment);
     };
 
     // Get All Attachments (with optional filter by Project ID)

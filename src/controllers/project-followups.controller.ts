@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from "express";
-import { ClientFollowupService } from "../services/clients-followups.service";
+import { ProjectFollowupService } from "../services/project-followups.service";
 import {
-  createClientFollowupSchema,
-  updateClientFollowupSchema,
-} from "../schemas/clients-followups.schema";
+  createProjectFollowupSchema,
+  updateProjectFollowupSchema,
+} from "../schemas/project-followups.schema";
 
-const service = ClientFollowupService();
+const service = ProjectFollowupService();
 
-export const clientFollowupController = () => {
+export const projectFollowupController = () => {
   // Create Followup
   const createFollowup = async (
     req: Request,
@@ -15,21 +15,11 @@ export const clientFollowupController = () => {
     next: NextFunction
   ) => {
     try {
-      const parsed = createClientFollowupSchema.parse(req.body);
-      // Map client_id to project_id and handle user_id null
-      const mapped = {
-        ...parsed,
-        project_id: parsed.client_id,
-        user_id: parsed.user_id ?? undefined,
-        due_date: parsed.due_date ?? undefined,
-        completed_date: parsed.completed_date ?? undefined,
-        remarks: parsed.remarks ?? undefined,
-      };
-      delete (mapped as any).client_id;
-      const result = await service.createFollowup(mapped);
+      const parsed = createProjectFollowupSchema.parse(req.body);
+      const result = await service.createFollowup(parsed);
       res.status(201).json({
         status: "success",
-        message: "Client Follow-up created",
+        message: "Project Follow-up created",
         data: result,
       });
     } catch (error) {
@@ -47,7 +37,7 @@ export const clientFollowupController = () => {
       const result = await service.getAllFollowups();
       res.status(200).json({
         status: "success",
-        message: "All Client Follow-ups fetched",
+        message: "All Project Follow-ups fetched",
         data: result,
       });
     } catch (error) {
@@ -65,7 +55,7 @@ export const clientFollowupController = () => {
       const result = await service.getFollowupById(req.params.id);
       res.status(200).json({
         status: "success",
-        message: "Client Follow-up fetched",
+        message: "Project Follow-up fetched",
         data: result,
       });
     } catch (error) {
@@ -80,21 +70,11 @@ export const clientFollowupController = () => {
     next: NextFunction
   ) => {
     try {
-      const parsed = updateClientFollowupSchema.parse(req.body);
-      // Map client_id to project_id and handle user_id null
-      const mapped = {
-        ...parsed,
-        project_id: parsed.client_id,
-        user_id: parsed.user_id ?? undefined,
-        due_date: parsed.due_date ?? undefined,
-        completed_date: parsed.completed_date ?? undefined,
-        remarks: parsed.remarks ?? undefined,
-      };
-      delete (mapped as any).client_id;
-      const result = await service.updateFollowup(req.params.id, mapped);
+      const parsed = updateProjectFollowupSchema.parse(req.body);
+      const result = await service.updateFollowup(req.params.id, parsed);
       res.status(200).json({
         status: "success",
-        message: "Client Follow-up updated",
+        message: "Project Follow-up updated",
         data: result,
       });
     } catch (error) {
@@ -112,7 +92,7 @@ export const clientFollowupController = () => {
       const result = await service.softDeleteFollowup(req.params.id);
       res.status(200).json({
         status: "success",
-        message: "Client Follow-up deleted",
+        message: "Project Follow-up deleted",
         data: result,
       });
     } catch (error) {
@@ -127,4 +107,4 @@ export const clientFollowupController = () => {
     updateFollowup,
     softDeleteFollowup,
   };
-};
+}; 

@@ -8,8 +8,8 @@ const followupRepo = AppDataSource.getRepository(ClientFollowup);
 const projectRepo = AppDataSource.getRepository(Project);
 const userRepo = AppDataSource.getRepository(User);
 
-export const ClientFollowupService = () => {
-  const createFollowup = async (data: { project_id: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
+export const ProjectFollowupService = () => {
+  const createFollowup = async (data: any) => {
     const project = await projectRepo.findOneBy({ id: data.project_id });
     if (!project) throw new AppError(404, "Project not found");
 
@@ -32,13 +32,12 @@ export const ClientFollowupService = () => {
   };
 
   const getAllFollowups = async () => {
-     const followup = await followupRepo.find({
+    const followups = await followupRepo.find({
       where: { deleted: false },
       relations: ["project", "user"],
       order: { created_at: "DESC" },
     });
-    return followup
-    
+    return followups;
   };
 
   const getFollowupById = async (id: string) => {
@@ -50,7 +49,7 @@ export const ClientFollowupService = () => {
     return followup;
   };
 
-  const updateFollowup = async (id: string, data: { project_id?: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
+  const updateFollowup = async (id: string, data: any) => {
     const followup = await followupRepo.findOneBy({ id });
     if (!followup) throw new AppError(404, "Followup not found");
 
@@ -87,4 +86,4 @@ export const ClientFollowupService = () => {
     updateFollowup,
     softDeleteFollowup,
   };
-};
+}; 
