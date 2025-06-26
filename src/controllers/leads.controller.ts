@@ -43,12 +43,31 @@ export const leadController = () => {
     try {
       const userId = res?.locals?.user?.id;
       const role = res?.locals?.user?.role?.role;
+      const searchText = req.query.searchText as string | undefined;
+      const statusId = req.query.statusId as string | undefined;
+      const typeId = req.query.typeId as string | undefined;
+      const dateRange = req.query.dateRange as ("All" | "Daily" | "Weekly" | "Monthly") | undefined;
+      const referenceDate = req.query.referenceDate ? new Date(req.query.referenceDate as string) : undefined;
+      const followupFrom = req.query.followupFrom ? new Date(req.query.followupFrom as string) : undefined;
+      const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
+      const sourceId = req.query.sourceId as string | undefined;
+      const assignedToId = req.query.assignedToId as string | undefined;
       let result;
 
       if (role === "Admin" || role === "admin") {
-        result = await service.getAllLeads();
+        result = await service.getAllLeads(searchText, statusId, typeId, dateRange, referenceDate, followupFrom, followupTo, sourceId, assignedToId);
       } else {
-        result = await service.getLeadById(userId);
+        result = await service.getAllLeads(
+          searchText,
+          statusId,
+          typeId,
+          dateRange,
+          referenceDate,
+          followupFrom,
+          followupTo,
+          sourceId,
+          userId // force assignedToId to userId for non-admins
+        );
       }
 
       const leadStats = await service.getLeadStats(userId);
@@ -132,7 +151,30 @@ export const leadController = () => {
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
 
-      const workbook = await service.exportLeadsToExcel(userId, userRole);
+      // Collect all filter params
+      const searchText = req.query.searchText as string | undefined;
+      const statusId = req.query.statusId as string | undefined;
+      const typeId = req.query.typeId as string | undefined;
+      const dateRange = req.query.dateRange as ("All" | "Daily" | "Weekly" | "Monthly") | undefined;
+      const referenceDate = req.query.referenceDate ? new Date(req.query.referenceDate as string) : undefined;
+      const followupFrom = req.query.followupFrom ? new Date(req.query.followupFrom as string) : undefined;
+      const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
+      const sourceId = req.query.sourceId as string | undefined;
+      const assignedToId = req.query.assignedToId as string | undefined;
+
+      const workbook = await service.exportLeadsToExcel(
+        userId,
+        userRole,
+        searchText,
+        statusId,
+        typeId,
+        dateRange,
+        referenceDate,
+        followupFrom,
+        followupTo,
+        sourceId,
+        assignedToId
+      );
 
       res.setHeader(
         "Content-Type",
