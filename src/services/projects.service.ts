@@ -1,21 +1,23 @@
 import { AppDataSource } from "../utils/data-source";
 import { Project } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
-import { ProjectMilestones } from "../entities/project-milestone.entity";
-import { ProjectTasks } from "../entities/project-task.entity";
 import AppError from "../utils/appError";
 
 interface ProjectInput {
   client_id?: string;
   name: string;
+  description: string;
   project_type?: string;
   budget?: number;
+  cost_of_labour?: number,
+  overhead_cost?: number,
   estimated_cost?: number;
   actual_cost?: number;
   start_date?: Date;
   end_date?: Date;
   actual_start_date?: Date;
   actual_end_date?: Date;
+  template_id?: string;
 }
 
 const ProjectRepo = AppDataSource.getRepository(Project);
@@ -39,6 +41,7 @@ export const ProjectService = () => {
       end_date,
       actual_start_date,
       actual_end_date,
+      template_id,
     } = data;
 
     let client;
@@ -47,6 +50,14 @@ export const ProjectService = () => {
         ? await queryRunner.manager.findOne(Clients, { where: { id: client_id } })
         : await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
+    }
+
+    let template;
+    if (template_id) {
+      template = queryRunner
+        ? await queryRunner.manager.findOne(require("../entities/project-templates.entity").ProjectTemplates, { where: { id: template_id } })
+        : await AppDataSource.getRepository(require("../entities/project-templates.entity").ProjectTemplates).findOne({ where: { id: template_id } });
+      if (!template) throw new AppError(404, "Template not found");
     }
 
     const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
@@ -61,6 +72,7 @@ export const ProjectService = () => {
       actual_start_date,
       actual_end_date,
       client,
+      template,
     });
 
     return await repo.save(project);
@@ -88,7 +100,8 @@ export const ProjectService = () => {
         "client",
         "milestones",
         "milestones.tasks",
-        "attachments"
+        "attachments",
+        "template"
       ],
     });
 

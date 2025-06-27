@@ -94,8 +94,8 @@ AppDataSource.initialize()
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
     app.use('/api/project-attachments', projectAttachmentsRouter);
-    app.use('/api/project-template-milestone', milestoneMasterRouter);
-    app.use('/api/project-template-milestone-task', taskMasterRouter);
+    app.use('/api/project-template-milestones', milestoneMasterRouter);
+    app.use('/api/project-template-milestone-tasks', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
     app.use('/api/clients-details', clientsDetailsRouter);

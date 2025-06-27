@@ -24,12 +24,12 @@ export const ProjectController = () => {
     await queryRunner.startTransaction();
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.createProject(projectData, queryRunner);
+      const { milestones, attachments, template_id, description, ...projectData } = parsedData;
+      const project = await service.createProject({ ...projectData, description: description ?? "", template_id: template_id ?? undefined }, queryRunner);
       let createdMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
-          const milestoneData = { ...milestone, project_id: project.id };
+          const milestoneData = { ...milestone, project_id: project.id, description: milestone.description ?? "" };
           const createdMilestone = await milestoneService.createMilestone(milestoneData, queryRunner);
           let createdTasks = [];
           if (Array.isArray(milestone.tasks)) {
@@ -94,7 +94,10 @@ export const ProjectController = () => {
       res.status(200).json({
         status: "success",
         message: "Project project fetched by id",
-        data: result,
+        data: {
+          ...result,
+          template_id: typeof result.template?.id === 'string' ? result.template.id : undefined,
+        },
       });
     } catch (error) {
       next(error);
@@ -112,8 +115,8 @@ export const ProjectController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.updateProject(id, projectData, queryRunner);
+      const { milestones, attachments, template_id, ...projectData } = parsedData;
+      const project = await service.updateProject(id, { ...projectData, template_id: template_id ?? undefined }, queryRunner);
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
@@ -121,7 +124,7 @@ export const ProjectController = () => {
           if (milestone.id) {
             milestoneResult = await milestoneService.updateMilestone(milestone.id, milestone, queryRunner);
           } else {
-            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id }, queryRunner);
+            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
           }
           let updatedTasks = [];
           if (Array.isArray(milestone.tasks)) {

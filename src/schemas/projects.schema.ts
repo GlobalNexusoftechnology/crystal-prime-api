@@ -3,10 +3,13 @@ import { z } from "zod";
 export const createProjectSchema = z.object({
   client_id: z.string().uuid().optional(),
   name: z.string().min(1, "Project name is required"),
+  description: z.string().optional(),
   project_type: z.string().optional(),
   budget: z.number().optional(),
   estimated_cost: z.number().optional(),
   actual_cost: z.number().optional(),
+  cost_of_labour: z.number().optional(),
+  overhead_cost: z.number().optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   actual_start_date: z.coerce.date().optional(),
@@ -15,6 +18,7 @@ export const createProjectSchema = z.object({
     z.object({
       id: z.string().uuid().optional(),
       name: z.string(),
+      description: z.string().optional(),
       start_date: z.coerce.date().optional(),
       end_date: z.coerce.date().optional(),
       actual_date: z.coerce.date().optional(),
@@ -43,6 +47,10 @@ export const createProjectSchema = z.object({
       uploaded_by: z.string().optional(),
     })
   ).optional(),
+  template_id: z.string().uuid('Invalid template ID').optional().nullable(),
+  renewal_type: z.enum(["NONE", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"]).optional().nullable(),
+  renewal_date: z.coerce.date().optional(),
+  is_renewal: z.boolean().optional(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial();

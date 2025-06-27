@@ -12,6 +12,9 @@ export class ProjectMilestones extends Model {
   @Column({ type: "varchar", length: 100 })
   name: string;
 
+  @Column({ type: "text", nullable: true })
+  description: string;
+
   @Column({ type: "timestamp", nullable: true })
   start_date: Date;
 

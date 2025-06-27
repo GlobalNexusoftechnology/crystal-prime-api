@@ -8,6 +8,7 @@ const projectRepo = AppDataSource.getRepository(Project);
 
 interface MilestoneInput {
   name: string;
+  description: string;
   start_date?: Date;
   end_date?: Date;
   actual_date?: Date;
