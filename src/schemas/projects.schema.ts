@@ -14,6 +14,10 @@ export const createProjectSchema = z.object({
   end_date: z.coerce.date().optional(),
   actual_start_date: z.coerce.date().optional(),
   actual_end_date: z.coerce.date().optional(),
+  template_id: z.string().uuid('Invalid template ID').optional().nullable(),
+  renewal_type: z.enum(["NONE", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"]).optional().nullable(),
+  renewal_date: z.coerce.date().optional(),
+  is_renewal: z.boolean().optional(),
   milestones: z.array(
     z.object({
       id: z.string().uuid().optional(),
@@ -47,10 +51,6 @@ export const createProjectSchema = z.object({
       uploaded_by: z.string().optional(),
     })
   ).optional(),
-  template_id: z.string().uuid('Invalid template ID').optional().nullable(),
-  renewal_type: z.enum(["NONE", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"]).optional().nullable(),
-  renewal_date: z.coerce.date().optional(),
-  is_renewal: z.boolean().optional(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial();

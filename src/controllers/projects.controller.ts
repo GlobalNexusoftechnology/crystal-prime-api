@@ -72,10 +72,14 @@ export const ProjectController = () => {
   ) => {
     try {
       const result = await service.getAllProject();
+      const projectsWithTemplateId = result.map(project => ({
+        ...project,
+        template_id: typeof project.template?.id === 'string' ? project.template.id : undefined,
+      }));
       res.status(200).json({
         status: "success",
         message: "All Project projects fetched",
-        data: result,
+        data: projectsWithTemplateId,
       });
     } catch (error) {
       next(error);

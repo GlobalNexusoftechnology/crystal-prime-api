@@ -18,6 +18,9 @@ interface ProjectInput {
   actual_start_date?: Date;
   actual_end_date?: Date;
   template_id?: string;
+  renewal_type?: string | null;
+  renewal_date?: Date;
+  is_renewal?: boolean;
 }
 
 const ProjectRepo = AppDataSource.getRepository(Project);
@@ -33,8 +36,11 @@ export const ProjectService = () => {
     const {
       client_id,
       name,
+      description,
       project_type,
       budget,
+      cost_of_labour,
+      overhead_cost,
       estimated_cost,
       actual_cost,
       start_date,
@@ -42,6 +48,9 @@ export const ProjectService = () => {
       actual_start_date,
       actual_end_date,
       template_id,
+      renewal_type,
+      renewal_date,
+      is_renewal,
     } = data;
 
     let client;
@@ -63,14 +72,20 @@ export const ProjectService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
     const project = repo.create({
       name,
+      description,
       project_type,
       budget,
+      cost_of_labour,
+      overhead_cost,
       estimated_cost,
       actual_cost,
       start_date,
       end_date,
       actual_start_date,
       actual_end_date,
+      renewal_type,
+      renewal_date,
+      is_renewal,
       client,
       template,
     });
@@ -86,7 +101,8 @@ export const ProjectService = () => {
         "client",
         "milestones",
         "milestones.tasks",
-        "attachments"
+        "attachments",
+        "template"
       ],
     });
     return data;
@@ -122,14 +138,20 @@ export const ProjectService = () => {
     const {
       client_id,
       name,
+      description,
       project_type,
       budget,
+      cost_of_labour,
+      overhead_cost,
       estimated_cost,
       actual_cost,
       start_date,
       end_date,
       actual_start_date,
       actual_end_date,
+      renewal_type,
+      renewal_date,
+      is_renewal,
     } = data;
 
     if (client_id) {
@@ -139,8 +161,11 @@ export const ProjectService = () => {
     }
 
     if (name !== undefined) project.name = name;
+    if (description !== undefined) project.description = description;
     if (project_type !== undefined) project.project_type = project_type;
     if (budget !== undefined) project.budget = budget;
+    if (cost_of_labour !== undefined) project.cost_of_labour = cost_of_labour;
+    if (overhead_cost !== undefined) project.overhead_cost = overhead_cost;
     if (estimated_cost !== undefined) project.estimated_cost = estimated_cost;
     if (actual_cost !== undefined) project.actual_cost = actual_cost;
     if (start_date !== undefined) project.start_date = start_date;
@@ -149,6 +174,9 @@ export const ProjectService = () => {
       project.actual_start_date = actual_start_date;
     if (actual_end_date !== undefined)
       project.actual_end_date = actual_end_date;
+    if (renewal_type !== undefined) project.renewal_type = renewal_type as any;
+    if (renewal_date !== undefined) project.renewal_date = renewal_date;
+    if (is_renewal !== undefined) project.is_renewal = is_renewal;
 
     return await repo.save(project);
   };
