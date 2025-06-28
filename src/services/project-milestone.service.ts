@@ -44,7 +44,7 @@ export const MilestoneService = () => {
   const getAllMilestones = async () => {
     const data = await milestoneRepo.find({
       where: { deleted: false },
-      relations: ["project"],
+      relations: ["project", "tasks"],
     });
     return { data, total: data.length };
   };
@@ -52,7 +52,7 @@ export const MilestoneService = () => {
   const getMilestoneById = async (id: string) => {
     const milestone = await milestoneRepo.findOne({
       where: { id, deleted: false },
-      relations: ["project"],
+      relations: ["project", "tasks"],
     });
     if (!milestone) throw new AppError(404, "Milestone not found");
     return milestone;
