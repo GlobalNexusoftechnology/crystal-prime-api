@@ -28,6 +28,7 @@ export const MilestoneService = () => {
 
     const milestone = repo.create({
       name: data.name,
+      description: data.description,
       start_date: data.start_date,
       end_date: data.end_date,
       actual_date: data.actual_date,
@@ -71,6 +72,7 @@ export const MilestoneService = () => {
     }
 
     if (data.name !== undefined) milestone.name = data.name;
+    if (data.description !== undefined) milestone.description = data.description;
     if (data.start_date !== undefined) milestone.start_date = data.start_date;
     if (data.end_date !== undefined) milestone.end_date = data.end_date;
     if (data.actual_date !== undefined) milestone.actual_date = data.actual_date;
