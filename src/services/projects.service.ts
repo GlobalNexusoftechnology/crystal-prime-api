@@ -32,6 +32,14 @@ export const ProjectService = () => {
     return AppDataSource.createQueryRunner();
   };
 
+  // Helper function to calculate actual cost
+  const calculateActualCost = (costOfLabour?: number, overheadCost?: number): number | null => {
+    const labour = costOfLabour || 0;
+    const overhead = overheadCost || 0;
+    const total = labour + overhead;
+    return total > 0 ? total : null;
+  };
+
   // Create Project
   const createProject = async (data: ProjectInput, queryRunner?: any) => {
     const {
@@ -71,6 +79,9 @@ export const ProjectService = () => {
       if (!template) throw new AppError(404, "Template not found");
     }
 
+    // Calculate actual cost automatically
+    const calculatedActualCost = calculateActualCost(cost_of_labour, overhead_cost);
+
     const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
     const project = repo.create({
       name,
@@ -81,7 +92,7 @@ export const ProjectService = () => {
       cost_of_labour,
       overhead_cost,
       estimated_cost,
-      actual_cost,
+      actual_cost: calculatedActualCost,
       start_date,
       end_date,
       actual_start_date,
@@ -174,7 +185,17 @@ export const ProjectService = () => {
     if (cost_of_labour !== undefined) project.cost_of_labour = cost_of_labour;
     if (overhead_cost !== undefined) project.overhead_cost = overhead_cost;
     if (estimated_cost !== undefined) project.estimated_cost = estimated_cost;
-    if (actual_cost !== undefined) project.actual_cost = actual_cost;
+    
+    // Auto-calculate actual cost if cost_of_labour or overhead_cost is updated
+    if (cost_of_labour !== undefined || overhead_cost !== undefined) {
+      const newLabourCost = cost_of_labour !== undefined ? cost_of_labour : project.cost_of_labour;
+      const newOverheadCost = overhead_cost !== undefined ? overhead_cost : project.overhead_cost;
+      project.actual_cost = calculateActualCost(newLabourCost, newOverheadCost);
+    } else if (actual_cost !== undefined) {
+      // Allow manual override if neither cost_of_labour nor overhead_cost is being updated
+      project.actual_cost = actual_cost;
+    }
+    
     if (start_date !== undefined) project.start_date = start_date;
     if (end_date !== undefined) project.end_date = end_date;
     if (actual_start_date !== undefined)
