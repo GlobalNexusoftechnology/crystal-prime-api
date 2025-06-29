@@ -2,11 +2,13 @@ import { AppDataSource } from "../utils/data-source";
 import { Project, ProjectStatus } from "../entities/projects.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { ProjectTasks } from "../entities/project-task.entity";
+import { ProjectMilestoneMaster } from "../entities/milestone-master.entity";
 import AppError from "../utils/appError";
 
 const projectRepo = AppDataSource.getRepository(Project);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
+const milestoneMasterRepo = AppDataSource.getRepository(ProjectMilestoneMaster);
 
 export const TaskStatusService = () => {
   /**
@@ -17,13 +19,47 @@ export const TaskStatusService = () => {
 
     const task = await repo.findOne({
       where: { id: taskId, deleted: false },
-      relations: ["milestone", "milestone.project"]
+      relations: ["milestone", "milestone.project", "milestone.project.template"]
     });
 
     if (!task) throw new AppError(404, "Task not found");
 
     const oldStatus = task.status;
     task.status = newStatus;
+
+    // Task Due Date Logic
+    if (newStatus === "In Progress") {
+      // Set start_date if not already set
+      if (!task.start_date) {
+        task.start_date = new Date();
+      }
+      // Find the template task by matching title and milestone
+      let estimatedDays = 0;
+      if (task.milestone?.project?.template) {
+        // Find the template milestone by name
+        const templateMilestone = await milestoneMasterRepo.findOne({
+          where: {
+            template: { id: task.milestone.project.template.id },
+            name: task.milestone.name
+          },
+          relations: ["project_task_master"]
+        });
+        if (templateMilestone && Array.isArray(templateMilestone.project_task_master)) {
+          const templateTask = templateMilestone.project_task_master.find(
+            t => t.title === task.title
+          );
+          if (templateTask?.estimated_days) {
+            estimatedDays = templateTask.estimated_days;
+          }
+        }
+      }
+      if (estimatedDays > 0) {
+        const dueDate = new Date(task.start_date);
+        dueDate.setDate(dueDate.getDate() + estimatedDays);
+        task.due_date = dueDate;
+      }
+    }
+
     await repo.save(task);
 
     // Update milestone status if task status changed
@@ -74,9 +110,39 @@ export const TaskStatusService = () => {
     if (milestone.status !== newStatus) {
       milestone.status = newStatus;
       
-      // Set start date when milestone moves to "In Progress"
+      // Remove dates when status is Open or In Progress
+      if (newStatus === "Open" || newStatus === "In Progress") {
+        milestone.actual_date = null;
+        milestone.estimated_date = null;
+      }
+      
+      // Set start/end date if moving to In Progress
       if (newStatus === "In Progress" && !milestone.start_date) {
         milestone.start_date = new Date();
+        // Calculate end_date from template estimatedDays
+        let estimatedDays = 0;
+        if (milestone.project?.template) {
+          // Find the template milestone by name
+          const templateMilestone = await milestoneMasterRepo.findOne({
+            where: {
+              template: { id: milestone.project.template.id },
+              name: milestone.name
+            }
+          });
+          if (templateMilestone?.estimated_days) {
+            estimatedDays = templateMilestone.estimated_days;
+          }
+        }
+        if (estimatedDays > 0) {
+          const endDate = new Date(milestone.start_date);
+          endDate.setDate(endDate.getDate() + estimatedDays);
+          milestone.end_date = endDate;
+        }
+      }
+      
+      // Set actual_date when milestone is completed
+      if (newStatus === "Completed") {
+        milestone.actual_date = new Date();
       }
 
       await repo.save(milestone);
@@ -142,6 +208,27 @@ export const TaskStatusService = () => {
     // Only update if status has changed
     if (project.status !== newStatus) {
       project.status = newStatus;
+      
+      // Remove actual_start_date when project status is Open
+      if (newStatus === ProjectStatus.OPEN) {
+        project.actual_start_date = null;
+      }
+      
+      // Remove actual_end_date when project status is Open or In Progress
+      if (newStatus === ProjectStatus.OPEN || newStatus === ProjectStatus.IN_PROGRESS) {
+        project.actual_end_date = null;
+      }
+      
+      // Set actual_start_date when first milestone moves to In Progress
+      if (newStatus === ProjectStatus.IN_PROGRESS && !project.actual_start_date) {
+        project.actual_start_date = new Date();
+      }
+      
+      // Set actual_end_date when all milestones are completed
+      if (newStatus === ProjectStatus.COMPLETED && !project.actual_end_date) {
+        project.actual_end_date = new Date();
+      }
+      
       await repo.save(project);
     }
 
