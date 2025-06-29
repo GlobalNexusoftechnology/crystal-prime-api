@@ -1,5 +1,5 @@
 import { AppDataSource } from "../utils/data-source";
-import { Project } from "../entities/projects.entity";
+import { Project, ProjectStatus } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 
@@ -8,6 +8,7 @@ interface ProjectInput {
   name: string;
   description: string;
   project_type?: string;
+  status?: ProjectStatus;
   budget?: number;
   cost_of_labour?: number,
   overhead_cost?: number,
@@ -38,6 +39,7 @@ export const ProjectService = () => {
       name,
       description,
       project_type,
+      status,
       budget,
       cost_of_labour,
       overhead_cost,
@@ -74,6 +76,7 @@ export const ProjectService = () => {
       name,
       description,
       project_type,
+      status: status || ProjectStatus.OPEN,
       budget,
       cost_of_labour,
       overhead_cost,
@@ -142,6 +145,7 @@ export const ProjectService = () => {
       name,
       description,
       project_type,
+      status,
       budget,
       cost_of_labour,
       overhead_cost,
@@ -165,6 +169,7 @@ export const ProjectService = () => {
     if (name !== undefined) project.name = name;
     if (description !== undefined) project.description = description;
     if (project_type !== undefined) project.project_type = project_type;
+    if (status !== undefined) project.status = status;
     if (budget !== undefined) project.budget = budget;
     if (cost_of_labour !== undefined) project.cost_of_labour = cost_of_labour;
     if (overhead_cost !== undefined) project.overhead_cost = overhead_cost;

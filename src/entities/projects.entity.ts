@@ -15,6 +15,14 @@ export enum ProjectRenewalType {
   CUSTOM = "CUSTOM"
 }
 
+export enum ProjectStatus {
+  OPEN = "Open",
+  IN_PROGRESS = "In Progress",
+  COMPLETED = "Completed",
+  CANCELLED = "Cancelled",
+  ON_HOLD = "On Hold"
+}
+
 @Entity("Project ")
 export class Project extends Model {
   @ManyToOne(() => Clients, (client) => client.id, { nullable: true })
@@ -29,6 +37,14 @@ export class Project extends Model {
   
   @Column({ type: "varchar", length: 100, nullable: true })
   project_type: string;
+
+  @Column({
+    type: "enum",
+    enum: ProjectStatus,
+    default: ProjectStatus.OPEN,
+    nullable: false
+  })
+  status: ProjectStatus;
 
   @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
   budget: number;
