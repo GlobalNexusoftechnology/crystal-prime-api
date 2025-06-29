@@ -30,6 +30,7 @@ import projectAttachmentsRouter from './routes/project-attachments.routes';
 import milestoneMasterRouter from './routes/milestone-master.routes';
 import taskMasterRouter from './routes/task-master.routes';
 import clientFollowupRoutes from "./routes/clients-followups.routes";
+import taskCommentRoutes from "./routes/task-comment.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
@@ -99,6 +100,7 @@ AppDataSource.initialize()
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
     app.use('/api/clients-details', clientsDetailsRouter);
+    app.use('/api/task-comments', taskCommentRoutes);
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use('/api/project-followups', projectFollowupsRouter);
