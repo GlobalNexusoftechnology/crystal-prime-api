@@ -102,6 +102,7 @@ export const ProjectService = () => {
         "milestones",
         "milestones.tasks",
         "attachments",
+        "attachments.uploaded_by",
         "template"
       ],
     });
@@ -117,6 +118,7 @@ export const ProjectService = () => {
         "milestones",
         "milestones.tasks",
         "attachments",
+        "attachments.uploaded_by",
         "template"
       ],
     });
