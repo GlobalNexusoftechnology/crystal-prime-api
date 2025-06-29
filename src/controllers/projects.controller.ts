@@ -121,6 +121,7 @@ export const ProjectController = () => {
       const parsedData = updateProjectSchema.parse(req.body);
       const { milestones, attachments, template_id, ...projectData } = parsedData;
       const project = await service.updateProject(id, { ...projectData, template_id: template_id ?? undefined }, queryRunner);
+      
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
@@ -145,19 +146,46 @@ export const ProjectController = () => {
           updatedMilestones.push({ ...milestoneResult, tasks: updatedTasks });
         }
       }
+
+      // Handle attachments with proper update logic
       let updatedAttachments = [];
       if (Array.isArray(attachments)) {
+        // Get existing attachments for this project
+        const existingAttachments = await attachmentService.getAttachmentsByProjectId(project.id);
+        const existingAttachmentIds = existingAttachments.map(att => att.id);
+        const newAttachmentIds = attachments.filter(att => att.id).map(att => att.id);
+        
+        // Delete attachments that are no longer in the list
+        const attachmentsToDelete = existingAttachmentIds.filter(id => !newAttachmentIds.includes(id));
+        for (const attachmentId of attachmentsToDelete) {
+          await attachmentService.deleteAttachment(attachmentId, queryRunner);
+        }
+
+        // Process new and updated attachments
         for (const attachment of attachments) {
           let attachmentResult;
           if (attachment.id) {
-            // Optionally implement updateAttachment if needed
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Update existing attachment
+            attachmentResult = await attachmentService.updateAttachment({
+              id: attachment.id,
+              file_path: attachment.file_path,
+              file_type: attachment.file_type,
+              file_name: attachment.file_name,
+            }, queryRunner);
           } else {
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Create new attachment
+            attachmentResult = await attachmentService.createAttachment({ 
+              ...attachment, 
+              Project_id: project.id 
+            }, queryRunner);
           }
           updatedAttachments.push(attachmentResult);
         }
+      } else {
+        // If no attachments provided, delete all existing attachments
+        await attachmentService.deleteAllAttachmentsForProject(project.id, queryRunner);
       }
+
       await queryRunner.commitTransaction();
       res.status(200).json({
         status: "success",
