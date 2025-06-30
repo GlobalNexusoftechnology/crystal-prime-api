@@ -13,4 +13,7 @@ export class LeadStatuses extends Model {
 
   @OneToMany(() => LeadStatusHistory, (history) => history.status)
   status_histories: LeadStatusHistory[];
+
+  @Column({ type: "varchar", nullable: true })
+  color: string | null;
 }

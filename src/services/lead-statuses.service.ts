@@ -4,6 +4,7 @@ import AppError from "../utils/appError";
 
 interface LeadStatusInput {
   name: string;
+  color?: string | null;
 }
 
 export interface GetLeadStatusesQuery {
@@ -19,7 +20,7 @@ const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 export const LeadStatusService = () => {
   // Create Lead Status
   const createLeadStatus = async (data: LeadStatusInput) => {
-    const { name } = data;
+    const { name, color } = data;
 
     const existingLeadStatus = await leadStatusRepo.findOne({
       where: { name },
@@ -27,7 +28,7 @@ export const LeadStatusService = () => {
     if (existingLeadStatus)
       throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
-    const leadStatus = leadStatusRepo.create({ name });
+    const leadStatus = leadStatusRepo.create({ name, color });
     return await leadStatusRepo.save(leadStatus);
   };
 
@@ -68,9 +69,10 @@ export const LeadStatusService = () => {
     if (existingLeadStatus)
       throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
 
-    const { name } = data;
+    const { name, color } = data;
 
     if (name !== undefined) leadStatus.name = name;
+    if (color !== undefined) leadStatus.color = color;
 
     return await leadStatusRepo.save(leadStatus);
   };
