@@ -1,6 +1,7 @@
 import { AppDataSource } from "../utils/data-source";
 import { LeadTypes } from "../entities/lead-type.entity";
 import AppError from "../utils/appError";
+import { Not } from "typeorm";
 
 interface LeadTypeInput {
   name: string;
@@ -63,7 +64,7 @@ export const LeadTypeService = () => {
     if (!leadType) throw new AppError(404, "Lead Type not found");
 
     const existingLeadType = await leadTypeRepo.findOne({
-    where: {name: data.name },
+      where: { name: data.name, id: Not(id) },
     });
     
     if (existingLeadType)

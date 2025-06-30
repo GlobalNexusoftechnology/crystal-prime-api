@@ -1,6 +1,7 @@
 import { AppDataSource } from "../utils/data-source";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import AppError from "../utils/appError";
+import { Not } from "typeorm";
 
 interface LeadStatusInput {
   name: string;
@@ -64,7 +65,7 @@ export const LeadStatusService = () => {
     if (!leadStatus) throw new AppError(404, "Lead Status not found");
 
     const existingLeadStatus = await leadStatusRepo.findOne({
-      where: { name: data.name },
+      where: { name: data.name, id: Not(id) },
     });
     if (existingLeadStatus)
       throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
