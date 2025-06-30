@@ -18,7 +18,6 @@ interface ProjectInput {
   end_date?: Date;
   actual_start_date?: Date;
   actual_end_date?: Date;
-  template_id?: string;
   renewal_type?: string | null;
   renewal_date?: Date;
   is_renewal?: boolean;
@@ -57,7 +56,6 @@ export const ProjectService = () => {
       end_date,
       actual_start_date,
       actual_end_date,
-      template_id,
       renewal_type,
       renewal_date,
       is_renewal,
@@ -69,14 +67,6 @@ export const ProjectService = () => {
         ? await queryRunner.manager.findOne(Clients, { where: { id: client_id } })
         : await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
-    }
-
-    let template;
-    if (template_id) {
-      template = queryRunner
-        ? await queryRunner.manager.findOne(require("../entities/project-templates.entity").ProjectTemplates, { where: { id: template_id } })
-        : await AppDataSource.getRepository(require("../entities/project-templates.entity").ProjectTemplates).findOne({ where: { id: template_id } });
-      if (!template) throw new AppError(404, "Template not found");
     }
 
     // Calculate actual cost automatically
@@ -101,7 +91,6 @@ export const ProjectService = () => {
       renewal_date,
       is_renewal,
       client,
-      template,
     });
 
     return await repo.save(project);
@@ -116,8 +105,7 @@ export const ProjectService = () => {
         "milestones",
         "milestones.tasks",
         "attachments",
-        "attachments.uploaded_by",
-        "template"
+        "attachments.uploaded_by"
       ],
     });
     return data;
@@ -132,8 +120,7 @@ export const ProjectService = () => {
         "milestones",
         "milestones.tasks",
         "attachments",
-        "attachments.uploaded_by",
-        "template"
+        "attachments.uploaded_by"
       ],
     });
 
