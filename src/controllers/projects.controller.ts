@@ -7,6 +7,7 @@ import {
 import { MilestoneService } from "../services/project-milestone.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { ProjectAttachmentService } from "../services/project-attachments.service";
+import { ProjectMilestones } from "../entities/project-milestone.entity";
 
 const service = ProjectService();
 const milestoneService = MilestoneService();
@@ -122,6 +123,17 @@ export const ProjectController = () => {
       
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
+        // Get existing milestones for this project
+        const existingMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
+        const existingMilestoneIds = existingMilestones.map((ms: ProjectMilestones) => ms.id);
+        const incomingMilestoneIds = milestones.filter(ms => ms.id).map(ms => ms.id);
+
+        // Delete milestones that are no longer in the list
+        const milestonesToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+        for (const milestoneId of milestonesToDelete) {
+          await milestoneService.deleteMilestone(milestoneId, queryRunner);
+        }
+        
         for (const milestone of milestones) {
           let milestoneResult;
           if (milestone.id) {
@@ -179,8 +191,10 @@ export const ProjectController = () => {
           }
           updatedAttachments.push(attachmentResult);
         }
+      } else if (attachments === undefined) {
+        // attachments is not provided, do nothing to attachments
       } else {
-        // If no attachments provided, delete all existing attachments
+        // If attachments is null or an empty array, delete all existing attachments
         await attachmentService.deleteAllAttachmentsForProject(project.id, queryRunner);
       }
 

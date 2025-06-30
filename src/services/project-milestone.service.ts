@@ -59,6 +59,14 @@ export const MilestoneService = () => {
     return milestone;
   };
 
+  const getMilestonesByProjectId = async (project_id: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const milestones = await repo.find({
+      where: { project: { id: project_id }, deleted: false },
+    });
+    return milestones;
+  };
+
   const updateMilestone = async (id: string, data: Partial<MilestoneInput>, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
@@ -84,20 +92,22 @@ export const MilestoneService = () => {
     return await repo.save(milestone);
   };
 
-  const deleteMilestone = async (id: string) => {
-    const milestone = await milestoneRepo.findOne({ where: { id, deleted: false } });
+  const deleteMilestone = async (id: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const milestone = await repo.findOne({ where: { id, deleted: false } });
     if (!milestone) throw new AppError(404, "Milestone not found");
 
     milestone.deleted = true;
     milestone.deleted_at = new Date();
 
-    return await milestoneRepo.save(milestone);
+    return await repo.save(milestone);
   };
 
   return {
     createMilestone,
     getAllMilestones,
     getMilestoneById,
+    getMilestonesByProjectId,
     updateMilestone,
     deleteMilestone,
   };
