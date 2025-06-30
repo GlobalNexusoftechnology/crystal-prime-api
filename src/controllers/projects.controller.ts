@@ -24,8 +24,8 @@ export const ProjectController = () => {
     await queryRunner.startTransaction();
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
-      const { milestones, attachments, template_id, description, ...projectData } = parsedData;
-      const project = await service.createProject({ ...projectData, description: description ?? "", template_id: template_id ?? undefined }, queryRunner);
+      const { milestones, attachments, description, ...projectData } = parsedData;
+      const project = await service.createProject({ ...projectData, description: description ?? "" }, queryRunner);
       let createdMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
@@ -73,8 +73,7 @@ export const ProjectController = () => {
     try {
       const result = await service.getAllProject();
       const projectsWithTemplateId = result.map(project => ({
-        ...project,
-        template_id: typeof project.template?.id === 'string' ? project.template.id : undefined,
+        ...project
       }));
       res.status(200).json({
         status: "success",
@@ -99,8 +98,7 @@ export const ProjectController = () => {
         status: "success",
         message: "Project project fetched by id",
         data: {
-          ...result,
-          template_id: typeof result.template?.id === 'string' ? result.template.id : undefined,
+          ...result
         },
       });
     } catch (error) {
@@ -119,8 +117,8 @@ export const ProjectController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
-      const { milestones, attachments, template_id, ...projectData } = parsedData;
-      const project = await service.updateProject(id, { ...projectData, template_id: template_id ?? undefined }, queryRunner);
+      const { milestones, attachments, description, ...projectData } = parsedData;
+      const project = await service.updateProject(id, { ...projectData }, queryRunner);
       
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {

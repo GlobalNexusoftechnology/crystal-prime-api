@@ -16,7 +16,6 @@ export const createProjectSchema = z.object({
   end_date: z.coerce.date().optional(),
   actual_start_date: z.coerce.date().optional(),
   actual_end_date: z.coerce.date().optional(),
-  template_id: z.string().uuid('Invalid template ID').optional().nullable(),
   renewal_type: z.enum(["NONE", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"]).optional().nullable(),
   renewal_date: z.coerce.date().optional(),
   is_renewal: z.boolean().optional(),
