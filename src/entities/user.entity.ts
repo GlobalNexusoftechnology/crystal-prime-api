@@ -10,7 +10,7 @@ import { projectAttachments } from "./project-attachments.entity";
 
 @Entity("users")
 export class User extends Model {
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   email: string;
 
   @Column({ nullable: true })
