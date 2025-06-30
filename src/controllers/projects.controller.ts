@@ -24,12 +24,12 @@ export const ProjectController = () => {
     await queryRunner.startTransaction();
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.createProject(projectData, queryRunner);
+      const { milestones, attachments, template_id, description, ...projectData } = parsedData;
+      const project = await service.createProject({ ...projectData, description: description ?? "", template_id: template_id ?? undefined }, queryRunner);
       let createdMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
-          const milestoneData = { ...milestone, project_id: project.id };
+          const milestoneData = { ...milestone, project_id: project.id, description: milestone.description ?? "" };
           const createdMilestone = await milestoneService.createMilestone(milestoneData, queryRunner);
           let createdTasks = [];
           if (Array.isArray(milestone.tasks)) {
@@ -72,10 +72,14 @@ export const ProjectController = () => {
   ) => {
     try {
       const result = await service.getAllProject();
+      const projectsWithTemplateId = result.map(project => ({
+        ...project,
+        template_id: typeof project.template?.id === 'string' ? project.template.id : undefined,
+      }));
       res.status(200).json({
         status: "success",
         message: "All Project projects fetched",
-        data: result,
+        data: projectsWithTemplateId,
       });
     } catch (error) {
       next(error);
@@ -94,7 +98,10 @@ export const ProjectController = () => {
       res.status(200).json({
         status: "success",
         message: "Project project fetched by id",
-        data: result,
+        data: {
+          ...result,
+          template_id: typeof result.template?.id === 'string' ? result.template.id : undefined,
+        },
       });
     } catch (error) {
       next(error);
@@ -112,8 +119,9 @@ export const ProjectController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.updateProject(id, projectData, queryRunner);
+      const { milestones, attachments, template_id, ...projectData } = parsedData;
+      const project = await service.updateProject(id, { ...projectData, template_id: template_id ?? undefined }, queryRunner);
+      
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
@@ -121,7 +129,7 @@ export const ProjectController = () => {
           if (milestone.id) {
             milestoneResult = await milestoneService.updateMilestone(milestone.id, milestone, queryRunner);
           } else {
-            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id }, queryRunner);
+            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
           }
           let updatedTasks = [];
           if (Array.isArray(milestone.tasks)) {
@@ -138,19 +146,46 @@ export const ProjectController = () => {
           updatedMilestones.push({ ...milestoneResult, tasks: updatedTasks });
         }
       }
+
+      // Handle attachments with proper update logic
       let updatedAttachments = [];
       if (Array.isArray(attachments)) {
+        // Get existing attachments for this project
+        const existingAttachments = await attachmentService.getAttachmentsByProjectId(project.id);
+        const existingAttachmentIds = existingAttachments.map(att => att.id);
+        const newAttachmentIds = attachments.filter(att => att.id).map(att => att.id);
+        
+        // Delete attachments that are no longer in the list
+        const attachmentsToDelete = existingAttachmentIds.filter(id => !newAttachmentIds.includes(id));
+        for (const attachmentId of attachmentsToDelete) {
+          await attachmentService.deleteAttachment(attachmentId, queryRunner);
+        }
+
+        // Process new and updated attachments
         for (const attachment of attachments) {
           let attachmentResult;
           if (attachment.id) {
-            // Optionally implement updateAttachment if needed
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Update existing attachment
+            attachmentResult = await attachmentService.updateAttachment({
+              id: attachment.id,
+              file_path: attachment.file_path,
+              file_type: attachment.file_type,
+              file_name: attachment.file_name,
+            }, queryRunner);
           } else {
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Create new attachment
+            attachmentResult = await attachmentService.createAttachment({ 
+              ...attachment, 
+              Project_id: project.id 
+            }, queryRunner);
           }
           updatedAttachments.push(attachmentResult);
         }
+      } else {
+        // If no attachments provided, delete all existing attachments
+        await attachmentService.deleteAllAttachmentsForProject(project.id, queryRunner);
       }
+
       await queryRunner.commitTransaction();
       res.status(200).json({
         status: "success",

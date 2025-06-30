@@ -18,5 +18,7 @@ router.post(
 router.post("/", controller.createAttachment);
 router.get("/", controller.getAllAttachments);
 router.get("/:id", controller.getAttachmentById);
+router.put("/:id", controller.updateAttachment);
+router.delete("/:id", controller.deleteAttachment);
 
 export default router;

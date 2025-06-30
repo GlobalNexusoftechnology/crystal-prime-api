@@ -3,6 +3,7 @@ import { z } from "zod";
 export const createMilestoneSchema = z.object({
   project_id: z.string().uuid("Invalid project ID"),
   name: z.string().min(1),
+  description: z.string().optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   actual_date: z.coerce.date().optional(),
@@ -14,6 +15,7 @@ export const createMilestoneSchema = z.object({
 
 export const updateMilestoneSchema = z.object({
   name: z.string().min(1).optional(),
+  description: z.string().optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   actual_date: z.coerce.date().optional(),

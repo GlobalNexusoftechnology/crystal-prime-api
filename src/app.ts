@@ -30,6 +30,8 @@ import projectAttachmentsRouter from './routes/project-attachments.routes';
 import milestoneMasterRouter from './routes/milestone-master.routes';
 import taskMasterRouter from './routes/task-master.routes';
 import clientFollowupRoutes from "./routes/clients-followups.routes";
+import taskCommentRoutes from "./routes/task-comment.routes";
+import taskStatusRoutes from "./routes/task-status.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
@@ -94,11 +96,13 @@ AppDataSource.initialize()
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
     app.use('/api/project-attachments', projectAttachmentsRouter);
-    app.use('/api/project-template-milestone', milestoneMasterRouter);
-    app.use('/api/project-template-milestone-task', taskMasterRouter);
+    app.use('/api/project-template-milestones', milestoneMasterRouter);
+    app.use('/api/project-template-milestone-tasks', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
     app.use('/api/clients-details', clientsDetailsRouter);
+    app.use('/api/task-comments', taskCommentRoutes);
+    app.use('/api/task-status', taskStatusRoutes);
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use('/api/project-followups', projectFollowupsRouter);

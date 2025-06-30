@@ -7,3 +7,10 @@ export const createProjectAttachment = z.object({
   file_type: z.string(),
   file_name: z.string()
 });
+
+// Update Attachment Schema
+export const updateProjectAttachment = z.object({
+  file_path: z.string().url().optional(),
+  file_type: z.string().optional(),
+  file_name: z.string().optional()
+});

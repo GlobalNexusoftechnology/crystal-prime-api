@@ -12,6 +12,13 @@ interface IAttachmentInput {
     file_name: string;
 }
 
+interface IUpdateAttachmentInput {
+    id: string;
+    file_path?: string;
+    file_type?: string;
+    file_name?: string;
+}
+
 const attachmentRepo = AppDataSource.getRepository(projectAttachments);
 const ProjectRepo = AppDataSource.getRepository(Project);
 const UserRepo = AppDataSource.getRepository(User);
@@ -87,10 +94,63 @@ export const ProjectAttachmentService = () => {
         return attachment;
     };
 
+    // Update Attachment
+    const updateAttachment = async (data: IUpdateAttachmentInput, queryRunner?: any) => {
+        const repo = queryRunner ? queryRunner.manager.getRepository(projectAttachments) : attachmentRepo;
+        const { id, ...updateData } = data;
+
+        const attachment = await repo.findOne({ where: { id, deleted: false } });
+        if (!attachment) {
+            throw new AppError(404, "Attachment not found");
+        }
+
+        // Update only provided fields
+        Object.assign(attachment, updateData);
+        return await repo.save(attachment);
+    };
+
+    // Delete Attachment (Soft Delete)
+    const deleteAttachment = async (id: string, queryRunner?: any) => {
+        const repo = queryRunner ? queryRunner.manager.getRepository(projectAttachments) : attachmentRepo;
+        
+        const attachment = await repo.findOne({ where: { id, deleted: false } });
+        if (!attachment) {
+            throw new AppError(404, "Attachment not found");
+        }
+
+        attachment.deleted = true;
+        attachment.deleted_at = new Date();
+        return await repo.save(attachment);
+    };
+
+    // Delete All Attachments for a Project (Soft Delete)
+    const deleteAllAttachmentsForProject = async (projectId: string, queryRunner?: any) => {
+        const repo = queryRunner ? queryRunner.manager.getRepository(projectAttachments) : attachmentRepo;
+        
+        const attachments = await repo.find({ 
+            where: { 
+                Project: { id: projectId }, 
+                deleted: false 
+            },
+            relations: ["Project"]
+        });
+
+        for (const attachment of attachments) {
+            attachment.deleted = true;
+            attachment.deleted_at = new Date();
+            await repo.save(attachment);
+        }
+
+        return attachments;
+    };
+
     return {
         createAttachment,
         getAllAttachments,
         getAttachmentById,
         getAttachmentsByProjectId,
+        updateAttachment,
+        deleteAttachment,
+        deleteAllAttachmentsForProject,
     };
 };

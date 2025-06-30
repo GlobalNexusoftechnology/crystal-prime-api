@@ -8,6 +8,7 @@ const projectRepo = AppDataSource.getRepository(Project);
 
 interface MilestoneInput {
   name: string;
+  description: string;
   start_date?: Date;
   end_date?: Date;
   actual_date?: Date;
@@ -27,6 +28,7 @@ export const MilestoneService = () => {
 
     const milestone = repo.create({
       name: data.name,
+      description: data.description,
       start_date: data.start_date,
       end_date: data.end_date,
       actual_date: data.actual_date,
@@ -43,7 +45,7 @@ export const MilestoneService = () => {
   const getAllMilestones = async () => {
     const data = await milestoneRepo.find({
       where: { deleted: false },
-      relations: ["project"],
+      relations: ["project", "tasks"],
     });
     return { data, total: data.length };
   };
@@ -51,7 +53,7 @@ export const MilestoneService = () => {
   const getMilestoneById = async (id: string) => {
     const milestone = await milestoneRepo.findOne({
       where: { id, deleted: false },
-      relations: ["project"],
+      relations: ["project", "tasks"],
     });
     if (!milestone) throw new AppError(404, "Milestone not found");
     return milestone;
@@ -70,6 +72,7 @@ export const MilestoneService = () => {
     }
 
     if (data.name !== undefined) milestone.name = data.name;
+    if (data.description !== undefined) milestone.description = data.description;
     if (data.start_date !== undefined) milestone.start_date = data.start_date;
     if (data.end_date !== undefined) milestone.end_date = data.end_date;
     if (data.actual_date !== undefined) milestone.actual_date = data.actual_date;
