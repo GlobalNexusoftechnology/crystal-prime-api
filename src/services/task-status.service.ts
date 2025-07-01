@@ -180,24 +180,12 @@ export const TaskStatusService = () => {
     }
 
     let newStatus = ProjectStatus.OPEN;
-    let allMilestonesCompleted = true;
-    let hasInProgressMilestone = false;
-    let hasOpenMilestone = false;
+    const hasCompletedMilestone = milestones.some(m => m.status === "Completed");
+    const hasOpenMilestone = milestones.some(m => m.status === "Open");
+    const hasInProgressMilestone = milestones.some(m => m.status === "In Progress");
+    const allMilestonesCompleted = milestones.every(m => m.status === "Completed");
 
-    for (const milestone of milestones) {
-      if (milestone.status === "In Progress") {
-        hasInProgressMilestone = true;
-        allMilestonesCompleted = false; // If any milestone is in progress, not all are completed
-      } else if (milestone.status === "Open") {
-        hasOpenMilestone = true;
-        allMilestonesCompleted = false; // If any milestone is open, not all are completed
-      } else if (milestone.status !== "Completed") {
-        allMilestonesCompleted = false;
-      }
-    }
-
-    // Determine project status based on milestone statuses
-    if (hasInProgressMilestone) {
+    if (hasInProgressMilestone || (hasCompletedMilestone && hasOpenMilestone)) {
       newStatus = ProjectStatus.IN_PROGRESS;
     } else if (allMilestonesCompleted && milestones.length > 0) {
       newStatus = ProjectStatus.COMPLETED;
