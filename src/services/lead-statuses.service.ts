@@ -29,6 +29,15 @@ export const LeadStatusService = () => {
     if (existingLeadStatus)
       throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
+    // Check for duplicate color if color is provided
+    if (color) {
+      const existingColorStatus = await leadStatusRepo.findOne({
+        where: { color, deleted: false },
+      });
+      if (existingColorStatus)
+        throw new AppError(400, `Color "${color}" is already used by another status`);
+    }
+
     const leadStatus = leadStatusRepo.create({ name, color });
     return await leadStatusRepo.save(leadStatus);
   };
@@ -69,6 +78,15 @@ export const LeadStatusService = () => {
     });
     if (existingLeadStatus)
       throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
+
+    // Check for duplicate color if color is being updated
+    if (data.color) {
+      const existingColorStatus = await leadStatusRepo.findOne({
+        where: { color: data.color, id: Not(id), deleted: false },
+      });
+      if (existingColorStatus)
+        throw new AppError(400, `Color "${data.color}" is already used by another status`);
+    }
 
     const { name, color } = data;
 
