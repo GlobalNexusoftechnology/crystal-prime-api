@@ -28,7 +28,25 @@ export const projectTaskController = () => {
     try {
       const { id } = req.params;
       const result = await service.getTaskById(id);
-      res.status(200).json({ status: "success", data: result });
+      // Attach only project_id inside milestone if available
+      let data: any = result;
+      if (result?.milestone?.project) {
+        const { project, ...milestoneRest } = result.milestone;
+        data = {
+          id: result.id,
+          created_at: result.created_at,
+          updated_at: result.updated_at,
+          deleted: result.deleted,
+          deleted_at: result.deleted_at,
+          title: result.title,
+          description: result.description,
+          due_date: result.due_date,
+          status: result.status,
+          assigned_to: result.assigned_to,
+          milestone: { ...(milestoneRest as any), project }
+        };
+      }
+      res.status(200).json({ status: "success", data });
     } catch (err) {
       next(err);
     }
