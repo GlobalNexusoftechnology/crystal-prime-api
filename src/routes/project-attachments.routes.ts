@@ -1,7 +1,7 @@
 import express from "express";
 
 import { ProjectAttachmentController } from "../controllers/project-attachments.controller";
-import { deserializeUser, requireUser, singleDocumentUpload } from "../middleware";
+import { deserializeUser, requireUser, singleDocumentUpload, upload } from "../middleware";
 
 const router = express.Router();
 
@@ -13,6 +13,12 @@ const controller = ProjectAttachmentController();
 router.post(
   "/uploadAttachment",
   singleDocumentUpload, controller.uploadSingleFileToCloudinary
+);
+
+router.post(
+  "/uploadMultipleAttachments",
+  upload,
+  controller.uploadMultipleFilesToCloudinary
 );
 
 router.post("/", controller.createAttachment);
