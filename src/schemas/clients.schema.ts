@@ -9,7 +9,7 @@ export const createClientSchema = z.object({
   lead_id: z.string().uuid("Invalid lead ID").optional(),
   company_name: z.string().optional(),
   contact_person: z.string().optional(),
-  website: z.string().url("Invalid website URL").optional(),
+  website: z.string().optional(),
   client_details: z.array(
     z.object({
       client_contact: z.string().min(1, "Contact is required"),

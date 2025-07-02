@@ -100,6 +100,7 @@ export const ProjectService = () => {
   const getAllProject = async () => {
     const data = await ProjectRepo.find({
       where: { deleted: false },
+      order: { created_at: "DESC" },
       relations: [
         "client",
         "milestones",
