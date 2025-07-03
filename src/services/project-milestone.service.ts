@@ -63,6 +63,7 @@ export const MilestoneService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const milestones = await repo.find({
       where: { project: { id: project_id }, deleted: false },
+      order: {created_at: "DESC"}
     });
     return milestones;
   };
