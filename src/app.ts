@@ -39,6 +39,7 @@ import clientsDetailsRouter from './routes/clients-details.routes';
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
 import projectFollowupsRouter from './routes/project-followups.routes';
+import dashboardRoutes from "./routes/dashboard.routes";
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -106,6 +107,7 @@ AppDataSource.initialize()
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use('/api/project-followups', projectFollowupsRouter);
+    app.use("/api/dashboard", dashboardRoutes);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
