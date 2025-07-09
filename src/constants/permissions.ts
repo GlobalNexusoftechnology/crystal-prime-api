@@ -16,6 +16,8 @@ export const MODULES: TOptionItem[] = [
   { key: "LEAD_TYPES", label: "Lead Types Module", value: '18' },
   { key: "CLIENT_MANAGEMENT", label: "Client Management Module", value: '19' },
   { key: "PROJECT_TEMPLATE", label: "Project Template Module", value: '20' },
+  { key: "MILESTONE", label: "Milestone Module", value: "21" },
+  { key: "TASK", label: "Task Module", value: "22" },
 ];
 
 export const ACTIONS: TOptionItem[] = [
