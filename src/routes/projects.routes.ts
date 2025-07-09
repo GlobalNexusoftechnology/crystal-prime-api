@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { ProjectController } from "../controllers/projects.controller";
+import { deserializeUser, requireUser } from "../middleware";
 
 const router = Router();
 const controller = ProjectController();
+
+router.use(deserializeUser, requireUser);
 
 // Routes
 router.post("/", controller.createProject);

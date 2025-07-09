@@ -97,19 +97,38 @@ export const ProjectService = () => {
   };
 
   // Get All Projects
-  const getAllProject = async () => {
-    const data = await ProjectRepo.find({
-      where: { deleted: false },
-      order: { created_at: "DESC" },
-      relations: [
-        "client",
-        "milestones",
-        "milestones.tasks",
-        "attachments",
-        "attachments.uploaded_by"
-      ],
-    });
-    return data;
+  const getAllProject = async (userId?: string, userRole?: string) => {
+    // If admin, return all projects
+    if (userRole && userRole.toLowerCase() === 'admin') {
+      return await ProjectRepo.find({
+        where: { deleted: false },
+        order: { created_at: "DESC" },
+        relations: [
+          "client",
+          "milestones",
+          "milestones.tasks",
+          "attachments",
+          "attachments.uploaded_by"
+        ],
+      });
+    }
+
+    // Otherwise, return only projects where user is assigned to a milestone or task
+    // Use QueryBuilder for complex joins
+    const qb = ProjectRepo.createQueryBuilder("project")
+      .leftJoinAndSelect("project.client", "client")
+      .leftJoinAndSelect("project.milestones", "milestones")
+      .leftJoinAndSelect("milestones.tasks", "tasks")
+      .leftJoinAndSelect("project.attachments", "attachments")
+      .leftJoinAndSelect("attachments.uploaded_by", "uploaded_by")
+      .where("project.deleted = false")
+      .andWhere(
+        "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
+        { userId }
+      )
+      .orderBy("project.created_at", "DESC");
+
+    return await qb.getMany();
   };
 
   // Get Project by ID
