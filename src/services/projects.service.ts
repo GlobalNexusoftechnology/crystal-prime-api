@@ -12,6 +12,7 @@ interface ProjectInput {
   budget?: number;
   cost_of_labour?: number,
   overhead_cost?: number,
+  extra_cost?: number,
   estimated_cost?: number;
   actual_cost?: number;
   start_date?: Date;
@@ -50,6 +51,7 @@ export const ProjectService = () => {
       budget,
       cost_of_labour,
       overhead_cost,
+      extra_cost,
       estimated_cost,
       actual_cost,
       start_date,
@@ -81,6 +83,7 @@ export const ProjectService = () => {
       budget,
       cost_of_labour,
       overhead_cost,
+      extra_cost,
       estimated_cost,
       actual_cost: calculatedActualCost,
       start_date,
@@ -167,6 +170,7 @@ export const ProjectService = () => {
       budget,
       cost_of_labour,
       overhead_cost,
+      extra_cost,
       estimated_cost,
       actual_cost,
       start_date,
@@ -191,6 +195,7 @@ export const ProjectService = () => {
     if (budget !== undefined) project.budget = budget;
     if (cost_of_labour !== undefined) project.cost_of_labour = cost_of_labour;
     if (overhead_cost !== undefined) project.overhead_cost = overhead_cost;
+    if (extra_cost !== undefined) project.extra_cost = extra_cost;
     if (estimated_cost !== undefined) project.estimated_cost = estimated_cost;
     
     // Auto-calculate actual cost if cost_of_labour or overhead_cost is updated
