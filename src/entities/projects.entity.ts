@@ -61,6 +61,9 @@ export class Project extends Model {
   @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
   overhead_cost: number;
 
+  @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
+  extra_cost: number;
+
   @Column({ type: "timestamp", nullable: true })
   start_date: Date;
 

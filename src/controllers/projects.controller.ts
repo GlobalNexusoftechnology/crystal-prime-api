@@ -8,6 +8,7 @@ import { MilestoneService } from "../services/project-milestone.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { ProjectAttachmentService } from "../services/project-attachments.service";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
+import { findUserById } from "../services/user.service";
 
 const service = ProjectService();
 const milestoneService = MilestoneService();
@@ -72,7 +73,13 @@ export const ProjectController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllProject();
+
+      const userId = res.locals.user.id;
+      const userData = await findUserById(userId);
+      const userRole = userData.role.role;
+
+      console.log(userRole, "userRole", userId, "userId$$$$$")
+      const result = await service.getAllProject(userId, userRole);
       const projectsWithTemplateId = result.map(project => ({
         ...project
       }));

@@ -12,6 +12,7 @@ export const createProjectSchema = z.object({
   actual_cost: z.number().optional(),
   cost_of_labour: z.number().optional(),
   overhead_cost: z.number().optional(),
+  extra_cost: z.number().optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   actual_start_date: z.coerce.date().optional(),

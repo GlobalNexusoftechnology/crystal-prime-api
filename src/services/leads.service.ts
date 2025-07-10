@@ -36,6 +36,7 @@ export const LeadService = () => {
       location,
       budget,
       requirement,
+      possibility_of_conversion,
       source_id,
       status_id,
       type_id,
@@ -68,6 +69,7 @@ export const LeadService = () => {
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
+    lead.possibility_of_conversion = possibility_of_conversion ?? null;
     lead.other_contact = other_contact ?? "";
     lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
@@ -305,6 +307,7 @@ export const LeadService = () => {
       location,
       budget,
       requirement,
+      possibility_of_conversion,
       source_id,
       status_id,
       type_id,
@@ -342,6 +345,7 @@ export const LeadService = () => {
     lead.location = location ?? lead.location;
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
+    lead.possibility_of_conversion = possibility_of_conversion ?? lead.possibility_of_conversion;
     lead.other_contact = other_contact ?? lead.other_contact;
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
 
@@ -520,6 +524,7 @@ export const LeadService = () => {
       { header: "Location", key: "location", width: 20 },
       { header: "Budget", key: "budget", width: 15 },
       { header: "Requirement", key: "requirement", width: 40 },
+      { header: "Possibility of Conversion (%)", key: "possibility_of_conversion", width: 25 },
       { header: "Source", key: "source", width: 20 },
       { header: "Status", key: "status", width: 20 },
       { header: "type", key: "type", width: 20 },
@@ -539,6 +544,7 @@ export const LeadService = () => {
         location: lead.location ?? "",
         budget: lead.budget ?? 0,
         requirement: lead.requirement ?? "",
+        possibility_of_conversion: lead.possibility_of_conversion ?? "",
         source: lead.source?.name ?? "",
         status: lead.status?.name ?? "",
         type: lead.type?.name ?? "",
@@ -564,6 +570,7 @@ export const LeadService = () => {
       { header: "location", key: "location", width: 20 },
       { header: "requirement", key: "requirement", width: 20 },
       { header: "budget", key: "budget", width: 15 },
+      { header: "possibility_of_conversion", key: "possibility_of_conversion", width: 25 },
       { header: "source", key: "source", width: 15 },
       { header: "status", key: "status", width: 15 },
       { header: "type", key: "type", width: 15 },
@@ -650,6 +657,7 @@ export const LeadService = () => {
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
+        possibility_of_conversion: Number(data.possibility_of_conversion) || null,
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
