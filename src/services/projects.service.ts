@@ -33,10 +33,28 @@ export const ProjectService = () => {
   };
 
   // Helper function to calculate actual cost
-  const calculateActualCost = (costOfLabour?: number, overheadCost?: number): number | null => {
-    const labour = costOfLabour || 0;
-    const overhead = overheadCost || 0;
-    const total = labour + overhead;
+  const calculateActualCost = (
+    costOfLabour?: number | string,
+    overheadCost?: number | string,
+    actualStartDate?: Date | string,
+    actualEndDate?: Date | string,
+    extraCost?: number | string
+  ): number | null => {
+    const labour = Number(costOfLabour) || 0;
+    const overhead = Number(overheadCost) || 0;
+    const extra = Number(extraCost) || 0;
+    if (!actualStartDate || !actualEndDate) return null;
+    const startDateObj = typeof actualStartDate === 'string' ? new Date(actualStartDate) : actualStartDate;
+    const endDateObj = typeof actualEndDate === 'string' ? new Date(actualEndDate) : actualEndDate;
+    if (!(startDateObj instanceof Date) || isNaN(startDateObj.getTime()) || !(endDateObj instanceof Date) || isNaN(endDateObj.getTime())) {
+      return null;
+    }
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const start = new Date(startDateObj).setHours(0,0,0,0);
+    const end = new Date(endDateObj).setHours(0,0,0,0);
+    let days = Math.floor((end - start) / msPerDay) + 1;
+    if (days < 1) days = 1;
+    const total = (labour + overhead) * days + extra;
     return total > 0 ? total : null;
   };
 
@@ -72,7 +90,13 @@ export const ProjectService = () => {
     }
 
     // Calculate actual cost automatically
-    const calculatedActualCost = calculateActualCost(cost_of_labour, overhead_cost);
+    const calculatedActualCost = calculateActualCost(
+      cost_of_labour,
+      overhead_cost,
+      actual_start_date,
+      actual_end_date,
+      extra_cost
+    );
 
     const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
     const project = repo.create({
@@ -198,13 +222,28 @@ export const ProjectService = () => {
     if (extra_cost !== undefined) project.extra_cost = extra_cost;
     if (estimated_cost !== undefined) project.estimated_cost = estimated_cost;
     
-    // Auto-calculate actual cost if cost_of_labour or overhead_cost is updated
-    if (cost_of_labour !== undefined || overhead_cost !== undefined) {
+    // Auto-calculate actual cost if cost_of_labour, overhead_cost, actual_start_date, actual_end_date, or extra_cost is updated
+    if (
+      cost_of_labour !== undefined ||
+      overhead_cost !== undefined ||
+      actual_start_date !== undefined ||
+      actual_end_date !== undefined ||
+      extra_cost !== undefined
+    ) {
       const newLabourCost = cost_of_labour !== undefined ? cost_of_labour : project.cost_of_labour;
       const newOverheadCost = overhead_cost !== undefined ? overhead_cost : project.overhead_cost;
-      project.actual_cost = calculateActualCost(newLabourCost, newOverheadCost);
+      const newActualStartDate = actual_start_date !== undefined ? actual_start_date : project.actual_start_date;
+      const newActualEndDate = actual_end_date !== undefined ? actual_end_date : project.actual_end_date;
+      const newExtraCost = extra_cost !== undefined ? extra_cost : project.extra_cost;
+      project.actual_cost = calculateActualCost(
+        newLabourCost,
+        newOverheadCost,
+        newActualStartDate,
+        newActualEndDate,
+        newExtraCost
+      );
     } else if (actual_cost !== undefined) {
-      // Allow manual override if neither cost_of_labour nor overhead_cost is being updated
+      // Allow manual override if none of the above are being updated
       project.actual_cost = actual_cost;
     }
     
