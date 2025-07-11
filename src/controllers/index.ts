@@ -4,3 +4,4 @@ export * from './lead-attachments.controller';
 export * from './clients-followups.controller';
 export * from './daily-task.controller';
 export * from './project-followups.controller';
+export * from './eilog-type.controller';
