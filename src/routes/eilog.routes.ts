@@ -5,6 +5,7 @@ import {
   getEILogByIdHandler,
   updateEILogHandler,
   deleteEILogHandler,
+  exportEILogsToExcelHandler,
 } from '../controllers';
 import { deserializeUser, requireUser, validate } from '../middleware';
 import { eilogSchema, eilogUpdateSchema } from '../schemas/eilog.schema';
@@ -18,6 +19,9 @@ router.post('/', validate(eilogSchema), createEILogHandler);
 
 /**this route handles get all EI logs (with filters) */
 router.get('/', getAllEILogsHandler);
+
+/**this route handles export EI logs to Excel */
+router.get('/export/excel', exportEILogsToExcelHandler);
 
 /**this route handles get EI log detail by id */
 router.get('/:id', getEILogByIdHandler);

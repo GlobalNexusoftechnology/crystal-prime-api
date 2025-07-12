@@ -2,6 +2,7 @@ import { AppDataSource } from '../utils/data-source';
 import AppError from '../utils/appError';
 import { EILog, EILogType, EILogHead, User } from '../entities';
 import { EILogInput, EILogUpdateInput } from 'schemas/eilog.schema';
+import ExcelJS from "exceljs";
 
 const eilogRepository = AppDataSource.getRepository(EILog);
 const eilogTypeRepository = AppDataSource.getRepository(EILogType);
@@ -240,4 +241,95 @@ export const deleteEILogById = async (id: string, userId: string) => {
   eilog.deleted = true;
   eilog.deleted_at = new Date();
   await eilogRepository.save(eilog);
+};
+
+// Export EILogs to Excel
+export const exportEILogsToExcel = async (
+  userId: string,
+  filters: any = {}
+): Promise<ExcelJS.Workbook> => {
+  const qb = eilogRepository.createQueryBuilder('eilog')
+    .leftJoin('eilog.eilogType', 'eilogType')
+    .leftJoin('eilog.eilogHead', 'eilogHead')
+    .where('eilog.deleted = :deleted', { deleted: false })
+    .andWhere('eilog.created_by = :userId', { userId });
+
+  // Apply filters
+  if (filters.eilogType) {
+    qb.andWhere('eilogType.id = :eilogType', { eilogType: filters.eilogType });
+  }
+  if (filters.eilogHead) {
+    qb.andWhere('eilogHead.id = :eilogHead', { eilogHead: filters.eilogHead });
+  }
+  if (filters.paymentMode) {
+    qb.andWhere('eilog.paymentMode = :paymentMode', { paymentMode: filters.paymentMode });
+  }
+  if (filters.startDate && filters.endDate) {
+    qb.andWhere('eilog.created_at BETWEEN :startDate AND :endDate', {
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    });
+  } else if (filters.startDate) {
+    qb.andWhere('eilog.created_at >= :startDate', { startDate: filters.startDate });
+  } else if (filters.endDate) {
+    qb.andWhere('eilog.created_at <= :endDate', { endDate: filters.endDate });
+  }
+
+  qb.orderBy('eilog.created_at', 'DESC');
+
+  qb.select([
+    'eilog.id',
+    'eilog.description',
+    'eilog.income',
+    'eilog.expense',
+    'eilog.paymentMode',
+    'eilog.attachment',
+    'eilog.created_at',
+    'eilog.updated_at',
+    'eilogType.id',
+    'eilogType.name',
+    'eilogHead.id',
+    'eilogHead.name',
+  ]);
+
+  const eilogs = await qb.getMany();
+
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("EILogs");
+
+  worksheet.columns = [
+    { header: "Sr No", key: "sr_no", width: 6 },
+    { header: "EILog Type", key: "eilog_type", width: 20 },
+    { header: "EILog Head", key: "eilog_head", width: 20 },
+    { header: "Description", key: "description", width: 40 },
+    { header: "Income", key: "income", width: 15 },
+    { header: "Expense", key: "expense", width: 15 },
+    { header: "Payment Mode", key: "payment_mode", width: 15 },
+    { header: "Attachment", key: "attachment", width: 30 },
+    { header: "Created At", key: "created_at", width: 25 },
+    { header: "Updated At", key: "updated_at", width: 25 },
+  ];
+
+  // Bold the header row
+  worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true };
+  });
+
+  let rowIndex = 1;
+  eilogs.forEach((eilog: any) => {
+    worksheet.addRow({
+      sr_no: rowIndex++,
+      eilog_type: eilog.eilogType?.name || "N/A",
+      eilog_head: eilog.eilogHead?.name || "N/A",
+      description: eilog.description || "N/A",
+      income: eilog.income || "N/A",
+      expense: eilog.expense || "N/A",
+      payment_mode: eilog.paymentMode || "N/A",
+      attachment: eilog.attachment || "N/A",
+      created_at: eilog.created_at?.toLocaleString() || "N/A",
+      updated_at: eilog.updated_at?.toLocaleString() || "N/A",
+    });
+  });
+
+  return workbook;
 };

@@ -5,7 +5,9 @@ import {
   getEILogById,
   updateEILogById,
   deleteEILogById,
+  exportEILogsToExcel,
 } from '../services';
+import { findUserById } from '../services/user.service';
 
 // Handler to create a new EILog
 export const createEILogHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -82,6 +84,31 @@ export const deleteEILogHandler = async (req: Request<{ id: string }>, res: Resp
       status: 'success',
       message: 'EILog deleted successfully',
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Handler to export EILogs to Excel
+export const exportEILogsToExcelHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = res.locals?.user?.id;
+    const userData = await findUserById(userId);
+    const filters = req.query;
+
+    const workbook = await exportEILogsToExcel(userId, filters);
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=eilogs_${Date.now()}.xlsx`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (err) {
     next(err);
   }
