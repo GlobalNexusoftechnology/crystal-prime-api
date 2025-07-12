@@ -7,4 +7,5 @@ export * from "./daily-task.entity";
 export * from "./task-comment.entity";
 export * from './eilog-type.entity';
 export * from './eilog-head.entity';
+export * from './eilog.entity';
 

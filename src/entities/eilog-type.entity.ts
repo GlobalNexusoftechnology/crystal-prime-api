@@ -1,8 +1,12 @@
+import { EILog } from './eilog.entity';
 import Model from './model.entity';
-import { Entity, Column } from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
 
 @Entity({ name: 'eilog_types' })
 export class EILogType extends Model {
-  @Column({ unique: true })
+  @Column({ type: 'text', unique: true, nullable: false })
   name: string;
+  
+  @OneToMany(() => EILog, (eilog: EILog) => eilog.eilogType)
+  eilogs: EILog[];
 } 
