@@ -6,6 +6,8 @@ import {
   updateEILogById,
   deleteEILogById,
   exportEILogsToExcel,
+  generateEILogTemplate,
+  uploadEILogsFromExcelService,
 } from '../services';
 import { findUserById } from '../services/user.service';
 
@@ -111,5 +113,54 @@ export const exportEILogsToExcelHandler = async (req: Request, res: Response, ne
     res.end();
   } catch (err) {
     next(err);
+  }
+};
+
+// Handler to download EILog template
+export const downloadEILogTemplateHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const workbook = await generateEILogTemplate();
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=eilogs_template.xlsx"
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Handler to upload EILogs from Excel
+export const uploadEILogsFromExcelHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const user = res.locals.user;
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "No file uploaded" });
+    }
+
+    const result = await uploadEILogsFromExcelService(
+      req.file.buffer,
+      user
+    );
+    res.status(201).json({
+      status: "success",
+      message: "EILogs uploaded successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
   }
 }; 

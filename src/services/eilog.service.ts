@@ -307,7 +307,6 @@ export const exportEILogsToExcel = async (
     { header: "Payment Mode", key: "payment_mode", width: 15 },
     { header: "Attachment", key: "attachment", width: 30 },
     { header: "Created At", key: "created_at", width: 25 },
-    { header: "Updated At", key: "updated_at", width: 25 },
   ];
 
   // Bold the header row
@@ -327,9 +326,188 @@ export const exportEILogsToExcel = async (
       payment_mode: eilog.paymentMode || "N/A",
       attachment: eilog.attachment || "N/A",
       created_at: eilog.created_at?.toLocaleString() || "N/A",
-      updated_at: eilog.updated_at?.toLocaleString() || "N/A",
     });
   });
 
   return workbook;
+};
+
+// Generate EILog Template
+export const generateEILogTemplate = async (): Promise<ExcelJS.Workbook> => {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("EILogs");
+
+  // Use the same headers as exportEILogsToExcel for consistency
+  worksheet.columns = [
+    { header: "EILog Type", key: "eilog_type", width: 20 },
+    { header: "EILog Head", key: "eilog_head", width: 20 },
+    { header: "Description", key: "description", width: 40 },
+    { header: "Income", key: "income", width: 15 },
+    { header: "Expense", key: "expense", width: 15 },
+    { header: "Payment Mode", key: "payment_mode", width: 15 },
+    { header: "Attachment", key: "attachment", width: 30 },
+  ];
+
+  // Bold the header row
+  worksheet.getRow(1).eachCell((cell) => {
+    cell.font = { bold: true };
+  });
+
+  return workbook;
+};
+
+// Service to handle Excel upload for EILogs
+export const uploadEILogsFromExcelService = async (
+  fileBuffer: Buffer,
+  user: User
+) => {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(fileBuffer);
+  const worksheet = workbook.worksheets[0];
+
+  const headers: string[] = [];
+  worksheet.getRow(1).eachCell((cell) => {
+    headers.push(cell.text.toLowerCase().trim().replace(/\s+/g, "_"));
+  });
+
+  const requiredFields = ["eilog_type", "eilog_head", "payment_mode"];
+  const missingFields = requiredFields.filter(
+    (field) => !headers.includes(field)
+  );
+  if (missingFields.length > 0) {
+    throw new AppError(
+      400,
+      `Missing required fields: ${missingFields.join(", ")}`
+    );
+  }
+
+  const eilogsToInsert: any[] = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+
+    const eilogData: any = {};
+    headers.forEach((header, colIndex) => {
+      const cell = row.getCell(colIndex + 1);
+      const cellValue = cell.value;
+      let value = "";
+      if (
+        cellValue &&
+        typeof cellValue === "object" &&
+        "text" in cellValue &&
+        cellValue.text &&
+        typeof cellValue.text === "object" &&
+        "richText" in (cellValue.text as any) &&
+        Array.isArray((cellValue.text as any).richText)
+      ) {
+        value = ((cellValue.text as any).richText as any[]).map((rt: any) => rt.text).join("");
+      } else if (
+        cellValue &&
+        typeof cellValue === "object" &&
+        "text" in cellValue &&
+        typeof (cellValue as any).text === "string"
+      ) {
+        value = (cellValue as any).text;
+      } else {
+        value = cell.text || "";
+      }
+      eilogData[header] = value;
+    });
+
+    eilogData._rowNumber = rowNumber;
+    eilogsToInsert.push(eilogData);
+  });
+
+  const savedEILogs = [];
+
+  const isNA = (val: string | null | undefined): boolean =>
+    !val || ["na", "n/a", "NA", "N/A"].includes(val.toString().trim().toLowerCase());
+
+  for (const data of eilogsToInsert) {
+    const rowNumber = data._rowNumber;
+
+    const incomeRaw = data.income?.toString() ?? "";
+    const expenseRaw = data.expense?.toString() ?? "";
+    const incomeValid = !isNA(incomeRaw);
+    const expenseValid = !isNA(expenseRaw);
+
+    if (!incomeValid && !expenseValid) {
+      throw new AppError(
+        400,
+        `Either income or expense must be provided at row ${rowNumber}`
+      );
+    }
+
+    if (incomeValid && expenseValid) {
+      throw new AppError(
+        400,
+        `Cannot have both income and expense at row ${rowNumber}`
+      );
+    }
+
+    if (!data.eilog_type || isNA(data.eilog_type)) {
+      throw new AppError(400, `EILog Type is required at row ${rowNumber}`);
+    }
+
+    if (!data.eilog_head || isNA(data.eilog_head)) {
+      throw new AppError(400, `EILog Head is required at row ${rowNumber}`);
+    }
+
+    if (!data.payment_mode || isNA(data.payment_mode)) {
+      throw new AppError(400, `Payment Mode is required at row ${rowNumber}`);
+    }
+
+    const eilogType = await eilogTypeRepository.findOne({
+      where: { name: String(data.eilog_type).trim() },
+    });
+    if (!eilogType) {
+      throw new AppError(
+        400,
+        `Invalid EILog Type name at row ${rowNumber}: ${data.eilog_type}`
+      );
+    }
+
+    const eilogHead = await eilogHeadRepository.findOne({
+      where: { name: String(data.eilog_head).trim() },
+    });
+    if (!eilogHead) {
+      throw new AppError(
+        400,
+        `Invalid EILog Head name at row ${rowNumber}: ${data.eilog_head}`
+      );
+    }
+
+    const eilog = eilogRepository.create({
+      eilogType,
+      eilogHead,
+      createdBy: user,
+      paymentMode: data.payment_mode || null,
+      description: data.description || null,
+      income: incomeValid ? incomeRaw : null,
+      expense: expenseValid ? expenseRaw : null,
+      attachment: data.attachment || null,
+    } as Partial<EILog>);
+
+    const saved = await eilogRepository.save(eilog);
+
+    savedEILogs.push({
+      id: saved.id,
+      created_at: saved.created_at,
+      updated_at: saved.updated_at,
+      income: saved.income,
+      expense: saved.expense,
+      description: saved.description,
+      paymentMode: saved.paymentMode,
+      attachment: saved.attachment,
+      eilogType: {
+        id: saved.eilogType?.id,
+        name: saved.eilogType?.name,
+      },
+      eilogHead: {
+        id: saved.eilogHead?.id,
+        name: saved.eilogHead?.name,
+      },
+    });
+  }
+
+  return { total: savedEILogs.length, eilogs: savedEILogs };
 };
