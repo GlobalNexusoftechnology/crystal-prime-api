@@ -110,8 +110,8 @@ AppDataSource.initialize()
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use('/api/project-followups', projectFollowupsRouter);
     app.use("/api/dashboard", dashboardRoutes);
-    app.use('/api/eilog-types', eilogTypeRouter);
-    app.use('/api/eilog-heads', eilogHeadRouter);
+    app.use('/api/ei-log-types', eilogTypeRouter);
+    app.use('/api/ei-log-heads', eilogHeadRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {

@@ -5,7 +5,7 @@ import { EILogHead } from '../entities';
 const eilogHeadRepository = AppDataSource.getRepository(EILogHead);
 
 // Create a new EILogHead
-export const createEILogHead = async (payload: { EIHead: string }) => {
+export const createEILogHead = async (payload: { name: string }) => {
   const eilogHead = eilogHeadRepository.create(payload);
   const saved = await eilogHeadRepository.save(eilogHead);
   const { deleted, deleted_at, ...sanitized } = saved;
@@ -18,7 +18,7 @@ export const getAllEILogHeads = async () => {
     .createQueryBuilder("eilogHead")
     .select([
       "eilogHead.id",
-      "eilogHead.EIHead",
+      "eilogHead.name",
       "eilogHead.created_at",
       "eilogHead.updated_at"
     ])
@@ -30,25 +30,25 @@ export const getAllEILogHeads = async () => {
 // Get a single EILogHead by ID
 export const getEILogHeadById = async (eiId: string) => {
   const eilogHead = await eilogHeadRepository.findOneBy({ id: eiId });
-  if (!eilogHead || eilogHead.deleted) throw new AppError(404, 'EILogHead not found');
-  const { id, EIHead, created_at, updated_at } = eilogHead;
-  return { id, EIHead, created_at, updated_at };
+  if (!eilogHead || eilogHead.deleted) throw new AppError(404, 'EI Log Head not found');
+  const { id, name, created_at, updated_at } = eilogHead;
+  return { id, name, created_at, updated_at };
 };
 
 // Update an existing EILogHead by ID
-export const updateEILogHeadById = async (eiId: string, payload: { EIHead: string }) => {
+export const updateEILogHeadById = async (eiId: string, payload: { name: string }) => {
   const eilogHeadEntity = await eilogHeadRepository.findOneBy({ id: eiId });
-  if (!eilogHeadEntity || eilogHeadEntity.deleted) throw new AppError(404, 'EILogHead not found');
-  eilogHeadEntity.EIHead = payload.EIHead;
+  if (!eilogHeadEntity || eilogHeadEntity.deleted) throw new AppError(404, 'EI Log Head not found');
+  eilogHeadEntity.name = payload.name;
   const updated = await eilogHeadRepository.save(eilogHeadEntity);
-  const { id, EIHead, created_at, updated_at } = updated;
-  return { id, EIHead, created_at, updated_at };
+  const { id, name, created_at, updated_at } = updated;
+  return { id, name, created_at, updated_at };
 };
 
 // Soft delete an EILogHead by ID
 export const deleteEILogHeadById = async (id: string) => {
     const eilogHeadEntity = await eilogHeadRepository.findOneBy({ id });
-    if (!eilogHeadEntity || eilogHeadEntity.deleted) throw new AppError(404, 'EILogHead not found');
+    if (!eilogHeadEntity || eilogHeadEntity.deleted) throw new AppError(404, 'EI Log Head not found');
     eilogHeadEntity.deleted = true;
     eilogHeadEntity.deleted_at = new Date();
     return await eilogHeadRepository.save(eilogHeadEntity);

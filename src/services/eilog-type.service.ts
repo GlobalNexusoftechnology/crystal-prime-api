@@ -5,7 +5,7 @@ import { EILogType } from '../entities';
 const eilogTypeRepository = AppDataSource.getRepository(EILogType);
 
 // Create a new EILogType
-export const createEILogType = async (payload: { EIType: string }) => {
+export const createEILogType = async (payload: { name: string }) => {
   const eilogType = eilogTypeRepository.create(payload);
   const saved = await eilogTypeRepository.save(eilogType);
   const { deleted, deleted_at, ...sanitized } = saved;
@@ -18,7 +18,7 @@ export const getAllEILogTypes = async () => {
     .createQueryBuilder("eilogType")
     .select([
       "eilogType.id",
-      "eilogType.EIType",
+      "eilogType.name",
       "eilogType.created_at",
       "eilogType.updated_at"
     ])
@@ -31,18 +31,18 @@ export const getAllEILogTypes = async () => {
 export const getEILogTypeById = async (eiId: string) => {
   const eilogType = await eilogTypeRepository.findOneBy({ id: eiId });
   if (!eilogType || eilogType.deleted) throw new AppError(404, 'EILogType not found');
-  const { id, EIType, created_at, updated_at } = eilogType;
-  return { id, EIType, created_at, updated_at };
+  const { id, name, created_at, updated_at } = eilogType;
+  return { id, name, created_at, updated_at };
 };
 
 // Update an existing EILogType by ID
-export const updateEILogTypeById = async (eiId: string, payload: { EIType: string }) => {
+export const updateEILogTypeById = async (eiId: string, payload: { name: string }) => {
   const eilogTypeEntity = await eilogTypeRepository.findOneBy({ id: eiId });
   if (!eilogTypeEntity || eilogTypeEntity.deleted) throw new AppError(404, 'EILogType not found');
-  eilogTypeEntity.EIType = payload.EIType;
+  eilogTypeEntity.name = payload.name;
   const updated = await eilogTypeRepository.save(eilogTypeEntity);
-  const { id, EIType, created_at, updated_at } = updated;
-  return { id, EIType, created_at, updated_at };
+  const { id, name, created_at, updated_at } = updated;
+  return { id, name, created_at, updated_at };
 };
 
 // Soft delete an EILogType by ID

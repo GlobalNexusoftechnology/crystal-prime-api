@@ -14,7 +14,7 @@ export const createEILogHeadHandler = async (req: Request, res: Response, next: 
     const eilogHead = await createEILogHead(payload);
     res.status(201).json({
       status: 'success',
-      message: 'EILogHead created successfully',
+      message: `${payload.name} created successfully`,
       data: eilogHead,
     });
   } catch (err) {
@@ -28,7 +28,7 @@ export const getAllEILogHeadsHandler = async (req: Request, res: Response, next:
     const eilogHeads = await getAllEILogHeads();
     res.status(200).json({
       status: 'success',
-      message: 'EILogHeads fetched successfully',
+      message: 'EI Log Heads fetched successfully',
       data: eilogHeads,
     });
   } catch (err) {
@@ -43,7 +43,7 @@ export const getEILogHeadByIdHandler = async (req: Request<{ id: string }>, res:
     const eilogHead = await getEILogHeadById(id);
     res.status(200).json({
       status: 'success',
-      message: 'EILogHead fetched successfully',
+      message: 'EI Log Head fetched successfully',
       data: eilogHead,
     });
   } catch (err) {
@@ -59,7 +59,7 @@ export const updateEILogHeadHandler = async (req: Request<{ id: string }>, res: 
     const updated = await updateEILogHeadById(id, updates);
     res.status(200).json({
       status: 'success',
-      message: 'EILogHead updated successfully',
+      message: 'EI Log Head updated successfully',
       data: updated,
     });
   } catch (err) {
@@ -74,7 +74,7 @@ export const deleteEILogHeadHandler = async (req: Request<{ id: string }>, res: 
     await deleteEILogHeadById(id);
     res.status(200).json({
       status: 'success',
-      message: 'EILogHead deleted successfully',
+      message: 'EI Log Head deleted successfully',
     });
   } catch (err) {
     next(err);

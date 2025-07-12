@@ -14,7 +14,7 @@ export const createEILogTypeHandler = async (req: Request, res: Response, next: 
     const eilogType = await createEILogType(payload);
     res.status(201).json({
       status: 'success',
-      message: 'EILogType created successfully',
+      message: `${payload.name} created successfully`,
       data: eilogType,
     });
   } catch (err) {
@@ -28,7 +28,7 @@ export const getAllEILogTypesHandler = async (req: Request, res: Response, next:
     const eilogTypes = await getAllEILogTypes();
     res.status(200).json({
       status: 'success',
-      message: 'EILogTypes fetched successfully',
+      message: 'EI Log Types fetched successfully',
       data: eilogTypes,
     });
   } catch (err) {
@@ -43,7 +43,7 @@ export const getEILogTypeByIdHandler = async (req: Request<{ id: string }>, res:
     const eilogType = await getEILogTypeById(id);
     res.status(200).json({
       status: 'success',
-      message: 'EILogType fetched successfully',
+      message: 'EI Log Type fetched successfully',
       data: eilogType,
     });
   } catch (err) {
@@ -59,7 +59,7 @@ export const updateEILogTypeHandler = async (req: Request<{ id: string }>, res: 
     const updated = await updateEILogTypeById(id, updates);
     res.status(200).json({
       status: 'success',
-      message: 'EILogType updated successfully',
+      message: 'EI Log Type updated successfully',
       data: updated,
     });
   } catch (err) {
@@ -74,7 +74,7 @@ export const deleteEILogTypeHandler = async (req: Request<{ id: string }>, res: 
     await deleteEILogTypeById(id);
     res.status(200).json({
       status: 'success',
-      message: 'EILogType deleted successfully',
+      message: 'EI Log Type deleted successfully',
     });
   } catch (err) {
     next(err);

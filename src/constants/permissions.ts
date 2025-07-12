@@ -18,6 +18,10 @@ export const MODULES: TOptionItem[] = [
   { key: "PROJECT_TEMPLATE", label: "Project Template Module", value: '20' },
   { key: "MILESTONE", label: "Milestone Module", value: "21" },
   { key: "TASK", label: "Task Module", value: "22" },
+  { key: "EI_LOG_TYPES", label: "EI Log Types Module", value: "23" },
+  { key: "EI_LOG_HEADS", label: "EI Log Heads Module", value: "24" },
+  { key: "EI_LOG_MANAGEMENT", label: "EI Log Management Module", value: "25" },
+
 ];
 
 export const ACTIONS: TOptionItem[] = [
