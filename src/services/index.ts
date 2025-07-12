@@ -5,4 +5,5 @@ export * from './lead-attachments.service';
 export * from "./clients-followups.service";
 export * from "./daily-task.service";
 export * from './eilog-type.service';
+export * from './eilog-head.service';
 

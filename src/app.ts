@@ -41,6 +41,7 @@ import { WebSocketService } from './services/websocket.service';
 import projectFollowupsRouter from './routes/project-followups.routes';
 import dashboardRoutes from "./routes/dashboard.routes";
 import eilogTypeRouter from './routes/eilog-type.routes';
+import eilogHeadRouter from './routes/eilog-head.routes';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -110,6 +111,7 @@ AppDataSource.initialize()
     app.use('/api/project-followups', projectFollowupsRouter);
     app.use("/api/dashboard", dashboardRoutes);
     app.use('/api/eilog-types', eilogTypeRouter);
+    app.use('/api/eilog-heads', eilogHeadRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {

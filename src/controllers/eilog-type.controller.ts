@@ -11,7 +11,6 @@ import {
 export const createEILogTypeHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = req.body;
-    const user = res?.locals?.user;
     const eilogType = await createEILogType(payload);
     res.status(201).json({
       status: 'success',
@@ -57,7 +56,6 @@ export const updateEILogTypeHandler = async (req: Request<{ id: string }>, res: 
   try {
     const { id } = req.params;
     const updates = req.body;
-    const user = res.locals.user;
     const updated = await updateEILogTypeById(id, updates);
     res.status(200).json({
       status: 'success',
@@ -73,7 +71,6 @@ export const updateEILogTypeHandler = async (req: Request<{ id: string }>, res: 
 export const deleteEILogTypeHandler = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const user = res.locals.user;
     await deleteEILogTypeById(id);
     res.status(200).json({
       status: 'success',

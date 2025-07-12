@@ -19,7 +19,8 @@ export const getAllEILogTypes = async () => {
     .select([
       "eilogType.id",
       "eilogType.EIType",
-      "eilogType.created_at"
+      "eilogType.created_at",
+      "eilogType.updated_at"
     ])
     .where("eilogType.deleted = :deleted", { deleted: false })
     .orderBy("eilogType.created_at", "DESC")
