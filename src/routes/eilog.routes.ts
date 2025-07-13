@@ -9,6 +9,7 @@ import {
   downloadEILogTemplateHandler,
   uploadEILogsFromExcelHandler,
   uploadSingleFileToCloudinary,
+  getEILogChartDataHandler,
 } from '../controllers';
 import { deserializeUser, requireUser, singleDocumentUpload, validate } from '../middleware';
 import { eilogSchema, eilogUpdateSchema } from '../schemas/eilog.schema';
@@ -23,6 +24,9 @@ router.post('/', singleDocumentUpload, validate(eilogSchema), createEILogHandler
 
 /**this route handles get all EI logs (with filters) */
 router.get('/', getAllEILogsHandler);
+
+/**this route handles get chart data for dashboard */
+router.get('/chart-data', getEILogChartDataHandler);
 
 /**this route handles export EI logs to Excel */
 router.get('/export/excel', exportEILogsToExcelHandler);

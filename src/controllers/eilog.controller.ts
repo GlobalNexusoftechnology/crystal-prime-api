@@ -9,6 +9,7 @@ import {
   generateEILogTemplate,
   uploadEILogsFromExcelService,
   getEILogStats,
+  getEILogChartData,
 } from '../services';
 import { findUserById } from '../services/user.service';
 import { AppError, uploadToCloudinary } from '../utils';
@@ -286,3 +287,18 @@ export const uploadSingleFileToCloudinary = async (
     )
   }
 }
+
+// Handler to get EILog chart data for dashboard
+export const getEILogChartDataHandler = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = res.locals?.user?.id;
+    const role = res.locals?.user?.role?.role;
+    const view = (req.query.view as 'monthly' | 'yearly' | 'weekly') || 'monthly';
+    // Only admin can filter by userId
+    const filterUserId = (role === 'admin' || role === 'Admin') ? (req.query.userId as string | undefined) : undefined;
+    const data = await getEILogChartData(userId, role, view, filterUserId);
+    res.status(200).json({ status: 'success', data });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -689,3 +689,93 @@ export const getEILogStats = async (userId: string) => {
     monthNet: parseFloat(monthIncome?.total || '0') - parseFloat(monthExpense?.total || '0'),
   };
 };
+
+// Get EILog chart data for dashboard
+export const getEILogChartData = async (
+  userId: string,
+  role: string,
+  view: 'monthly' | 'yearly' | 'weekly' = 'monthly',
+  filterUserId?: string
+) => {
+  const qb = eilogRepository.createQueryBuilder('eilog')
+    .leftJoin('eilog.createdBy', 'createdBy')
+    .where('eilog.deleted = :deleted', { deleted: false });
+
+  // Admin can filter by user, normal user only sees their own
+  if (role === 'admin' || role === 'Admin') {
+    if (filterUserId) {
+      qb.andWhere('createdBy.id = :filterUserId', { filterUserId });
+    }
+  } else {
+    qb.andWhere('createdBy.id = :userId', { userId });
+  }
+
+  let labels: string[] = [];
+  let income: number[] = [];
+  let expense: number[] = [];
+
+  if (view === 'yearly') {
+    // Group by month for the current year
+    const now = new Date();
+    const year = now.getFullYear();
+    labels = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    for (let month = 0; month < 12; month++) {
+      const start = new Date(year, month, 1);
+      const end = new Date(year, month + 1, 1);
+      const [inc, exp] = await Promise.all([
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total').getRawOne(),
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total').getRawOne(),
+      ]);
+      income.push(Number(inc.total || 0));
+      expense.push(Number(exp.total || 0));
+    }
+  } else if (view === 'monthly') {
+    // Group by day for current month
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    labels = Array.from({ length: daysInMonth }, (_, i) => (i + 1).toString());
+    for (let day = 1; day <= daysInMonth; day++) {
+      const start = new Date(year, month, day, 0, 0, 0, 0);
+      const end = new Date(year, month, day + 1, 0, 0, 0, 0);
+      const [inc, exp] = await Promise.all([
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total').getRawOne(),
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total').getRawOne(),
+      ]);
+      income.push(Number(inc.total || 0));
+      expense.push(Number(exp.total || 0));
+    }
+  } else if (view === 'weekly') {
+    // Group by day for current week (Mon-Sun)
+    const now = new Date();
+    const dayOfWeek = now.getDay() === 0 ? 6 : now.getDay() - 1; // Monday=0
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dayOfWeek);
+    labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    for (let i = 0; i < 7; i++) {
+      const start = new Date(monday);
+      start.setDate(monday.getDate() + i);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 1);
+      const [inc, exp] = await Promise.all([
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total').getRawOne(),
+        qb.clone().andWhere('eilog.created_at >= :start AND eilog.created_at < :end', { start, end })
+          .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total').getRawOne(),
+      ]);
+      income.push(Number(inc.total || 0));
+      expense.push(Number(exp.total || 0));
+    }
+  }
+
+  return { labels, income, expense };
+};
