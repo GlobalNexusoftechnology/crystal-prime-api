@@ -62,6 +62,7 @@ export const createEILog = async (payload: EILogInput, userId: string) => {
       id: savedEIlog.id,
       eilogType: eilogType.name,
       eilogHead: eilogHead.name,
+      createdBy: userId,
       created_at: savedEIlog.created_at,
       updated_at: savedEIlog.updated_at,
       paymentMode: savedEIlog.paymentMode,
@@ -191,6 +192,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
     'eilogType.name',
     'eilogHead.id',
     'eilogHead.name',
+    'createdBy.id',
   ]);
 
   const [eilogs, total] = await qb.getManyAndCount();
@@ -213,11 +215,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
         id: e.eilogHead?.id,
         name: e.eilogHead?.name,
       },
-      createdBy: e.createdBy ? {
-        id: e.createdBy.id,
-        firstName: e.createdBy.firstName,
-        lastName: e.createdBy.lastName,
-      } : null,
+      createdBy: e.createdBy?.id ?? null,
     })),
     pagination: {
       total,
@@ -229,51 +227,60 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
 };
 
 
-// Get a single EILog by ID - only allow access if user is the creator
-export const getEILogById = async (id: string, userId: string) => {
-  const eilog = await eilogRepository
+// Get a single EILog by ID - admin can view any, user only their own
+export const getEILogById = async (id: string, userId: string, role: string) => {
+  const qb = eilogRepository
     .createQueryBuilder('eilog')
     .leftJoinAndSelect('eilog.eilogType', 'eilogType')
     .leftJoinAndSelect('eilog.eilogHead', 'eilogHead')
     .leftJoin('eilog.createdBy', 'createdBy')
     .where('eilog.id = :id', { id })
-    .andWhere('eilog.deleted = :deleted', { deleted: false })
-    .andWhere('createdBy.id = :userId', { userId })
-    .select([
-      'eilog.id',
-      'eilog.description',
-      'eilog.income',
-      'eilog.expense',
-      'eilog.paymentMode',
-      'eilog.attachment',
-      'eilog.created_at',
-      'eilog.updated_at',
-      'eilogType.id',
-      'eilogType.name',
-      'eilogHead.id',
-      'eilogHead.name'
-    ])
-    .getOne();
+    .andWhere('eilog.deleted = :deleted', { deleted: false });
+
+  if (role !== 'admin' && role !== 'Admin') {
+    qb.andWhere('createdBy.id = :userId', { userId });
+  }
+
+  qb.select([
+    'eilog.id',
+    'eilog.description',
+    'eilog.income',
+    'eilog.expense',
+    'eilog.paymentMode',
+    'eilog.attachment',
+    'eilog.created_at',
+    'eilog.updated_at',
+    'eilogType.id',
+    'eilogType.name',
+    'eilogHead.id',
+    'eilogHead.name',
+    'createdBy.id',
+  ]);
+
+  const eilog = await qb.getOne();
 
   if (!eilog) throw new AppError(404, 'EILog not found');
 
   // Process attachment field
   const processedEilog = {
     ...eilog,
+    createdBy: eilog.createdBy?.id ?? null,
     attachment: processAttachment(eilog.attachment),
   };
 
   return processedEilog;
 };
 
-// Update an existing EILog by ID (only creator can update)
-export const updateEILogById = async (id: string, payload: EILogUpdateInput, userId: string) => {
+// Update an existing EILog by ID (admin can update any, user only their own)
+export const updateEILogById = async (id: string, payload: EILogUpdateInput, userId: string, role: string) => {
   const eilog = await eilogRepository.findOne({
     where: { id },
     relations: ['createdBy', 'eilogType', 'eilogHead'],
   });
   if (!eilog || eilog.deleted) throw new AppError(404, 'EILog not found');
-  if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to update this log');
+  if (role !== 'admin' && role !== 'Admin') {
+    if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to update this log');
+  }
 
   // Don't allow both income and expense in update payload
   if (payload.income != null && payload.expense != null) {
@@ -334,13 +341,14 @@ export const updateEILogById = async (id: string, payload: EILogUpdateInput, use
   return response;
 };
 
-// Soft delete an EILog by ID (only creator can delete)
-export const deleteEILogById = async (id: string, userId: string) => {
+// Soft delete an EILog by ID (admin can delete any, user only their own)
+export const deleteEILogById = async (id: string, userId: string, role: string) => {
   // Find the EILog with createdBy relation
   const eilog = await eilogRepository.findOne({ where: { id }, relations: ['createdBy'] });
   if (!eilog || eilog.deleted) throw new AppError(404, 'EILog not found');
-  if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to delete this log');
-  
+  if (role !== 'admin' && role !== 'Admin') {
+    if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to delete this log');
+  }
   // Soft delete
   eilog.deleted = true;
   eilog.deleted_at = new Date();
