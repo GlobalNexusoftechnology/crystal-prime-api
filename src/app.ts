@@ -40,6 +40,9 @@ import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
 import projectFollowupsRouter from './routes/project-followups.routes';
 import dashboardRoutes from "./routes/dashboard.routes";
+import eilogTypeRouter from './routes/eilog-type.routes';
+import eilogHeadRouter from './routes/eilog-head.routes';
+import eilogRouter from './routes/eilog.routes';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -108,6 +111,9 @@ AppDataSource.initialize()
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use('/api/project-followups', projectFollowupsRouter);
     app.use("/api/dashboard", dashboardRoutes);
+    app.use('/api/ei-log-types', eilogTypeRouter);
+    app.use('/api/ei-log-heads', eilogHeadRouter);
+    app.use('/api/ei-logs', eilogRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
