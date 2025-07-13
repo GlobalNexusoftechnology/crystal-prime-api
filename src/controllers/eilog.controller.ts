@@ -8,6 +8,7 @@ import {
   exportEILogsToExcel,
   generateEILogTemplate,
   uploadEILogsFromExcelService,
+  getEILogStats,
 } from '../services';
 import { findUserById } from '../services/user.service';
 
@@ -27,16 +28,73 @@ export const createEILogHandler = async (req: Request, res: Response, next: Next
   }
 };
 
-// Handler to get all EILogs (with filters)
+// Handler to get all EILogs (with advanced filters)
 export const getAllEILogsHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const filters = req.query;
-    const userId = res.locals?.user?.id
-    const eilogs = await getAllEILogs(filters, userId);
+    console.log('Query parameters received:', req.query); // Debug log
+    
+    const userId = res?.locals?.user?.id;
+    const role = res?.locals?.user?.role?.role;
+    const searchText = req.query.searchText as string | undefined;
+    const eilogTypeId = req.query.eilogTypeId as string | undefined || req.query.eilogType as string | undefined || req.query.typeId as string | undefined;
+    const eilogHeadId = req.query.eilogHeadId as string | undefined || req.query.eilogHead as string | undefined || req.query.headId as string | undefined;
+    const paymentMode = req.query.paymentMode as string | undefined;
+    const dateRange = req.query.dateRange as ("All" | "Daily" | "Weekly" | "Monthly") | undefined;
+    const referenceDate = req.query.referenceDate ? new Date(req.query.referenceDate as string) : undefined;
+    const fromDate = req.query.fromDate ? new Date(req.query.fromDate as string) : undefined;
+    const toDate = req.query.toDate ? new Date(req.query.toDate as string) : undefined;
+    const minAmount = req.query.minAmount ? parseFloat(req.query.minAmount as string) : undefined;
+    const maxAmount = req.query.maxAmount ? parseFloat(req.query.maxAmount as string) : undefined;
+    const transactionType = req.query.transactionType as ("income" | "expense" | "both") | undefined;
+    const createdById = req.query.createdById as string | undefined;
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    console.log('Processed filters:', { eilogTypeId, eilogHeadId, paymentMode }); // Debug log
+
+    let result;
+
+    if (role === "Admin" || role === "admin") {
+      result = await getAllEILogs({
+        searchText,
+        eilogTypeId,
+        eilogHeadId,
+        paymentMode,
+        dateRange,
+        referenceDate,
+        fromDate,
+        toDate,
+        minAmount,
+        maxAmount,
+        transactionType,
+        createdById,
+        page,
+        limit
+      }, userId);
+    } else {
+      result = await getAllEILogs({
+        searchText,
+        eilogTypeId,
+        eilogHeadId,
+        paymentMode,
+        dateRange,
+        referenceDate,
+        fromDate,
+        toDate,
+        minAmount,
+        maxAmount,
+        transactionType,
+        page,
+        limit
+      }, userId); // Non-admins can only see their own logs
+    }
+
+    const eilogStats = await getEILogStats(userId);
+
     res.status(200).json({
       status: 'success',
       message: 'EILogs fetched successfully',
-      data: eilogs,
+      data: { list: result, stats: eilogStats },
     });
   } catch (err) {
     next(err);

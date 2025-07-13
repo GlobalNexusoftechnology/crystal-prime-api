@@ -50,6 +50,7 @@ export const createEILog = async (payload: EILogInput, userId: string) => {
 };
 
 export const getAllEILogs = async (filters: any = {}, userId: string) => {
+  console.log('Filters received:', filters); // Debug log
   const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
   const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
   const skip = (page - 1) * limit;
@@ -57,34 +58,103 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
   const qb = eilogRepository.createQueryBuilder('eilog')
     .leftJoin('eilog.eilogType', 'eilogType')
     .leftJoin('eilog.eilogHead', 'eilogHead')
-    .where('eilog.deleted = :deleted', { deleted: false })
-    .andWhere('eilog.created_by = :userId', { userId });
+    .leftJoinAndSelect('eilog.createdBy', 'createdBy')
+    .where('eilog.deleted = :deleted', { deleted: false });
 
-  // Filters
-  if (filters.eilogType) {
-    qb.andWhere('eilogType.id = :eilogType', { eilogType: filters.eilogType });
+  // Role-based filtering - non-admins can only see their own logs
+  if (filters.createdById) {
+    qb.andWhere('createdBy.id = :createdById', { createdById: filters.createdById });
+  } else {
+    qb.andWhere('eilog.created_by = :userId', { userId });
   }
-  if (filters.eilogHead) {
-    qb.andWhere('eilogHead.id = :eilogHead', { eilogHead: filters.eilogHead });
+
+  // Search text filter
+  if (filters.searchText) {
+    qb.andWhere(
+      '(eilog.description ILIKE :searchText OR eilogType.name ILIKE :searchText OR eilogHead.name ILIKE :searchText)',
+      { searchText: `%${filters.searchText}%` }
+    );
   }
+
+  // EILog Type filter
+  if (filters.eilogTypeId) {
+    qb.andWhere('eilogType.id = :eilogTypeId', { eilogTypeId: filters.eilogTypeId });
+  }
+
+  // EILog Head filter
+  if (filters.eilogHeadId) {
+    qb.andWhere('eilogHead.id = :eilogHeadId', { eilogHeadId: filters.eilogHeadId });
+  }
+
+  // Payment Mode filter
   if (filters.paymentMode) {
     qb.andWhere('eilog.paymentMode = :paymentMode', { paymentMode: filters.paymentMode });
   }
-  if (filters.startDate && filters.endDate) {
-    qb.andWhere('eilog.created_at BETWEEN :startDate AND :endDate', {
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-    });
-  } else if (filters.startDate) {
-    qb.andWhere('eilog.created_at >= :startDate', { startDate: filters.startDate });
-  } else if (filters.endDate) {
-    qb.andWhere('eilog.created_at <= :endDate', { endDate: filters.endDate });
+
+  // Transaction Type filter (income/expense/both)
+  if (filters.transactionType) {
+    if (filters.transactionType === 'income') {
+      qb.andWhere('eilog.income IS NOT NULL AND eilog.income > 0');
+    } else if (filters.transactionType === 'expense') {
+      qb.andWhere('eilog.expense IS NOT NULL AND eilog.expense > 0');
+    }
+    // 'both' means no additional filter
+  }
+
+  // Amount range filters
+  if (filters.minAmount !== undefined) {
+    qb.andWhere('(eilog.income >= :minAmount OR eilog.expense >= :minAmount)', { minAmount: filters.minAmount });
+  }
+  if (filters.maxAmount !== undefined) {
+    qb.andWhere('(eilog.income <= :maxAmount OR eilog.expense <= :maxAmount)', { maxAmount: filters.maxAmount });
+  }
+
+  // Date range filters
+  if (filters.dateRange && filters.referenceDate) {
+    const refDate = new Date(filters.referenceDate);
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+
+    switch (filters.dateRange) {
+      case 'Daily':
+        startDate = new Date(refDate.setHours(0, 0, 0, 0));
+        endDate = new Date(refDate.setHours(23, 59, 59, 999));
+        break;
+      case 'Weekly':
+        const day = refDate.getDay();
+        const diff = refDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate = new Date(refDate.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'Monthly':
+        startDate = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+        endDate = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      default:
+        // 'All' - no date filter
+        break;
+    }
+
+    if (startDate && endDate) {
+      qb.andWhere('eilog.created_at BETWEEN :startDate AND :endDate', { startDate, endDate });
+    }
+  } else {
+    // Custom date range
+    if (filters.fromDate) {
+      qb.andWhere('eilog.created_at >= :fromDate', { fromDate: filters.fromDate });
+    }
+    if (filters.toDate) {
+      qb.andWhere('eilog.created_at <= :toDate', { toDate: filters.toDate });
+    }
   }
 
   qb.orderBy('eilog.created_at', 'DESC');
   qb.skip(skip).take(limit);
 
-  // Only select specific fields you want to return
+  // Select specific fields
   qb.select([
     'eilog.id',
     'eilog.description',
@@ -120,6 +190,11 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
         id: e.eilogHead?.id,
         name: e.eilogHead?.name,
       },
+      createdBy: e.createdBy ? {
+        id: e.createdBy.id,
+        firstName: e.createdBy.firstName,
+        lastName: e.createdBy.lastName,
+      } : null,
     })),
     pagination: {
       total,
@@ -510,4 +585,78 @@ export const uploadEILogsFromExcelService = async (
   }
 
   return { total: savedEILogs.length, eilogs: savedEILogs };
+};
+// Get EILog statistics
+export const getEILogStats = async (userId: string) => {
+  const qb = eilogRepository.createQueryBuilder('eilog')
+    .where('eilog.deleted = :deleted', { deleted: false })
+    .andWhere('eilog.created_by = :userId', { userId });
+
+  // Total count
+  const totalCount = await qb.getCount();
+
+  // Total income
+  const totalIncome = await qb
+    .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.income IS NOT NULL AND eilog.income > 0')
+    .getRawOne();
+
+  // Total expense
+  const totalExpense = await qb
+    .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.expense IS NOT NULL AND eilog.expense > 0')
+    .getRawOne();
+
+  // Today's transactions
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const todayIncome = await qb
+    .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.income IS NOT NULL AND eilog.income > 0')
+    .andWhere('eilog.created_at >= :today AND eilog.created_at < :tomorrow', { today, tomorrow })
+    .getRawOne();
+
+  const todayExpense = await qb
+    .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.expense IS NOT NULL AND eilog.expense > 0')
+    .andWhere('eilog.created_at >= :today AND eilog.created_at < :tomorrow', { today, tomorrow })
+    .getRawOne();
+
+  // This month's transactions
+  const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const firstDayOfNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+  const monthIncome = await qb
+    .select('COALESCE(SUM(CAST(eilog.income AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.income IS NOT NULL AND eilog.income > 0')
+    .andWhere('eilog.created_at >= :firstDay AND eilog.created_at < :lastDay', { 
+      firstDay: firstDayOfMonth, 
+      lastDay: firstDayOfNextMonth 
+    })
+    .getRawOne();
+
+  const monthExpense = await qb
+    .select('COALESCE(SUM(CAST(eilog.expense AS DECIMAL)), 0)', 'total')
+    .andWhere('eilog.expense IS NOT NULL AND eilog.expense > 0')
+    .andWhere('eilog.created_at >= :firstDay AND eilog.created_at < :lastDay', { 
+      firstDay: firstDayOfMonth, 
+      lastDay: firstDayOfNextMonth 
+    })
+    .getRawOne();
+
+  return {
+    totalCount,
+    totalIncome: parseFloat(totalIncome?.total || '0'),
+    totalExpense: parseFloat(totalExpense?.total || '0'),
+    netAmount: parseFloat(totalIncome?.total || '0') - parseFloat(totalExpense?.total || '0'),
+    todayIncome: parseFloat(todayIncome?.total || '0'),
+    todayExpense: parseFloat(todayExpense?.total || '0'),
+    todayNet: parseFloat(todayIncome?.total || '0') - parseFloat(todayExpense?.total || '0'),
+    monthIncome: parseFloat(monthIncome?.total || '0'),
+    monthExpense: parseFloat(monthExpense?.total || '0'),
+    monthNet: parseFloat(monthIncome?.total || '0') - parseFloat(monthExpense?.total || '0'),
+  };
 };
