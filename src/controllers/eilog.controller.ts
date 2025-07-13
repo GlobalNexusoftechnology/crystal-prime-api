@@ -178,10 +178,10 @@ export const deleteEILogHandler = async (req: Request<{ id: string }>, res: Resp
 export const exportEILogsToExcelHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = res.locals?.user?.id;
-    const userData = await findUserById(userId);
+    const role = res.locals?.user?.role?.role;
     const filters = req.query;
 
-    const workbook = await exportEILogsToExcel(userId, filters);
+    const workbook = await exportEILogsToExcel(userId, role, filters);
 
     res.setHeader(
       "Content-Type",
