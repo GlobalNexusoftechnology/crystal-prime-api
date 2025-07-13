@@ -8,8 +8,9 @@ import {
   exportEILogsToExcelHandler,
   downloadEILogTemplateHandler,
   uploadEILogsFromExcelHandler,
+  uploadSingleFileToCloudinary,
 } from '../controllers';
-import { deserializeUser, requireUser, validate } from '../middleware';
+import { deserializeUser, requireUser, singleDocumentUpload, validate } from '../middleware';
 import { eilogSchema, eilogUpdateSchema } from '../schemas/eilog.schema';
 import { excelUpload } from '../utils/upload';
 
@@ -18,7 +19,7 @@ const router = express.Router();
 router.use(deserializeUser, requireUser);
 
 /**this route handles create new EI log */
-router.post('/', validate(eilogSchema), createEILogHandler);
+router.post('/', singleDocumentUpload, validate(eilogSchema), createEILogHandler);
 
 /**this route handles get all EI logs (with filters) */
 router.get('/', getAllEILogsHandler);
@@ -36,9 +37,14 @@ router.post('/upload-excel', excelUpload.single('file'), uploadEILogsFromExcelHa
 router.get('/:id', getEILogByIdHandler);
 
 /**this route handles update EI log by id */
-router.put('/:id', validate(eilogUpdateSchema), updateEILogHandler);
+router.put('/:id', singleDocumentUpload, validate(eilogUpdateSchema), updateEILogHandler);
 
 /**this route handles soft delete EI log by id */
 router.delete('/:id', deleteEILogHandler);
+
+router.post(
+  "/uploadAttachment",
+  singleDocumentUpload, uploadSingleFileToCloudinary
+);
 
 export default router; 

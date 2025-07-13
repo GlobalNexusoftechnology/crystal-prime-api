@@ -11,12 +11,24 @@ import {
   getEILogStats,
 } from '../services';
 import { findUserById } from '../services/user.service';
+import { AppError, uploadToCloudinary } from '../utils';
 
 // Handler to create a new EILog
 export const createEILogHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const payload = req.body;
-    const userId = res.locals?.user?.id
+    const userId = res.locals?.user?.id;
+    
+    // Handle file upload if present
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        req.file.originalname,
+        "eilog-attachments"
+      );
+      payload.attachment = uploadResult.url;
+    }
+    
     const eilog = await createEILog(payload, userId);
     res.status(201).json({
       status: 'success',
@@ -122,7 +134,18 @@ export const updateEILogHandler = async (req: Request<{ id: string }>, res: Resp
   try {
     const { id } = req.params;
     const updates = req.body;
-    const userId = res.locals?.user?.id
+    const userId = res.locals?.user?.id;
+    
+    // Handle file upload if present
+    if (req.file) {
+      const uploadResult = await uploadToCloudinary(
+        req.file.buffer,
+        req.file.originalname,
+        "eilog-attachments"
+      );
+      updates.attachment = uploadResult.url;
+    }
+    
     const updated = await updateEILogById(id, updates, userId);
     res.status(200).json({
       status: 'success',
@@ -222,3 +245,44 @@ export const uploadEILogsFromExcelHandler = async (
     next(error);
   }
 }; 
+
+export const uploadSingleFileToCloudinary = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const file = req.file as Express.Multer.File
+
+    if (!file) {
+      return res.status(400).json({
+        status: "error",
+        message: "No file provided in the request",
+      })
+    }
+
+    const uploadResult = await uploadToCloudinary(
+      file.buffer,
+      file.originalname,
+      "uploads" // or any folder name
+    )
+
+    return res.status(200).json({
+      status: "success",
+      message: "File uploaded successfully",
+      data: {
+        docUrl: uploadResult.url,
+        fileType: req.file?.mimetype,
+        fileName: req.file?.originalname,
+      },
+    })
+  } catch (error) {
+    console.error("Upload error:", error)
+    next(
+      new AppError(
+        500,
+        "An error occurred while uploading the file. Please try again later."
+      )
+    )
+  }
+}

@@ -9,6 +9,29 @@ const eilogTypeRepository = AppDataSource.getRepository(EILogType);
 const eilogHeadRepository = AppDataSource.getRepository(EILogHead);
 const userRepository = AppDataSource.getRepository(User);
 
+// Helper function to check if attachment is a Cloudinary URL
+const isCloudinaryUrl = (attachment: string | null | undefined): boolean => {
+  if (!attachment) return false;
+  return attachment.startsWith('https://res.cloudinary.com/');
+};
+
+// Helper function to convert filename to Cloudinary URL (for existing records)
+const convertFilenameToCloudinaryUrl = (filename: string): string | null => {
+  return null;
+};
+
+// Helper function to process attachment field
+const processAttachment = (attachment: string | null | undefined): string | null => {
+  if (!attachment) return null;
+  
+  // If it's already a Cloudinary URL, return as-is
+  if (isCloudinaryUrl(attachment)) {
+    return attachment;
+  }
+  
+  return convertFilenameToCloudinaryUrl(attachment);
+};
+
 // Create a new EILog
 export const createEILog = async (payload: EILogInput, userId: string) => {
   // Only one of income or expense can be present in a single log, and at least one must be present
@@ -179,7 +202,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
       income: e.income,
       expense: e.expense,
       paymentMode: e.paymentMode,
-      attachment: e.attachment,
+      attachment: processAttachment(e.attachment),
       created_at: e.created_at,
       updated_at: e.updated_at,
       eilogType: {
@@ -234,7 +257,13 @@ export const getEILogById = async (id: string, userId: string) => {
 
   if (!eilog) throw new AppError(404, 'EILog not found');
 
-  return eilog;
+  // Process attachment field
+  const processedEilog = {
+    ...eilog,
+    attachment: processAttachment(eilog.attachment),
+  };
+
+  return processedEilog;
 };
 
 // Update an existing EILog by ID (only creator can update)
@@ -285,7 +314,7 @@ export const updateEILogById = async (id: string, payload: EILogUpdateInput, use
     income: eilog.income,
     expense: eilog.expense,
     paymentMode: eilog.paymentMode,
-    attachment: eilog.attachment,
+    attachment: processAttachment(eilog.attachment),
     created_at: eilog.created_at,
     updated_at: eilog.updated_at,
     eilogType: eilog.eilogType

@@ -9,7 +9,7 @@ export const eilogSchema = z.object({
     income: z.coerce.number().positive('Income must be greater than 0').optional(),
     expense: z.coerce.number().positive('Expense must be greater than 0').optional(),
     paymentMode: z.nativeEnum(PaymentModeEnum),
-    attachment: z.string().optional(),
+    attachment: z.string().optional(), // For Cloudinary URL
   })
 });
 
@@ -19,8 +19,9 @@ export const eilogUpdateSchema = z.object({
     eilogHead: z.string().uuid().optional(),
     description: z.string().optional(),
     income: z.coerce.number().positive('Income must be greater than 0').optional(),
-    expense: z.coerce.number().positive('Expense must be greater than 0').optional(),    paymentMode: z.nativeEnum(PaymentModeEnum).optional(),
-    attachment: z.string().optional(),
+    expense: z.coerce.number().positive('Expense must be greater than 0').optional(),
+    paymentMode: z.nativeEnum(PaymentModeEnum).optional(),
+    attachment: z.string().optional(), // For Cloudinary URL
   })
 });
 
