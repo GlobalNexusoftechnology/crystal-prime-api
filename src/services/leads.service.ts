@@ -216,7 +216,7 @@ export const LeadService = () => {
     return lead;
   };
 
-  const getLeadStats = async (userId: string) => {
+  const getLeadStats = async (userId: string, role: string) => {
     // Get today's start and end timestamps in UTC
     const now = new Date();
     const today = new Date(
@@ -242,6 +242,10 @@ export const LeadService = () => {
       )
     );
 
+    const isAdmin = role === "admin" || role === "Admin";
+    const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
+    const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
+
     const [
       totalLeads,
       assignedToMe,
@@ -250,25 +254,25 @@ export const LeadService = () => {
       notInterested,
       todayFollowups,
     ] = await Promise.all([
-      leadRepo.count({ where: { deleted: false } }),
+      leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
+
+      // For admin, assignedToMe is all leads; for user, only their own
+      isAdmin
+        ? leadRepo.count({ where: { deleted: false } })
+        : leadRepo.count({ where: { deleted: false, assigned_to: { id: userId } }, relations: ["assigned_to"] }),
 
       leadRepo.count({
-        where: { deleted: false, assigned_to: { id: userId } },
-        relations: ["assigned_to"],
-      }),
-
-      leadRepo.count({
-        where: { deleted: false, status: { name: "Profile Sent" } },
+        where: { deleted: false, status: { name: "Profile Sent" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
       leadRepo.count({
-        where: { deleted: false, status: { name: "Business Done" } },
+        where: { deleted: false, status: { name: "Business Done" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
       leadRepo.count({
-        where: { deleted: false, status: { name: "Not Interested" } },
+        where: { deleted: false, status: { name: "Not Interested" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
@@ -276,8 +280,7 @@ export const LeadService = () => {
       leadFollowupRepo.count({
         where: {
           deleted: false,
-          user: { id: userId },
-          // due_date: Between(today, tomorrow),
+          ...followupUserFilter,
           due_date: today,
           status: Not(FollowupStatus.COMPLETED),
         },
@@ -292,6 +295,8 @@ export const LeadService = () => {
       businessDone,
       notInterested,
       todayFollowups,
+      convertedLeads: businessDone, 
+      lostLeads: notInterested     
     };
   };
 
