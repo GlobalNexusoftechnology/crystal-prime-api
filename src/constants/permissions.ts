@@ -21,6 +21,12 @@ export const MODULES: TOptionItem[] = [
   { key: "EI_LOG_TYPES", label: "EI Log Types Module", value: "23" },
   { key: "EI_LOG_HEADS", label: "EI Log Heads Module", value: "24" },
   { key: "EI_LOG_MANAGEMENT", label: "EI Log Management Module", value: "25" },
+  { key: "REPORTS", label: "Reports", value: "26" },
+  { key: "STAFF_PERFORMANCE_REPORT", label: "Staff Performance Report", value: "27" },
+  { key: "PROJECT_PERFORMANCE_REPORT", label: "Project Performance Report", value: "28" },
+  { key: "LEAD_ANALYTICS_REPORT", label: "Lead Analytics Report", value: "29" },
+  { key: "BUSINESS_ANALYSIS_REPORT", label: "Business Analysis Report", value: "30" },
+  { key: "PUBLIC_BUSINESS_DASHBOARD", label: "Public Business Dashboard", value: "31" },
 
 ];
 
