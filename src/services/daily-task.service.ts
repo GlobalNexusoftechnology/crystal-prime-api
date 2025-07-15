@@ -13,6 +13,7 @@ interface DailyTaskEntryInput {
     hours_spent?: number;
     status?: string;
     remarks?: string;
+    priority?: string;
 }
 
 const entryRepo = AppDataSource.getRepository(DailyTaskEntries);
@@ -27,6 +28,7 @@ export const DailyTaskEntryService = () => {
         const entry = entryRepo.create({
             ...data,
             project,
+            priority: data.priority || 'Medium',
         });
 
         return await entryRepo.save(entry);
@@ -65,6 +67,7 @@ export const DailyTaskEntryService = () => {
         }
 
         Object.assign(entry, data);
+        if (data.priority !== undefined) entry.priority = data.priority;
         return await entryRepo.save(entry);
     };
 
