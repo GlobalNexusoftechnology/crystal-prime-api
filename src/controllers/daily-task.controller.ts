@@ -24,11 +24,22 @@ export const dailyTaskEntryController = () => {
 
   const getAllEntries = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await service.getAllEntries();
+      const userId = res?.locals?.user?.id;
+      const role = res?.locals?.user?.role?.role;
+      // Parse filters from query params
+      const { status, priority, from, to, search } = req.query;
+      const filters = {
+        status: status as string | undefined,
+        priority: priority as string | undefined,
+        from: from as string | undefined,
+        to: to as string | undefined,
+        search: search as string | undefined,
+      };
+      const result = await service.getAllEntries(userId, role, filters);
       res.status(200).json({
         status: "success",
         message: "All daily task entries fetched",
-         data: result,
+        data: result,
       });
     } catch (err) {
       next(err);
