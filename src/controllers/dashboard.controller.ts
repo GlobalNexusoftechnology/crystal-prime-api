@@ -132,20 +132,42 @@ export const dashboardController = () => {
       }
 
       // Non-admin: only return limited stats
-      const leadStats = await leadService.getLeadStats(userId, role);
-      const totalLeads = leadStats.totalLeads || 0;
+      // 1. My Task (count of all open, in process tasks assigned to user)
+      // 2. Today Follow up (from getLeadStats)
+      // 3. Project (count of projects where user is assigned to a milestone or task)
+      // 4. Performance Ratio (completed tasks / total task assigned)
+      const [leadStats, allTasks, allProjects] = await Promise.all([
+        leadService.getLeadStats(userId, role),
+        // Get all tasks assigned to this user (from project_tasks)
+        (async () => {
+          const { data } = await require("../services/project-task.service").ProjectTaskService().getAllTasks();
+          return data.filter((t: any) => t.assigned_to === userId);
+        })(),
+        // Get all projects where user is assigned to a milestone or task
+        projectService.getAllProject(userId, role)
+      ]);
+
+      // My Task: count of open and in process tasks
+      const myTaskCount = allTasks.filter((t: any) => t.status === "Open" || t.status === "In Progress").length;
+      // Performance Ratio: completed / total assigned
+      const completedTaskCount = allTasks.filter((t: any) => t.status === "Completed").length;
+      const totalAssignedTaskCount = allTasks.length;
+      const performanceRatio = totalAssignedTaskCount > 0 ? `${Math.round((completedTaskCount / totalAssignedTaskCount) * 100)}%` : "0%";
+      // Project: count of projects where user is assigned
+      const projectCount = allProjects.length;
+      // Today Follow up
       const todayFollowups = leadStats.todayFollowups || 0;
-      const convertedLeads = leadStats.convertedLeads || 0;
-      const lostLeads = leadStats.lostLeads || 0;
-      const conversionRate = totalLeads ? `${Math.round((convertedLeads / totalLeads) * 100)}%` : '0%';
-      const stats = {
-        totalLeads,
-        todayFollowups,
-        convertedLeads,
-        lostLeads,
-        conversionRate
-      };
-      res.status(200).json({ status: 'success', data: stats });
+
+      // Only return the counts for the four stats
+      res.status(200).json({
+        status: 'success',
+        data: {
+          myTaskCount,
+          todayFollowups,
+          projectCount,
+          performanceRatio
+        }
+      });
       return;
     } catch (error) {
       next(error);
