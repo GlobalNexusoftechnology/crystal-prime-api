@@ -16,17 +16,14 @@ export const clientFollowupController = () => {
   ) => {
     try {
       const parsed = createClientFollowupSchema.parse(req.body);
-      // Map client_id to project_id and handle user_id null
-      const mapped = {
+      const toCreate = {
         ...parsed,
-        project_id: parsed.client_id,
-        user_id: parsed.user_id ?? undefined,
-        due_date: parsed.due_date ?? undefined,
-        completed_date: parsed.completed_date ?? undefined,
-        remarks: parsed.remarks ?? undefined,
+        user_id: parsed.user_id === null ? undefined : parsed.user_id,
+        due_date: parsed.due_date === null ? undefined : parsed.due_date,
+        completed_date: parsed.completed_date === null ? undefined : parsed.completed_date,
+        remarks: parsed.remarks === null ? undefined : parsed.remarks,
       };
-      delete (mapped as any).client_id;
-      const result = await service.createFollowup(mapped);
+      const result = await service.createFollowup(toCreate);
       res.status(201).json({
         status: "success",
         message: "Client Follow-up created",
@@ -81,17 +78,14 @@ export const clientFollowupController = () => {
   ) => {
     try {
       const parsed = updateClientFollowupSchema.parse(req.body);
-      // Map client_id to project_id and handle user_id null
-      const mapped = {
+      const toUpdate = {
         ...parsed,
-        project_id: parsed.client_id,
-        user_id: parsed.user_id ?? undefined,
-        due_date: parsed.due_date ?? undefined,
-        completed_date: parsed.completed_date ?? undefined,
-        remarks: parsed.remarks ?? undefined,
+        user_id: parsed.user_id === null ? undefined : parsed.user_id,
+        due_date: parsed.due_date === null ? undefined : parsed.due_date,
+        completed_date: parsed.completed_date === null ? undefined : parsed.completed_date,
+        remarks: parsed.remarks === null ? undefined : parsed.remarks,
       };
-      delete (mapped as any).client_id;
-      const result = await service.updateFollowup(req.params.id, mapped);
+      const result = await service.updateFollowup(req.params.id, toUpdate);
       res.status(200).json({
         status: "success",
         message: "Client Follow-up updated",
