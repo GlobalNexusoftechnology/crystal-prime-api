@@ -143,7 +143,8 @@ export const ProjectService = () => {
           "milestones",
           "milestones.tasks",
           "attachments",
-          "attachments.uploaded_by"
+          "attachments.uploaded_by",
+          "project_type"
         ],
       });
     }
@@ -175,7 +176,8 @@ export const ProjectService = () => {
         "milestones",
         "milestones.tasks",
         "attachments",
-        "attachments.uploaded_by"
+        "attachments.uploaded_by",
+        "project_type"
       ],
     });
 
