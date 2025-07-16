@@ -6,6 +6,7 @@ import { ProjectMilestones } from "./project-milestone.entity";
 import { ProjectTasks } from "./project-task.entity";
 import { ProjectTemplates } from "./project-templates.entity";
 import { User } from "./user.entity";
+import { LeadTypes } from "./lead-type.entity";
 
 export enum ProjectRenewalType {
   NONE = "NONE",
@@ -35,8 +36,9 @@ export class Project extends Model {
   @Column({ type: "text", nullable: true })
   description: string;
   
-  @Column({ type: "varchar", length: 100, nullable: true })
-  project_type: string;
+  @ManyToOne(() => LeadTypes, (leadType) => leadType.projects, { nullable: true })
+  @JoinColumn({ name: "project_type" })
+  project_type: LeadTypes;
 
   @Column({
     type: "enum",
