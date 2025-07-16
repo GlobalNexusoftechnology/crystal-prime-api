@@ -16,7 +16,6 @@ export const createDailyTaskEntrySchema = z.object({
 // Schema for updating a Daily Task Entry
 export const updateDailyTaskEntrySchema = z.object({
     project_id: z.string().optional(),
-    assigned_to: z.string().optional(),
     task_title: z.string().min(1).optional(),
     description: z.string().optional(),
     entry_date: z.coerce.date().optional(),
@@ -24,6 +23,6 @@ export const updateDailyTaskEntrySchema = z.object({
     status: z.string().optional(),
     remarks: z.string().optional(),
     priority: z.string().optional(),
-});
+}).strict();
 
 
