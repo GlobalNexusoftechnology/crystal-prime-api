@@ -250,8 +250,8 @@ export const LeadService = () => {
       totalLeads,
       assignedToMe,
       profileSent,
-      businessDone,
-      notInterested,
+      convertedLeads,
+      lostLeads,
       todayFollowups,
     ] = await Promise.all([
       leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
@@ -266,13 +266,15 @@ export const LeadService = () => {
         relations: ["status"],
       }),
 
+      // Converted leads: status.name === 'completed'
       leadRepo.count({
-        where: { deleted: false, status: { name: "Business Done" }, ...assignedToFilter },
+        where: { deleted: false, status: { name: "completed" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
+      // Lost leads: status.name === 'no-interested'
       leadRepo.count({
-        where: { deleted: false, status: { name: "Not Interested" }, ...assignedToFilter },
+        where: { deleted: false, status: { name: "no-interested" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
@@ -292,11 +294,12 @@ export const LeadService = () => {
       totalLeads,
       assignedToMe,
       profileSent,
-      businessDone,
-      notInterested,
+      convertedLeads,
+      lostLeads,
       todayFollowups,
-      convertedLeads: businessDone, 
-      lostLeads: notInterested     
+      // Keep these for backward compatibility, but use the new ones in dashboard
+      // convertedLeads: businessDone, 
+      // lostLeads: notInterested     
     };
   };
 

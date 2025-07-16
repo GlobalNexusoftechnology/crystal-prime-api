@@ -2,12 +2,13 @@ import { AppDataSource } from "../utils/data-source";
 import { Project, ProjectStatus } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
+import { LeadTypeService } from "./lead-types.service";
 
 interface ProjectInput {
   client_id?: string;
   name: string;
   description: string;
-  project_type?: string;
+  project_type?: string; 
   status?: ProjectStatus;
   budget?: number;
   cost_of_labour?: number,
@@ -26,6 +27,7 @@ interface ProjectInput {
 
 const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
+const leadTypeService = LeadTypeService();
 
 export const ProjectService = () => {
   const getQueryRunner = () => {
@@ -89,6 +91,12 @@ export const ProjectService = () => {
       if (!client) throw new AppError(404, "Client not found");
     }
 
+    let leadType;
+    if (project_type) {
+      leadType = await leadTypeService.getLeadTypeById(project_type);
+      if (!leadType) throw new AppError(400, "Invalid project type");
+    }
+
     // Calculate actual cost automatically
     const calculatedActualCost = calculateActualCost(
       cost_of_labour,
@@ -102,7 +110,7 @@ export const ProjectService = () => {
     const project = repo.create({
       name,
       description,
-      project_type,
+      project_type: leadType,
       status: status || ProjectStatus.OPEN,
       budget,
       cost_of_labour,
@@ -214,7 +222,14 @@ export const ProjectService = () => {
 
     if (name !== undefined) project.name = name;
     if (description !== undefined) project.description = description;
-    if (project_type !== undefined) project.project_type = project_type;
+    if (project_type !== undefined) {
+      let leadTypeUpdate;
+      if (project_type) {
+        leadTypeUpdate = await leadTypeService.getLeadTypeById(project_type);
+        if (!leadTypeUpdate) throw new AppError(400, "Invalid project type");
+        project.project_type = leadTypeUpdate;
+      }
+    }
     if (status !== undefined) project.status = status;
     if (budget !== undefined) project.budget = budget;
     if (cost_of_labour !== undefined) project.cost_of_labour = cost_of_labour;
