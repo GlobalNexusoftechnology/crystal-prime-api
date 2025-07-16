@@ -273,6 +273,22 @@ export const ProjectService = () => {
     return await ProjectRepo.save(project);
   };
 
+  // Aggregate project counts by status, filtered by user for non-admins (using joins, no entity change)
+  const getProjectStatusCounts = async (userId?: string, role?: string) => {
+    const qb = ProjectRepo.createQueryBuilder("project")
+      .select(["project.status AS status", "COUNT(DISTINCT project.id)::int AS count"])
+      .where("project.deleted = false");
+    if (role !== "admin" && role !== "Admin" && userId) {
+      qb.leftJoin("project.milestones", "milestones")
+        .leftJoin("milestones.tasks", "tasks")
+        .andWhere(
+          "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
+          { userId }
+        );
+    }
+    return await qb.groupBy("project.status").getRawMany();
+  };
+
   return {
     createProject,
     getAllProject,
@@ -280,5 +296,6 @@ export const ProjectService = () => {
     updateProject,
     softDeleteProject,
     getQueryRunner,
+    getProjectStatusCounts,
   };
 };
