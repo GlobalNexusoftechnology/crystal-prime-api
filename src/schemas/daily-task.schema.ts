@@ -18,6 +18,7 @@ export const updateDailyTaskEntrySchema = z.object({
     project_id: z.string().optional(),
     task_title: z.string().min(1).optional(),
     description: z.string().optional(),
+    assigned_to: z.string({ required_error: "Assigned To is required" }).optional(),
     entry_date: z.coerce.date().optional(),
     hours_spent: z.number().positive().optional(),
     status: z.string().optional(),
