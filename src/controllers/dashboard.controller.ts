@@ -2,98 +2,213 @@ import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { ProjectService } from "../services/projects.service";
 import { ProjectTaskService } from "../services/project-task.service";
-import { MilestoneService } from "../services/project-milestone.service";
-import { DailyTaskEntryService } from "../services/daily-task.service";
+import { getEILogChartData } from "../services/eilog.service";
+import fs from "fs";
 
 const leadService = LeadService();
 const projectService = ProjectService();
 const projectTaskService = ProjectTaskService();
-const milestoneService = MilestoneService();
-const dailyTaskService = DailyTaskEntryService();
+
+function getWeek(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d as any) - (yearStart as any)) / 86400000 + 1)/7);
+}
 
 export const dashboardController = () => {
   const getDashboardSummary = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // User context (if needed for filtering)
       const userId = res?.locals?.user?.id;
+      const role = res?.locals?.user?.role?.role;
 
-      // 1. Leads summary and analytics
-      const leadStats = await leadService.getLeadStats(userId);
-      const allLeads = await leadService.getAllLeads();
-      // Lead analytics by status (for bar chart)
-      const leadStatusCounts: Record<string, number> = {};
-      allLeads.forEach((lead: any) => {
-        const status = lead.status?.name || "Unknown";
-        leadStatusCounts[status] = (leadStatusCounts[status] || 0) + 1;
-      });
+      // Fetch all required data in parallel
+      const [
+        leadStats,
+        allLeads,
+        allProjects,
+        allTasksResult,
+        yearlyChart,
+        monthlyChart,
+        weeklyChart
+      ] = await Promise.all([
+        leadService.getLeadStats(userId, role),
+        leadService.getAllLeads(),
+        projectService.getAllProject(),
+        projectTaskService.getAllTasks(),
+        getEILogChartData(userId, role, 'yearly'),
+        getEILogChartData(userId, role, 'monthly'),
+        getEILogChartData(userId, role, 'weekly')
+      ]);
 
-      // 2. Projects summary
-      const allProjects = await projectService.getAllProject();
+      const stats = [
+        {
+          count: String(leadStats.totalLeads || 0),
+          title: "Total Leads",
+          subtitle: "Over All leads"
+        },
+        {
+          count: String(leadStats.todayFollowups || 0),
+          title: "Follow-Ups Due Today",
+          subtitle: "Today's pending work"
+        },
+        {
+          count: String(leadStats.convertedLeads || 0),
+          title: "Converted Leads",
+          subtitle: "Weekly Leads"
+        },
+        {
+          count: String(leadStats.lostLeads || 0),
+          title: "Lost Leads",
+          subtitle: "Weekly Leads"
+        },
+        {
+          count: leadStats.totalLeads
+            ? `${Math.round((leadStats.convertedLeads / leadStats.totalLeads) * 100)}%`
+            : "0%",
+          title: "Conversion Rate",
+          subtitle: "Lead to Customer"
+        }
+      ];
+
+      // Helper to compute project status from milestone statuses
+      function computeProjectStatusFromMilestones(milestones: any[], projectName?: string): string {
+        const logLine = `[${new Date().toISOString()}] Project: ${projectName || "Unknown"}, Milestones: ${JSON.stringify(milestones)}\n`;
+        fs.appendFileSync("dashboard-debug.log", logLine);
+        if (!milestones.length) return "Open";
+        const allCompleted = milestones.every(m => m.status === "Completed");
+        const anyInProgress = milestones.some(m => m.status === "In Progress");
+        const hasCompleted = milestones.some(m => m.status === "Completed");
+        const hasOpen = milestones.some(m => m.status === "Open");
+        let status = "Open";
+        if (allCompleted) status = "Completed";
+        else if (anyInProgress || (hasCompleted && hasOpen)) status = "In Progress";
+        else if (hasOpen) status = "Open";
+        const statusLog = `[${new Date().toISOString()}] Project: ${projectName || "Unknown"}, Computed Status: ${status}\n`;
+        fs.appendFileSync("dashboard-debug.log", statusLog);
+        return status;
+      }
+
+      // Compute project status for all projects
+      let inProgressProjects = 0;
+      let completedProjects = 0;
+      let pendingProjects = 0;
+      for (const project of allProjects) {
+        const status = computeProjectStatusFromMilestones(project.milestones || [], project.name);
+        if (status === "In Progress") inProgressProjects++;
+        else if (status === "Completed") completedProjects++;
+        else if (status === "Open") pendingProjects++;
+      }
       const totalProjects = allProjects.length;
-      const inProgressProjects = allProjects.filter((p: any) => p.status === "In Progress").length;
-      const completedProjects = allProjects.filter((p: any) => p.status === "Completed").length;
-      const projectSnapshot = {
-        inProgress: inProgressProjects,
-        completed: completedProjects,
-        percentCompleted: totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0,
-        percentInProgress: totalProjects > 0 ? Math.round((inProgressProjects / totalProjects) * 100) : 0,
-        total: totalProjects,
+      const projectSnapshotData = [
+        { name: "In Progress", value: inProgressProjects },
+        { name: "Completed", value: completedProjects },
+        { name: "Pending", value: pendingProjects }
+      ];
+      const projectSnapshotColors = ["#3B82F6", "#6366F1", "#F59E42"];
+
+      // 3. Lead Type Chart Data Map (group by type for each period)
+      function groupLeadsByType(leads: any[], filterFn: (lead: any) => boolean) {
+        const counts: Record<string, number> = {};
+        leads.filter(filterFn).forEach((lead: any) => {
+          const type =
+            typeof lead.type === "object" && lead.type !== null
+              ? lead.type.name || "Unknown"
+              : lead.type || "Unknown";
+          counts[type] = (counts[type] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+      }
+      const now = new Date();
+      const thisWeek = getWeek(now);
+      const thisMonth = now.getMonth();
+      const thisYear = now.getFullYear();
+
+      const leadTypeChartDataMap = {
+        "This Week": groupLeadsByType(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return getWeek(created) === thisWeek && created.getFullYear() === thisYear;
+        }),
+        "Last Week": groupLeadsByType(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return getWeek(created) === thisWeek - 1 && created.getFullYear() === thisYear;
+        }),
+        "This Month": groupLeadsByType(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return created.getMonth() === thisMonth && created.getFullYear() === thisYear;
+        }),
+        "Last Month": groupLeadsByType(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return created.getMonth() === thisMonth - 1 && created.getFullYear() === thisYear;
+        })
+      };
+      const leadTypeColors = ["#10B981", "#3B82F6", "#F59E42", "#6366F1"];
+
+      // 4. Project Renewal Data (dynamic)
+      const projectRenewalData = [];
+      const categories = [...new Set(allProjects.map((p: any) => p.project_type || "Other"))];
+      for (const category of categories) {
+        const projects = allProjects
+          .filter((p: any) => (p.project_type || "Other") === category)
+          .map((p: any) => ({
+            name: p.name,
+            date: p.renewal_date ? new Date(p.renewal_date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "",
+            status: p.completion || 0 // You may want to calculate completion %
+          }));
+        projectRenewalData.push({ category, projects });
+      }
+
+      // 5. Expenses Data Map (dynamic, using your chart data)
+      const expensesDataMap = {
+        Weekly: weeklyChart,
+        Monthly: monthlyChart,
+        Yearly: yearlyChart
       };
 
-      // 3. Tasks summary
-      const allTasksResult = await projectTaskService.getAllTasks();
-      const allTasks = allTasksResult.data || [];
-      const totalTasks = allTasks.length;
-      const inProgressTasks = allTasks.filter((t: any) => t.status === "In Progress").length;
-      const completedTasks = allTasks.filter((t: any) => t.status === "Completed").length;
-      // Tasks due today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      const tasksDueToday = allTasks.filter((t: any) => t.due_date && new Date(t.due_date) >= today && new Date(t.due_date) < tomorrow).length;
+      // 6. Lead Analytics Chart Data Map (group by status for each period)
+      function groupLeadsByStatus(leads: any[], filterFn: (lead: any) => boolean) {
+        const counts: Record<string, number> = {};
+        leads.filter(filterFn).forEach((lead: any) => {
+          const status =
+            typeof lead.status === "object" && lead.status !== null
+              ? lead.status.name || "Unknown"
+              : lead.status || "Unknown";
+          counts[status] = (counts[status] || 0) + 1;
+        });
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+      }
+      const leadAnalyticsChartDataMap = {
+        "This Week": groupLeadsByStatus(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return getWeek(created) === thisWeek && created.getFullYear() === thisYear;
+        }),
+        "Last Week": groupLeadsByStatus(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return getWeek(created) === thisWeek - 1 && created.getFullYear() === thisYear;
+        }),
+        "This Month": groupLeadsByStatus(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return created.getMonth() === thisMonth && created.getFullYear() === thisYear;
+        }),
+        "Last Month": groupLeadsByStatus(allLeads, (lead) => {
+          const created = new Date(lead.created_at);
+          return created.getMonth() === thisMonth - 1 && created.getFullYear() === thisYear;
+        })
+      };
 
-      // 4. Daily tasks (today/tomorrow)
-      const dailyTasks = await dailyTaskService.getAllEntries();
-      const dailyTasksToday = dailyTasks.filter((dt: any) => {
-        const entryDate = new Date(dt.entry_date);
-        return entryDate >= today && entryDate < tomorrow;
-      });
-      const dailyTasksTomorrow = dailyTasks.filter((dt: any) => {
-        const entryDate = new Date(dt.entry_date);
-        return entryDate >= tomorrow && entryDate < new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
-      });
-
-      // 5. Compose response
       res.status(200).json({
         status: "success",
         data: {
-          leads: {
-            total: leadStats.totalLeads,
-            assignedToMe: leadStats.assignedToMe,
-            profileSent: leadStats.profileSent,
-            businessDone: leadStats.businessDone,
-            notInterested: leadStats.notInterested,
-            todayFollowups: leadStats.todayFollowups,
-            analytics: leadStatusCounts,
-          },
-          projects: {
-            total: totalProjects,
-            inProgress: inProgressProjects,
-            completed: completedProjects,
-            snapshot: projectSnapshot,
-          },
-          tasks: {
-            total: totalTasks,
-            inProgress: inProgressTasks,
-            completed: completedTasks,
-            dueToday: tasksDueToday,
-          },
-          dailyTasks: {
-            today: dailyTasksToday,
-            tomorrow: dailyTasksTomorrow,
-          },
-        },
+          stats,
+          projectSnapshotData,
+          projectSnapshotColors,
+          leadTypeChartDataMap,
+          leadTypeColors,
+          projectRenewalData,
+          expensesDataMap,
+          leadAnalyticsChartDataMap
+        }
       });
     } catch (error) {
       next(error);
@@ -103,4 +218,4 @@ export const dashboardController = () => {
   return {
     getDashboardSummary,
   };
-}; 
+};

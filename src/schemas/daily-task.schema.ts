@@ -10,6 +10,7 @@ export const createDailyTaskEntrySchema = z.object({
     hours_spent: z.number().positive("Must be a positive number").optional(),
     status: z.string().optional(),
     remarks: z.string().optional(),
+    priority: z.string().optional().default('Medium'),
 });
 
 // Schema for updating a Daily Task Entry
@@ -22,6 +23,7 @@ export const updateDailyTaskEntrySchema = z.object({
     hours_spent: z.number().positive().optional(),
     status: z.string().optional(),
     remarks: z.string().optional(),
+    priority: z.string().optional(),
 });
 
 

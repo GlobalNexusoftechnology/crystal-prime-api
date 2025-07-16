@@ -118,8 +118,9 @@ export const getAllEILogsHandler = async (req: Request, res: Response, next: Nex
 export const getEILogByIdHandler = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = res.locals?.user?.id
-    const eilog = await getEILogById(id, userId);
+    const userId = res.locals?.user?.id;
+    const role = res.locals?.user?.role?.role;
+    const eilog = await getEILogById(id, userId, role);
     res.status(200).json({
       status: 'success',
       message: 'EILog fetched successfully',
@@ -136,7 +137,7 @@ export const updateEILogHandler = async (req: Request<{ id: string }>, res: Resp
     const { id } = req.params;
     const updates = req.body;
     const userId = res.locals?.user?.id;
-    
+    const role = res.locals?.user?.role?.role;
     // Handle file upload if present
     if (req.file) {
       const uploadResult = await uploadToCloudinary(
@@ -146,8 +147,7 @@ export const updateEILogHandler = async (req: Request<{ id: string }>, res: Resp
       );
       updates.attachment = uploadResult.url;
     }
-    
-    const updated = await updateEILogById(id, updates, userId);
+    const updated = await updateEILogById(id, updates, userId, role);
     res.status(200).json({
       status: 'success',
       message: 'EILog updated successfully',
@@ -162,8 +162,9 @@ export const updateEILogHandler = async (req: Request<{ id: string }>, res: Resp
 export const deleteEILogHandler = async (req: Request<{ id: string }>, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const userId = res.locals?.user?.id
-    await deleteEILogById(id, userId);
+    const userId = res.locals?.user?.id;
+    const role = res.locals?.user?.role?.role;
+    await deleteEILogById(id, userId, role);
     res.status(200).json({
       status: 'success',
       message: 'EILog deleted successfully',
@@ -177,10 +178,10 @@ export const deleteEILogHandler = async (req: Request<{ id: string }>, res: Resp
 export const exportEILogsToExcelHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = res.locals?.user?.id;
-    const userData = await findUserById(userId);
+    const role = res.locals?.user?.role?.role;
     const filters = req.query;
 
-    const workbook = await exportEILogsToExcel(userId, filters);
+    const workbook = await exportEILogsToExcel(userId, role, filters);
 
     res.setHeader(
       "Content-Type",

@@ -31,6 +31,9 @@ export class DailyTaskEntries extends Model {
     @Column({ type: 'varchar', length: 50, default: 'Pending' })
     status: string;
 
+    @Column({ type: 'varchar', length: 20, default: 'Medium' })
+    priority: string;
+
     @Column({ type: 'text', nullable: true })
     remarks?: string;
 }

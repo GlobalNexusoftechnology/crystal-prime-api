@@ -62,6 +62,7 @@ export const createEILog = async (payload: EILogInput, userId: string) => {
       id: savedEIlog.id,
       eilogType: eilogType.name,
       eilogHead: eilogHead.name,
+      createdBy: userId,
       created_at: savedEIlog.created_at,
       updated_at: savedEIlog.updated_at,
       paymentMode: savedEIlog.paymentMode,
@@ -191,6 +192,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
     'eilogType.name',
     'eilogHead.id',
     'eilogHead.name',
+    'createdBy.id',
   ]);
 
   const [eilogs, total] = await qb.getManyAndCount();
@@ -213,11 +215,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
         id: e.eilogHead?.id,
         name: e.eilogHead?.name,
       },
-      createdBy: e.createdBy ? {
-        id: e.createdBy.id,
-        firstName: e.createdBy.firstName,
-        lastName: e.createdBy.lastName,
-      } : null,
+      createdBy: e.createdBy?.id ?? null,
     })),
     pagination: {
       total,
@@ -229,51 +227,60 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
 };
 
 
-// Get a single EILog by ID - only allow access if user is the creator
-export const getEILogById = async (id: string, userId: string) => {
-  const eilog = await eilogRepository
+// Get a single EILog by ID - admin can view any, user only their own
+export const getEILogById = async (id: string, userId: string, role: string) => {
+  const qb = eilogRepository
     .createQueryBuilder('eilog')
     .leftJoinAndSelect('eilog.eilogType', 'eilogType')
     .leftJoinAndSelect('eilog.eilogHead', 'eilogHead')
     .leftJoin('eilog.createdBy', 'createdBy')
     .where('eilog.id = :id', { id })
-    .andWhere('eilog.deleted = :deleted', { deleted: false })
-    .andWhere('createdBy.id = :userId', { userId })
-    .select([
-      'eilog.id',
-      'eilog.description',
-      'eilog.income',
-      'eilog.expense',
-      'eilog.paymentMode',
-      'eilog.attachment',
-      'eilog.created_at',
-      'eilog.updated_at',
-      'eilogType.id',
-      'eilogType.name',
-      'eilogHead.id',
-      'eilogHead.name'
-    ])
-    .getOne();
+    .andWhere('eilog.deleted = :deleted', { deleted: false });
+
+  if (role !== 'admin' && role !== 'Admin') {
+    qb.andWhere('createdBy.id = :userId', { userId });
+  }
+
+  qb.select([
+    'eilog.id',
+    'eilog.description',
+    'eilog.income',
+    'eilog.expense',
+    'eilog.paymentMode',
+    'eilog.attachment',
+    'eilog.created_at',
+    'eilog.updated_at',
+    'eilogType.id',
+    'eilogType.name',
+    'eilogHead.id',
+    'eilogHead.name',
+    'createdBy.id',
+  ]);
+
+  const eilog = await qb.getOne();
 
   if (!eilog) throw new AppError(404, 'EILog not found');
 
   // Process attachment field
   const processedEilog = {
     ...eilog,
+    createdBy: eilog.createdBy?.id ?? null,
     attachment: processAttachment(eilog.attachment),
   };
 
   return processedEilog;
 };
 
-// Update an existing EILog by ID (only creator can update)
-export const updateEILogById = async (id: string, payload: EILogUpdateInput, userId: string) => {
+// Update an existing EILog by ID (admin can update any, user only their own)
+export const updateEILogById = async (id: string, payload: EILogUpdateInput, userId: string, role: string) => {
   const eilog = await eilogRepository.findOne({
     where: { id },
     relations: ['createdBy', 'eilogType', 'eilogHead'],
   });
   if (!eilog || eilog.deleted) throw new AppError(404, 'EILog not found');
-  if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to update this log');
+  if (role !== 'admin' && role !== 'Admin') {
+    if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to update this log');
+  }
 
   // Don't allow both income and expense in update payload
   if (payload.income != null && payload.expense != null) {
@@ -334,13 +341,14 @@ export const updateEILogById = async (id: string, payload: EILogUpdateInput, use
   return response;
 };
 
-// Soft delete an EILog by ID (only creator can delete)
-export const deleteEILogById = async (id: string, userId: string) => {
+// Soft delete an EILog by ID (admin can delete any, user only their own)
+export const deleteEILogById = async (id: string, userId: string, role: string) => {
   // Find the EILog with createdBy relation
   const eilog = await eilogRepository.findOne({ where: { id }, relations: ['createdBy'] });
   if (!eilog || eilog.deleted) throw new AppError(404, 'EILog not found');
-  if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to delete this log');
-  
+  if (role !== 'admin' && role !== 'Admin') {
+    if (!eilog.createdBy || eilog.createdBy.id !== userId) throw new AppError(403, 'You are not allowed to delete this log');
+  }
   // Soft delete
   eilog.deleted = true;
   eilog.deleted_at = new Date();
@@ -350,33 +358,86 @@ export const deleteEILogById = async (id: string, userId: string) => {
 // Export EILogs to Excel
 export const exportEILogsToExcel = async (
   userId: string,
+  role: string,
   filters: any = {}
 ): Promise<ExcelJS.Workbook> => {
+  const isAdmin = role === 'admin' || role === 'Admin';
   const qb = eilogRepository.createQueryBuilder('eilog')
     .leftJoin('eilog.eilogType', 'eilogType')
     .leftJoin('eilog.eilogHead', 'eilogHead')
-    .where('eilog.deleted = :deleted', { deleted: false })
-    .andWhere('eilog.created_by = :userId', { userId });
+    .where('eilog.deleted = :deleted', { deleted: false });
 
-  // Apply filters
-  if (filters.eilogType) {
-    qb.andWhere('eilogType.id = :eilogType', { eilogType: filters.eilogType });
+  // Role-based filtering
+  if (!isAdmin) {
+    qb.andWhere('eilog.created_by = :userId', { userId });
+  } else if (filters.createdById) {
+    qb.andWhere('eilog.created_by = :createdById', { createdById: filters.createdById });
   }
-  if (filters.eilogHead) {
-    qb.andWhere('eilogHead.id = :eilogHead', { eilogHead: filters.eilogHead });
+
+  if (filters.searchText) {
+    qb.andWhere(
+      '(eilog.description ILIKE :searchText OR eilogType.name ILIKE :searchText OR eilogHead.name ILIKE :searchText)',
+      { searchText: `%${filters.searchText}%` }
+    );
+  }
+  if (filters.eilogTypeId) {
+    qb.andWhere('eilogType.id = :eilogTypeId', { eilogTypeId: filters.eilogTypeId });
+  }
+  if (filters.eilogHeadId) {
+    qb.andWhere('eilogHead.id = :eilogHeadId', { eilogHeadId: filters.eilogHeadId });
   }
   if (filters.paymentMode) {
     qb.andWhere('eilog.paymentMode = :paymentMode', { paymentMode: filters.paymentMode });
   }
-  if (filters.startDate && filters.endDate) {
-    qb.andWhere('eilog.created_at BETWEEN :startDate AND :endDate', {
-      startDate: filters.startDate,
-      endDate: filters.endDate,
-    });
-  } else if (filters.startDate) {
-    qb.andWhere('eilog.created_at >= :startDate', { startDate: filters.startDate });
-  } else if (filters.endDate) {
-    qb.andWhere('eilog.created_at <= :endDate', { endDate: filters.endDate });
+  if (filters.transactionType) {
+    if (filters.transactionType === 'income') {
+      qb.andWhere('eilog.income IS NOT NULL AND eilog.income > 0');
+    } else if (filters.transactionType === 'expense') {
+      qb.andWhere('eilog.expense IS NOT NULL AND eilog.expense > 0');
+    }
+  }
+  if (filters.minAmount !== undefined) {
+    qb.andWhere('(eilog.income >= :minAmount OR eilog.expense >= :minAmount)', { minAmount: filters.minAmount });
+  }
+  if (filters.maxAmount !== undefined) {
+    qb.andWhere('(eilog.income <= :maxAmount OR eilog.expense <= :maxAmount)', { maxAmount: filters.maxAmount });
+  }
+  // Date range filters
+  if (filters.dateRange && filters.referenceDate) {
+    const refDate = new Date(filters.referenceDate);
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    switch (filters.dateRange) {
+      case 'Daily':
+        startDate = new Date(refDate.setHours(0, 0, 0, 0));
+        endDate = new Date(refDate.setHours(23, 59, 59, 999));
+        break;
+      case 'Weekly':
+        const day = refDate.getDay();
+        const diff = refDate.getDate() - day + (day === 0 ? -6 : 1);
+        startDate = new Date(refDate.setDate(diff));
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'Monthly':
+        startDate = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+        endDate = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      default:
+        break;
+    }
+    if (startDate && endDate) {
+      qb.andWhere('eilog.created_at BETWEEN :startDate AND :endDate', { startDate, endDate });
+    }
+  } else {
+    if (filters.fromDate) {
+      qb.andWhere('eilog.created_at >= :fromDate', { fromDate: filters.fromDate });
+    }
+    if (filters.toDate) {
+      qb.andWhere('eilog.created_at <= :toDate', { toDate: filters.toDate });
+    }
   }
 
   qb.orderBy('eilog.created_at', 'DESC');
@@ -399,21 +460,20 @@ export const exportEILogsToExcel = async (
   const eilogs = await qb.getMany();
 
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet("EILogs");
+  const worksheet = workbook.addWorksheet('EILogs');
 
   worksheet.columns = [
-    { header: "Sr No", key: "sr_no", width: 6 },
-    { header: "EILog Type", key: "eilog_type", width: 20 },
-    { header: "EILog Head", key: "eilog_head", width: 20 },
-    { header: "Description", key: "description", width: 40 },
-    { header: "Income", key: "income", width: 15 },
-    { header: "Expense", key: "expense", width: 15 },
-    { header: "Payment Mode", key: "payment_mode", width: 15 },
-    { header: "Attachment", key: "attachment", width: 30 },
-    { header: "Created At", key: "created_at", width: 25 },
+    { header: 'Sr No', key: 'sr_no', width: 6 },
+    { header: 'EILog Type', key: 'eilog_type', width: 20 },
+    { header: 'EILog Head', key: 'eilog_head', width: 20 },
+    { header: 'Description', key: 'description', width: 40 },
+    { header: 'Income', key: 'income', width: 15 },
+    { header: 'Expense', key: 'expense', width: 15 },
+    { header: 'Payment Mode', key: 'payment_mode', width: 15 },
+    { header: 'Attachment', key: 'attachment', width: 30 },
+    { header: 'Created At', key: 'created_at', width: 25 },
   ];
 
-  // Bold the header row
   worksheet.getRow(1).eachCell((cell) => {
     cell.font = { bold: true };
   });
@@ -422,14 +482,14 @@ export const exportEILogsToExcel = async (
   eilogs.forEach((eilog: any) => {
     worksheet.addRow({
       sr_no: rowIndex++,
-      eilog_type: eilog.eilogType?.name || "N/A",
-      eilog_head: eilog.eilogHead?.name || "N/A",
-      description: eilog.description || "N/A",
-      income: eilog.income || "N/A",
-      expense: eilog.expense || "N/A",
-      payment_mode: eilog.paymentMode || "N/A",
-      attachment: eilog.attachment || "N/A",
-      created_at: eilog.created_at?.toLocaleString() || "N/A",
+      eilog_type: eilog.eilogType?.name || 'N/A',
+      eilog_head: eilog.eilogHead?.name || 'N/A',
+      description: eilog.description || 'N/A',
+      income: eilog.income || 'N/A',
+      expense: eilog.expense || 'N/A',
+      payment_mode: eilog.paymentMode || 'N/A',
+      attachment: eilog.attachment || 'N/A',
+      created_at: eilog.created_at?.toLocaleString() || 'N/A',
     });
   });
 

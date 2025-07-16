@@ -70,7 +70,7 @@ export const leadController = () => {
         );
       }
 
-      const leadStats = await service.getLeadStats(userId);
+      const leadStats = await service.getLeadStats(userId, role);
 
       res.status(200).json({
         status: "success",
