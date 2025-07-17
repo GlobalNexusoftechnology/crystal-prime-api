@@ -2,7 +2,8 @@ import { AppDataSource } from "../utils/data-source";
 import { DailyTaskEntries } from "../entities/daily-task.entity";
 import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
-import { Between, MoreThanOrEqual, LessThanOrEqual } from "typeorm";
+import { Between, MoreThanOrEqual, LessThanOrEqual, In } from "typeorm";
+import { ProjectTasks } from "../entities/project-task.entity";
 
 // interfaces/dailyTaskEntry.interface.ts
 interface DailyTaskEntryInput {
@@ -19,6 +20,7 @@ interface DailyTaskEntryInput {
 
 const entryRepo = AppDataSource.getRepository(DailyTaskEntries);
 const projectRepo = AppDataSource.getRepository(Project);
+const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const DailyTaskEntryService = () => {
     // Create Entry
@@ -71,7 +73,8 @@ export const DailyTaskEntryService = () => {
         // Custom priority ordering: High > Medium > Low
         query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
         query = query.addOrderBy("entry.created_at", "DESC");
-        return await query.getMany();
+        const entries = await query.getMany();
+        return await addTaskAndMilestoneIds(entries);
       }
 
       // For repository find, fetch and sort in-memory by priority then created_at
@@ -89,7 +92,36 @@ export const DailyTaskEntryService = () => {
         // If same priority, sort by created_at DESC
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-      return entries;
+      return await addTaskAndMilestoneIds(entries);
+    };
+
+    // Helper to add projectId, milestoneId, and taskId to each entry
+    const addTaskAndMilestoneIds = async (entries: any[]) => {
+      // Batch fetch all tasks for the relevant projects and assigned_to
+      const projectIds = Array.from(new Set(entries.map(e => e.project?.id).filter(Boolean)));
+      const assignedTos = Array.from(new Set(entries.map(e => e.assigned_to).filter(Boolean)));
+      // Fetch all tasks for these projects and assigned_to
+      const allTasks = await taskRepo.find({
+        where: {
+          assigned_to: assignedTos.length > 0 ? In(assignedTos) : undefined,
+          deleted: false,
+        },
+        relations: ["milestone", "milestone.project"],
+      });
+      return entries.map(entry => {
+        // Find a matching task
+        const matchingTask = allTasks.find(task =>
+          task.title === entry.task_title &&
+          task.assigned_to === entry.assigned_to &&
+          task.milestone?.project?.id === entry.project?.id
+        );
+        return {
+          ...entry,
+          projectId: entry.project?.id,
+          milestoneId: matchingTask?.milestone?.id || null,
+          taskId: matchingTask?.id || null,
+        };
+      });
     };
 
     // Get By ID
