@@ -68,14 +68,26 @@ export const DailyTaskEntryService = () => {
           "(LOWER(entry.task_title) LIKE :search OR LOWER(entry.description) LIKE :search)",
           { search: `%${filters.search.toLowerCase()}%` }
         );
-        query = query.orderBy("entry.created_at", "DESC");
+        // Custom priority ordering: High > Medium > Low
+        query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
+        query = query.addOrderBy("entry.created_at", "DESC");
         return await query.getMany();
       }
 
+      // For repository find, fetch and sort in-memory by priority then created_at
       const entries = await entryRepo.find({
         where: whereClause,
         relations: ["project"],
         order: { created_at: "DESC" },
+      });
+      // Custom sort: High > Medium > Low > others
+      const priorityOrder = { High: 1, Medium: 2, Low: 3 };
+      entries.sort((a, b) => {
+        const pa = priorityOrder[a.priority as keyof typeof priorityOrder] || 4;
+        const pb = priorityOrder[b.priority as keyof typeof priorityOrder] || 4;
+        if (pa !== pb) return pa - pb;
+        // If same priority, sort by created_at DESC
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
       return entries;
     };

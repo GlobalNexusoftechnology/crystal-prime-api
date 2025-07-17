@@ -5,7 +5,7 @@ export const createProjectSchema = z.object({
   client_id: z.string().uuid().optional(),
   name: z.string().min(1, "Project name is required"),
   description: z.string().optional(),
-  project_type: z.string().optional(),
+  project_type: z.string().uuid().optional(),
   status: z.nativeEnum(ProjectStatus).optional(),
   budget: z.number().optional(),
   estimated_cost: z.number().optional(),
