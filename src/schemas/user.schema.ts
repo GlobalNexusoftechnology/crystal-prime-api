@@ -19,7 +19,7 @@ export const createUserSchema = object({
     password: string({
       required_error: "Password is required",
     })
-      .min(8, "Password must be at least 8 characters")
+      .min(6, "Password must be at least 6 characters")
       .max(32, "Password must be less than 32 characters"),
 
     role_id: string({
@@ -41,7 +41,7 @@ export const updateUserSchema = object({
     phone_number: string().optional(),
 
     password: string()
-      .min(8, "Password must be at least 8 characters")
+      .min(6, "Password must be at least 6 characters")
       .max(32, "Password must be less than 32 characters").optional(),
 
     role_id: string().optional(),
@@ -72,7 +72,7 @@ export const changePasswordSchema = z.object({
   }),
   newPassword: z.string({
     required_error: 'Password is required',
-  }).min(8, 'Password must be at least 8 characters long'),
+  }).min(6, 'Password must be at least 6 characters long'),
 });
 
 export type CreateUserInput = TypeOf<typeof createUserSchema>["body"];

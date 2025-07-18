@@ -1,23 +1,26 @@
 import { AppDataSource } from "../utils/data-source";
 import { DailyTaskEntries } from "../entities/daily-task.entity";
 import { Project } from "../entities/projects.entity";
-import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
+import { Between, MoreThanOrEqual, LessThanOrEqual, In } from "typeorm";
+import { ProjectTasks } from "../entities/project-task.entity";
 
 // interfaces/dailyTaskEntry.interface.ts
 interface DailyTaskEntryInput {
     project_id: string;
-    user_id: string;
+    assigned_to: string;
     task_title: string;
     description?: string;
     entry_date: Date;
     hours_spent?: number;
     status?: string;
+    remarks?: string;
+    priority?: string;
 }
 
 const entryRepo = AppDataSource.getRepository(DailyTaskEntries);
 const projectRepo = AppDataSource.getRepository(Project);
-const userRepo = AppDataSource.getRepository(User);
+const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const DailyTaskEntryService = () => {
     // Create Entry
@@ -25,34 +28,107 @@ export const DailyTaskEntryService = () => {
         const project = await projectRepo.findOne({ where: { id: data.project_id } });
         if (!project) throw new AppError(404, "Project not found");
 
-        const user = await userRepo.findOne({ where: { id: data.user_id } });
-        if (!user) throw new AppError(404, "User not found");
-
         const entry = entryRepo.create({
             ...data,
             project,
-            user,
+            priority: data.priority || 'Medium',
         });
 
         return await entryRepo.save(entry);
     };
 
     // Get All
-    const getAllEntries = async () => {
-        const entries = await entryRepo.find({
-            where: { deleted: false },
-            relations: ["project", "user"],
-            order: { created_at: "DESC" },
-        });
+    const getAllEntries = async (
+      userId?: string,
+      role?: string,
+      filters?: { status?: string; priority?: string; from?: string; to?: string; search?: string }
+    ) => {
+      let whereClause: any = { deleted: false };
+      if (role?.toLowerCase() !== "admin") {
+        whereClause.assigned_to = userId;
+      }
+      if (filters?.status) {
+        whereClause.status = filters.status;
+      }
+      if (filters?.priority) {
+        whereClause.priority = filters.priority;
+      }
+      if (filters?.from && filters?.to) {
+        whereClause.entry_date = Between(new Date(filters.from), new Date(filters.to));
+      } else if (filters?.from) {
+        whereClause.entry_date = MoreThanOrEqual(new Date(filters.from));
+      } else if (filters?.to) {
+        whereClause.entry_date = LessThanOrEqual(new Date(filters.to));
+      }
 
-        return entries
+      // If search is present, use query builder for LIKE
+      if (filters?.search) {
+        let query = entryRepo.createQueryBuilder("entry")
+          .leftJoinAndSelect("entry.project", "project")
+          .where(whereClause);
+        query = query.andWhere(
+          "(LOWER(entry.task_title) LIKE :search OR LOWER(entry.description) LIKE :search)",
+          { search: `%${filters.search.toLowerCase()}%` }
+        );
+        // Custom priority ordering: High > Medium > Low
+        query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
+        query = query.addOrderBy("entry.created_at", "DESC");
+        const entries = await query.getMany();
+        return await addTaskAndMilestoneIds(entries);
+      }
+
+      // For repository find, fetch and sort in-memory by priority then created_at
+      const entries = await entryRepo.find({
+        where: whereClause,
+        relations: ["project"],
+        order: { created_at: "DESC" },
+      });
+      // Custom sort: High > Medium > Low > others
+      const priorityOrder = { High: 1, Medium: 2, Low: 3 };
+      entries.sort((a, b) => {
+        const pa = priorityOrder[a.priority as keyof typeof priorityOrder] || 4;
+        const pb = priorityOrder[b.priority as keyof typeof priorityOrder] || 4;
+        if (pa !== pb) return pa - pb;
+        // If same priority, sort by created_at DESC
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
+      return await addTaskAndMilestoneIds(entries);
+    };
+
+    // Helper to add projectId, milestoneId, and taskId to each entry
+    const addTaskAndMilestoneIds = async (entries: any[]) => {
+      // Batch fetch all tasks for the relevant projects and assigned_to
+      const projectIds = Array.from(new Set(entries.map(e => e.project?.id).filter(Boolean)));
+      const assignedTos = Array.from(new Set(entries.map(e => e.assigned_to).filter(Boolean)));
+      // Fetch all tasks for these projects and assigned_to
+      const allTasks = await taskRepo.find({
+        where: {
+          assigned_to: assignedTos.length > 0 ? In(assignedTos) : undefined,
+          deleted: false,
+        },
+        relations: ["milestone", "milestone.project"],
+      });
+      return entries.map(entry => {
+        // Find a matching task
+        const matchingTask = allTasks.find(task =>
+          task.title === entry.task_title &&
+          task.assigned_to === entry.assigned_to &&
+          task.milestone?.project?.id === entry.project?.id
+        );
+        return {
+          ...entry,
+          projectId: entry.project?.id,
+          milestoneId: matchingTask?.milestone?.id || null,
+          taskId: matchingTask?.id || null,
+        };
+      });
     };
 
     // Get By ID
     const getEntryById = async (id: string) => {
         const entry = await entryRepo.findOne({
             where: { id, deleted: false },
-            relations: ["project", "user"],
+            relations: ["project"],
         });
         if (!entry) throw new AppError(404, "Task entry not found");
         return entry;
@@ -69,13 +145,8 @@ export const DailyTaskEntryService = () => {
             entry.project = project;
         }
 
-        if (data.user_id) {
-            const user = await userRepo.findOne({ where: { id: data.user_id } });
-            if (!user) throw new AppError(404, "User not found");
-            entry.user = user;
-        }
-
         Object.assign(entry, data);
+        if (data.priority !== undefined) entry.priority = data.priority;
         return await entryRepo.save(entry);
     };
 

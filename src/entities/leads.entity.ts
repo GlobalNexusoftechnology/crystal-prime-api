@@ -48,6 +48,9 @@ export class Leads extends Model {
   @Column('text', { nullable: true })
   requirement: string;
 
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  possibility_of_conversion?: number | null;
+
   @ManyToOne(() => LeadSources, (source) => source.leads, { nullable: true })
   @JoinColumn({ name: "source_id" })
   source: LeadSources | null;

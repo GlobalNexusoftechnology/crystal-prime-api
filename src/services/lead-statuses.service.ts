@@ -1,9 +1,11 @@
 import { AppDataSource } from "../utils/data-source";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import AppError from "../utils/appError";
+import { Not } from "typeorm";
 
 interface LeadStatusInput {
   name: string;
+  color?: string | null;
 }
 
 export interface GetLeadStatusesQuery {
@@ -19,7 +21,7 @@ const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 export const LeadStatusService = () => {
   // Create Lead Status
   const createLeadStatus = async (data: LeadStatusInput) => {
-    const { name } = data;
+    const { name, color } = data;
 
     const existingLeadStatus = await leadStatusRepo.findOne({
       where: { name },
@@ -27,7 +29,16 @@ export const LeadStatusService = () => {
     if (existingLeadStatus)
       throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
-    const leadStatus = leadStatusRepo.create({ name });
+    // Check for duplicate color if color is provided
+    if (color) {
+      const existingColorStatus = await leadStatusRepo.findOne({
+        where: { color, deleted: false },
+      });
+      if (existingColorStatus)
+        throw new AppError(400, `Color "${color}" is already used by another status`);
+    }
+
+    const leadStatus = leadStatusRepo.create({ name, color });
     return await leadStatusRepo.save(leadStatus);
   };
 
@@ -63,14 +74,24 @@ export const LeadStatusService = () => {
     if (!leadStatus) throw new AppError(404, "Lead Status not found");
 
     const existingLeadStatus = await leadStatusRepo.findOne({
-      where: { name: data.name },
+      where: { name: data.name, id: Not(id) },
     });
     if (existingLeadStatus)
       throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
 
-    const { name } = data;
+    // Check for duplicate color if color is being updated
+    if (data.color) {
+      const existingColorStatus = await leadStatusRepo.findOne({
+        where: { color: data.color, id: Not(id), deleted: false },
+      });
+      if (existingColorStatus)
+        throw new AppError(400, `Color "${data.color}" is already used by another status`);
+    }
+
+    const { name, color } = data;
 
     if (name !== undefined) leadStatus.name = name;
+    if (color !== undefined) leadStatus.color = color;
 
     return await leadStatusRepo.save(leadStatus);
   };

@@ -7,6 +7,8 @@ import {
 import { MilestoneService } from "../services/project-milestone.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { ProjectAttachmentService } from "../services/project-attachments.service";
+import { ProjectMilestones } from "../entities/project-milestone.entity";
+import { findUserById } from "../services/user.service";
 
 const service = ProjectService();
 const milestoneService = MilestoneService();
@@ -24,12 +26,12 @@ export const ProjectController = () => {
     await queryRunner.startTransaction();
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.createProject(projectData, queryRunner);
+      const { milestones, attachments, description, ...projectData } = parsedData;
+      const project = await service.createProject({ ...projectData, description: description ?? "" }, queryRunner);
       let createdMilestones = [];
       if (Array.isArray(milestones)) {
         for (const milestone of milestones) {
-          const milestoneData = { ...milestone, project_id: project.id };
+          const milestoneData = { ...milestone, project_id: project.id, description: milestone.description ?? "" };
           const createdMilestone = await milestoneService.createMilestone(milestoneData, queryRunner);
           let createdTasks = [];
           if (Array.isArray(milestone.tasks)) {
@@ -71,11 +73,20 @@ export const ProjectController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllProject();
+
+      const userId = res.locals.user.id;
+      const userData = await findUserById(userId);
+      const userRole = userData.role.role;
+
+      console.log(userRole, "userRole", userId, "userId$$$$$")
+      const result = await service.getAllProject(userId, userRole);
+      const projectsWithTemplateId = result.map(project => ({
+        ...project
+      }));
       res.status(200).json({
         status: "success",
         message: "All Project projects fetched",
-        data: result,
+        data: projectsWithTemplateId,
       });
     } catch (error) {
       next(error);
@@ -94,7 +105,9 @@ export const ProjectController = () => {
       res.status(200).json({
         status: "success",
         message: "Project project fetched by id",
-        data: result,
+        data: {
+          ...result
+        },
       });
     } catch (error) {
       next(error);
@@ -112,16 +125,28 @@ export const ProjectController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
-      const { milestones, attachments, ...projectData } = parsedData;
-      const project = await service.updateProject(id, projectData, queryRunner);
+      const { milestones, attachments, description, ...projectData } = parsedData;
+      const project = await service.updateProject(id, { ...projectData }, queryRunner);
+      
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
+        // Get existing milestones for this project
+        const existingMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
+        const existingMilestoneIds = existingMilestones.map((ms: ProjectMilestones) => ms.id);
+        const incomingMilestoneIds = milestones.filter(ms => ms.id).map(ms => ms.id);
+
+        // Delete milestones that are no longer in the list
+        const milestonesToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+        for (const milestoneId of milestonesToDelete) {
+          await milestoneService.deleteMilestone(milestoneId, queryRunner);
+        }
+        
         for (const milestone of milestones) {
           let milestoneResult;
           if (milestone.id) {
             milestoneResult = await milestoneService.updateMilestone(milestone.id, milestone, queryRunner);
           } else {
-            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id }, queryRunner);
+            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
           }
           let updatedTasks = [];
           if (Array.isArray(milestone.tasks)) {
@@ -138,19 +163,48 @@ export const ProjectController = () => {
           updatedMilestones.push({ ...milestoneResult, tasks: updatedTasks });
         }
       }
+
+      // Handle attachments with proper update logic
       let updatedAttachments = [];
       if (Array.isArray(attachments)) {
+        // Get existing attachments for this project
+        const existingAttachments = await attachmentService.getAttachmentsByProjectId(project.id);
+        const existingAttachmentIds = existingAttachments.map(att => att.id);
+        const newAttachmentIds = attachments.filter(att => att.id).map(att => att.id);
+        
+        // Delete attachments that are no longer in the list
+        const attachmentsToDelete = existingAttachmentIds.filter(id => !newAttachmentIds.includes(id));
+        for (const attachmentId of attachmentsToDelete) {
+          await attachmentService.deleteAttachment(attachmentId, queryRunner);
+        }
+
+        // Process new and updated attachments
         for (const attachment of attachments) {
           let attachmentResult;
           if (attachment.id) {
-            // Optionally implement updateAttachment if needed
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Update existing attachment
+            attachmentResult = await attachmentService.updateAttachment({
+              id: attachment.id,
+              file_path: attachment.file_path,
+              file_type: attachment.file_type,
+              file_name: attachment.file_name,
+            }, queryRunner);
           } else {
-            attachmentResult = await attachmentService.createAttachment({ ...attachment, Project_id: project.id }, queryRunner);
+            // Create new attachment
+            attachmentResult = await attachmentService.createAttachment({ 
+              ...attachment, 
+              Project_id: project.id 
+            }, queryRunner);
           }
           updatedAttachments.push(attachmentResult);
         }
+      } else if (attachments === undefined) {
+        // attachments is not provided, do nothing to attachments
+      } else {
+        // If attachments is null or an empty array, delete all existing attachments
+        await attachmentService.deleteAllAttachmentsForProject(project.id, queryRunner);
       }
+
       await queryRunner.commitTransaction();
       res.status(200).json({
         status: "success",

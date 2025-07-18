@@ -7,10 +7,11 @@ import { LeadStatusHistory } from "./lead-status-history.entity";
 import { Task } from "./task-management.entity";
 import { Role } from "./roles.entity";
 import { projectAttachments } from "./project-attachments.entity";
+import { EILog } from "./eilog.entity";
 
 @Entity("users")
 export class User extends Model {
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   email: string;
 
   @Column({ nullable: true })
@@ -55,6 +56,9 @@ export class User extends Model {
 
   @OneToMany(() => Task, (task) => task.assignedTo)
   assignedTasks: Task[];
+
+  @OneToMany(() => EILog, (eilog: EILog) => eilog.createdBy)
+  eilogs: EILog[];
 
   @BeforeInsert()
   async hashPassword() {

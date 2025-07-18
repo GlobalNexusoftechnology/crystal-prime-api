@@ -13,16 +13,11 @@ export class DailyTaskEntries extends Model {
     @JoinColumn({ name: 'project_id' })
     project: Project;
 
-    @ManyToOne(() => User, (user) => user.id, {
-        nullable: false,
-        eager: true, // optional based on need
-        onDelete: 'CASCADE',
-    })
-    @JoinColumn({ name: 'user_id' })
-    user: User;
-
     @Column({ type: 'varchar', length: 150 })
     task_title: string;
+
+    @Column({ type: 'varchar', length: 150, nullable: true })
+    assigned_to: string;
 
     @Column({ type: 'text', nullable: true })
     description: string;
@@ -35,4 +30,10 @@ export class DailyTaskEntries extends Model {
 
     @Column({ type: 'varchar', length: 50, default: 'Pending' })
     status: string;
+
+    @Column({ type: 'varchar', length: 20, default: 'Medium' })
+    priority: string;
+
+    @Column({ type: 'text', nullable: true })
+    remarks?: string;
 }

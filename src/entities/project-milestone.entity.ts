@@ -5,12 +5,15 @@ import { ProjectTasks } from "./project-task.entity";
 
 @Entity("project_milestones")
 export class ProjectMilestones extends Model {
-  @ManyToOne(() => Project, (project) => project.id)
+  @ManyToOne(() => Project, (project) => project.milestones)
   @JoinColumn({ name: "project_id" })
   project: Project;
 
   @Column({ type: "varchar", length: 100 })
   name: string;
+
+  @Column({ type: "text", nullable: true })
+  description: string;
 
   @Column({ type: "timestamp", nullable: true })
   start_date: Date;

@@ -30,13 +30,18 @@ import projectAttachmentsRouter from './routes/project-attachments.routes';
 import milestoneMasterRouter from './routes/milestone-master.routes';
 import taskMasterRouter from './routes/task-master.routes';
 import clientFollowupRoutes from "./routes/clients-followups.routes";
+import taskCommentRoutes from "./routes/task-comment.routes";
+import taskStatusRoutes from "./routes/task-status.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
 import clientsDetailsRouter from './routes/clients-details.routes';
 import notificationRouter from './routes/notification.routes';
 import { WebSocketService } from './services/websocket.service';
-import projectFollowupsRouter from './routes/project-followups.routes';
+import dashboardRoutes from "./routes/dashboard.routes";
+import eilogTypeRouter from './routes/eilog-type.routes';
+import eilogHeadRouter from './routes/eilog-head.routes';
+import eilogRouter from './routes/eilog.routes';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -94,14 +99,19 @@ AppDataSource.initialize()
     app.use("/api/project-milestones", milestoneRoutes);
     app.use("/api/project-task", taskRoutes);
     app.use('/api/project-attachments', projectAttachmentsRouter);
-    app.use('/api/project-template-milestone', milestoneMasterRouter);
-    app.use('/api/project-template-milestone-task', taskMasterRouter);
+    app.use('/api/project-template-milestones', milestoneMasterRouter);
+    app.use('/api/project-template-milestone-tasks', taskMasterRouter);
     app.use('/api/notifications', notificationRouter);
     app.use("/api/client-followups", clientFollowupRoutes);
     app.use('/api/clients-details', clientsDetailsRouter);
+    app.use('/api/task-comments', taskCommentRoutes);
+    app.use('/api/task-status', taskStatusRoutes);
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
-    app.use('/api/project-followups', projectFollowupsRouter);
+    app.use("/api/dashboard", dashboardRoutes);
+    app.use('/api/ei-log-types', eilogTypeRouter);
+    app.use('/api/ei-log-heads', eilogHeadRouter);
+    app.use('/api/ei-logs', eilogRouter);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {

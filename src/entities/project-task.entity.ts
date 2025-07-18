@@ -4,7 +4,7 @@ import { ProjectMilestones } from "./project-milestone.entity";
 
 @Entity("project_tasks")
 export class ProjectTasks extends Model {
-  @ManyToOne(() => ProjectMilestones, (milestone) => milestone.id)
+  @ManyToOne(() => ProjectMilestones, (milestone) => milestone.tasks)
   @JoinColumn({ name: "milestone_id" })
   milestone: ProjectMilestones;
 

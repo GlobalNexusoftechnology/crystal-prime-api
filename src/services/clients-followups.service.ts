@@ -1,17 +1,18 @@
 import { AppDataSource } from "../utils/data-source";
-import { ClientFollowup } from "../entities/project-followups.entity";
 import { Project } from "../entities/project-management.entity";
 import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
+import { ClientFollowup } from "../entities/clients-followups.entity";
+import { Clients } from "../entities/clients.entity";
 
 const followupRepo = AppDataSource.getRepository(ClientFollowup);
-const projectRepo = AppDataSource.getRepository(Project);
+const clientRepo = AppDataSource.getRepository(Clients);
 const userRepo = AppDataSource.getRepository(User);
 
 export const ClientFollowupService = () => {
-  const createFollowup = async (data: { project_id: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
-    const project = await projectRepo.findOneBy({ id: data.project_id });
-    if (!project) throw new AppError(404, "Project not found");
+  const createFollowup = async (data: { client_id: string; user_id?: string; status?: any; due_date?: Date; remarks?: string; }) => {
+    const client = await clientRepo.findOneBy({ id: data.client_id });
+    if (!client) throw new AppError(404, "Client not found");
 
     let user = null;
     if (data.user_id) {
@@ -19,12 +20,17 @@ export const ClientFollowupService = () => {
       if (!user) throw new AppError(404, "User not found");
     }
 
+    let completed_date
+    if (data.status === 'COMPLETED' && !completed_date) {
+      completed_date = new Date();
+    }
+
     const followup = followupRepo.create({
-      project,
+      client,
       user,
       status: data.status,
       due_date: data.due_date,
-      completed_date: data.completed_date,
+      completed_date,
       remarks: data.remarks,
     });
 
@@ -34,7 +40,7 @@ export const ClientFollowupService = () => {
   const getAllFollowups = async () => {
      const followup = await followupRepo.find({
       where: { deleted: false },
-      relations: ["project", "user"],
+      relations: ["user"],
       order: { created_at: "DESC" },
     });
     return followup
@@ -44,20 +50,20 @@ export const ClientFollowupService = () => {
   const getFollowupById = async (id: string) => {
     const followup = await followupRepo.findOne({
       where: { id, deleted: false },
-      relations: ["project", "user"],
+      relations: ["user"],
     });
     if (!followup) throw new AppError(404, "Followup not found");
     return followup;
   };
 
-  const updateFollowup = async (id: string, data: { project_id?: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
+  const updateFollowup = async (id: string, data: { client_id?: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
     const followup = await followupRepo.findOneBy({ id });
     if (!followup) throw new AppError(404, "Followup not found");
 
-    if (data.project_id) {
-      const project = await projectRepo.findOneBy({ id: data.project_id });
-      if (!project) throw new AppError(404, "Project not found");
-      followup.project = project;
+    if (data.client_id) {
+      const client = await clientRepo.findOneBy({ id: data.client_id });
+      if (!client) throw new AppError(404, "Client not found");
+      followup.client = client;
     }
     if (data.user_id) {
       const user = await userRepo.findOneBy({ id: data.user_id });
@@ -66,7 +72,11 @@ export const ClientFollowupService = () => {
     }
     if (data.status !== undefined) followup.status = data.status;
     if (data.due_date !== undefined) followup.due_date = data.due_date;
-    if (data.completed_date !== undefined) followup.completed_date = data.completed_date;
+    if (data.completed_date !== undefined) {
+      followup.completed_date = data.completed_date;
+    } else if (data.status === 'COMPLETED') {
+      followup.completed_date = new Date();
+    }
     if (data.remarks !== undefined) followup.remarks = data.remarks;
 
     return await followupRepo.save(followup);

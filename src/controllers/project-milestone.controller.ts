@@ -8,7 +8,7 @@ export const milestoneController = () => {
   const createMilestone = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createMilestoneSchema.parse(req.body);
-      const result = await service.createMilestone(parsed);
+      const result = await service.createMilestone({ ...parsed, description: parsed.description ?? "" });
       res.status(201).json({ status: "success", data: result });
     } catch (error) {
       next(error);

@@ -72,6 +72,7 @@ export const ClientService = () => {
     const data = await clientRepo.find({
       where: { deleted: false },
       relations: ["lead", "client_details"],
+      order: {created_at: "DESC"}
     });
     return data
   };

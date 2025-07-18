@@ -1,4 +1,4 @@
-import { Entity, Column, OneToMany } from "typeorm";
+import { Entity, Column, OneToMany, BeforeInsert, BeforeUpdate } from "typeorm";
 import Model from "./model.entity";
 import { User } from "./user.entity";
 
@@ -16,4 +16,12 @@ export class Role extends Model {
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  toLowerCaseRole() {
+    if (this.role) {
+      this.role = this.role.toLowerCase();
+    }
+  }
 }

@@ -114,6 +114,14 @@ export const updateUser = async (
     user.role = role;
   }
 
+  // Check for unique email before updating
+  if (payload.email && payload.email !== user.email) {
+    const existing = await userRepository.findOne({ where: { email: payload.email } });
+    if (existing && existing.id !== user.id) {
+      throw new AppError(400, "Email already in use.");
+    }
+  }
+
   // Remove roleId from payload to avoid conflict with entity
   const { role_id, ...restPayload } = payload;
 

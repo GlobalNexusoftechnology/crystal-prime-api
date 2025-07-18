@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express"
 import { projectAttachments } from "../entities/project-attachments.entity"
-import { createProjectAttachment } from "../schemas/project-attachments.schema";
+import { createProjectAttachment, updateProjectAttachment } from "../schemas/project-attachments.schema";
 import { AppError, uploadToCloudinary } from "../utils"
 import { ProjectAttachmentService } from "../services/project-attachments.service";
 
@@ -78,6 +78,51 @@ export const ProjectAttachmentController = () => {
             next(error)
         }
     }
+
+    // Update Attachment
+    const updateAttachment = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { id } = req.params;
+            const parsedData = updateProjectAttachment.parse(req.body);
+            
+            const result = await service.updateAttachment({
+                id,
+                ...parsedData,
+            });
+            
+            res.status(200).json({
+                status: "success",
+                message: "Attachment updated",
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
+
+    // Delete Attachment
+    const deleteAttachment = async (
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) => {
+        try {
+            const { id } = req.params;
+            const result = await service.deleteAttachment(id);
+            
+            res.status(200).json({
+                status: "success",
+                message: "Attachment deleted",
+                data: result,
+            });
+        } catch (error) {
+            next(error);
+        }
+    };
 
     //upload image and pdf in Cloudinary
     const uploadMultipleFilesToCloudinary = async (
@@ -182,6 +227,8 @@ export const ProjectAttachmentController = () => {
         createAttachment,
         getAllAttachments,
         getAttachmentById,
+        updateAttachment,
+        deleteAttachment,
         uploadMultipleFilesToCloudinary,
         uploadSingleFileToCloudinary,
     }

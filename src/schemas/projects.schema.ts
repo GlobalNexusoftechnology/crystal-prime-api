@@ -1,20 +1,30 @@
 import { z } from "zod";
+import { ProjectStatus } from "../entities/projects.entity";
 
 export const createProjectSchema = z.object({
   client_id: z.string().uuid().optional(),
   name: z.string().min(1, "Project name is required"),
-  project_type: z.string().optional(),
+  description: z.string().optional(),
+  project_type: z.string().uuid().optional(),
+  status: z.nativeEnum(ProjectStatus).optional(),
   budget: z.number().optional(),
   estimated_cost: z.number().optional(),
   actual_cost: z.number().optional(),
+  cost_of_labour: z.number().optional(),
+  overhead_cost: z.number().optional(),
+  extra_cost: z.number().optional(),
   start_date: z.coerce.date().optional(),
   end_date: z.coerce.date().optional(),
   actual_start_date: z.coerce.date().optional(),
   actual_end_date: z.coerce.date().optional(),
+  renewal_type: z.enum(["NONE", "MONTHLY", "QUARTERLY", "YEARLY", "CUSTOM"]).optional().nullable(),
+  renewal_date: z.coerce.date().optional(),
+  is_renewal: z.boolean().optional(),
   milestones: z.array(
     z.object({
       id: z.string().uuid().optional(),
       name: z.string(),
+      description: z.string().optional(),
       start_date: z.coerce.date().optional(),
       end_date: z.coerce.date().optional(),
       actual_date: z.coerce.date().optional(),

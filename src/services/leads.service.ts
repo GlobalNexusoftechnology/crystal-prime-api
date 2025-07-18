@@ -36,6 +36,7 @@ export const LeadService = () => {
       location,
       budget,
       requirement,
+      possibility_of_conversion,
       source_id,
       status_id,
       type_id,
@@ -68,6 +69,7 @@ export const LeadService = () => {
     lead.location = location ?? "";
     lead.budget = budget ?? 0;
     lead.requirement = requirement ?? "";
+    lead.possibility_of_conversion = possibility_of_conversion ?? null;
     lead.other_contact = other_contact ?? "";
     lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
@@ -214,7 +216,7 @@ export const LeadService = () => {
     return lead;
   };
 
-  const getLeadStats = async (userId: string) => {
+  const getLeadStats = async (userId: string, role: string) => {
     // Get today's start and end timestamps in UTC
     const now = new Date();
     const today = new Date(
@@ -240,33 +242,39 @@ export const LeadService = () => {
       )
     );
 
+    const isAdmin = role === "admin" || role === "Admin";
+    const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
+    const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
+
     const [
       totalLeads,
       assignedToMe,
       profileSent,
-      businessDone,
-      notInterested,
+      convertedLeads,
+      lostLeads,
       todayFollowups,
     ] = await Promise.all([
-      leadRepo.count({ where: { deleted: false } }),
+      leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
+
+      // For admin, assignedToMe is all leads; for user, only their own
+      isAdmin
+        ? leadRepo.count({ where: { deleted: false } })
+        : leadRepo.count({ where: { deleted: false, assigned_to: { id: userId } }, relations: ["assigned_to"] }),
 
       leadRepo.count({
-        where: { deleted: false, assigned_to: { id: userId } },
-        relations: ["assigned_to"],
-      }),
-
-      leadRepo.count({
-        where: { deleted: false, status: { name: "Profile Sent" } },
+        where: { deleted: false, status: { name: "Profile Sent" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
+      // Converted leads: status.name === 'completed'
       leadRepo.count({
-        where: { deleted: false, status: { name: "Business Done" } },
+        where: { deleted: false, status: { name: "completed" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
+      // Lost leads: status.name === 'no-interested'
       leadRepo.count({
-        where: { deleted: false, status: { name: "Not Interested" } },
+        where: { deleted: false, status: { name: "no-interested" }, ...assignedToFilter },
         relations: ["status"],
       }),
 
@@ -274,8 +282,7 @@ export const LeadService = () => {
       leadFollowupRepo.count({
         where: {
           deleted: false,
-          user: { id: userId },
-          // due_date: Between(today, tomorrow),
+          ...followupUserFilter,
           due_date: today,
           status: Not(FollowupStatus.COMPLETED),
         },
@@ -287,9 +294,12 @@ export const LeadService = () => {
       totalLeads,
       assignedToMe,
       profileSent,
-      businessDone,
-      notInterested,
+      convertedLeads,
+      lostLeads,
       todayFollowups,
+      // Keep these for backward compatibility, but use the new ones in dashboard
+      // convertedLeads: businessDone, 
+      // lostLeads: notInterested     
     };
   };
 
@@ -305,6 +315,7 @@ export const LeadService = () => {
       location,
       budget,
       requirement,
+      possibility_of_conversion,
       source_id,
       status_id,
       type_id,
@@ -342,6 +353,7 @@ export const LeadService = () => {
     lead.location = location ?? lead.location;
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
+    lead.possibility_of_conversion = possibility_of_conversion ?? lead.possibility_of_conversion;
     lead.other_contact = other_contact ?? lead.other_contact;
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
 
@@ -520,6 +532,7 @@ export const LeadService = () => {
       { header: "Location", key: "location", width: 20 },
       { header: "Budget", key: "budget", width: 15 },
       { header: "Requirement", key: "requirement", width: 40 },
+      { header: "Possibility of Conversion (%)", key: "possibility_of_conversion", width: 25 },
       { header: "Source", key: "source", width: 20 },
       { header: "Status", key: "status", width: 20 },
       { header: "type", key: "type", width: 20 },
@@ -539,6 +552,7 @@ export const LeadService = () => {
         location: lead.location ?? "",
         budget: lead.budget ?? 0,
         requirement: lead.requirement ?? "",
+        possibility_of_conversion: lead.possibility_of_conversion ?? "",
         source: lead.source?.name ?? "",
         status: lead.status?.name ?? "",
         type: lead.type?.name ?? "",
@@ -564,6 +578,7 @@ export const LeadService = () => {
       { header: "location", key: "location", width: 20 },
       { header: "requirement", key: "requirement", width: 20 },
       { header: "budget", key: "budget", width: 15 },
+      { header: "possibility_of_conversion", key: "possibility_of_conversion", width: 25 },
       { header: "source", key: "source", width: 15 },
       { header: "status", key: "status", width: 15 },
       { header: "type", key: "type", width: 15 },
@@ -650,6 +665,7 @@ export const LeadService = () => {
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
+        possibility_of_conversion: Number(data.possibility_of_conversion) || null,
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
@@ -720,6 +736,70 @@ export const LeadService = () => {
     });
   };
 
+  // Group leads by status for a given date range and user
+  const groupLeadsByStatus = async (dateRange: "Weekly" | "Monthly" | "Yearly", userId?: string, role?: string, referenceDate?: Date) => {
+    const now = referenceDate ? new Date(referenceDate) : new Date();
+    let start: Date | undefined;
+    let end: Date | undefined;
+    if (dateRange === "Weekly") {
+      start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateRange === "Monthly") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (dateRange === "Yearly") {
+      start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+    const qb = leadRepo.createQueryBuilder("lead")
+      .leftJoin("lead.status", "status")
+      .select(["status.name AS status", "COUNT(*)::int AS count"])
+      .where("lead.deleted = false");
+    if (start && end) {
+      qb.andWhere("lead.created_at BETWEEN :start AND :end", { start, end });
+    }
+    if (role !== "admin" && role !== "Admin" && userId) {
+      qb.andWhere("lead.assigned_to = :userId", { userId });
+    }
+    return await qb.groupBy("status.name").getRawMany();
+  };
+
+  // Group leads by type for a given date range and user
+  const groupLeadsByType = async (dateRange: "Weekly" | "Monthly" | "Yearly", userId?: string, role?: string, referenceDate?: Date) => {
+    const now = referenceDate ? new Date(referenceDate) : new Date();
+    let start: Date | undefined;
+    let end: Date | undefined;
+    if (dateRange === "Weekly") {
+      start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      start.setHours(0, 0, 0, 0);
+      end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateRange === "Monthly") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    } else if (dateRange === "Yearly") {
+      start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+      end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+    }
+    const qb = leadRepo.createQueryBuilder("lead")
+      .leftJoin("lead.type", "type")
+      .select(["type.name AS type", "COUNT(*)::int AS count"])
+      .where("lead.deleted = false");
+    if (start && end) {
+      qb.andWhere("lead.created_at BETWEEN :start AND :end", { start, end });
+    }
+    if (role !== "admin" && role !== "Admin" && userId) {
+      qb.andWhere("lead.assigned_to = :userId", { userId });
+    }
+    return await qb.groupBy("type.name").getRawMany();
+  };
+
   return {
     createLead,
     getAllLeads,
@@ -732,5 +812,7 @@ export const LeadService = () => {
     uploadLeadsFromExcelService,
     findLeadByEmail,
     findLeadByPhoneNumber,
+    groupLeadsByStatus,
+    groupLeadsByType,
   };
 };
