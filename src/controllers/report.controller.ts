@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { getStaffPerformanceReport, exportStaffPerformanceToExcel } from '../services/report.service';
+import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport } from '../services/report.service';
 import { StaffPerformanceReport } from '../types/report';
+import { ProjectPerformanceReport } from '../types/report';
 
 /**
  * Handles GET /api/reports/staff-performance
@@ -45,6 +46,28 @@ export async function exportStaffPerformanceExcel(req: Request, res: Response, n
     await data.workbook.xlsx.write(res);
     res.end();
   } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Handles GET /api/reports/project-performance
+ * Accepts projectId and clientId as query params. Returns unified project report.
+ */
+export async function getProjectPerformanceReportController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const { projectId, clientId } = req.query;
+    const report: ProjectPerformanceReport = await getProjectPerformanceReport({
+      projectId: projectId as string | undefined,
+      clientId: clientId as string | undefined,
+    });
+    return res.json({
+      status: 'success',
+      message: 'Project performance report fetched successfully',
+      data: report
+    });
+  } catch (error) {
+    console.log("\n\n\n\n\n",error,"\n\n\n\n\n\n");
     next(error);
   }
 } 

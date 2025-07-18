@@ -5,9 +5,12 @@ import { ProjectMilestones } from '../entities/project-milestone.entity';
 import { projectAttachments } from '../entities/project-attachments.entity';
 import { LeadFollowup, FollowupStatus } from '../entities/lead-followups.entity';
 import { StaffPerformanceReport } from '../types/report';
-import { Between, MoreThanOrEqual, LessThanOrEqual, Not, ILike } from 'typeorm';
+import { Between, MoreThanOrEqual, LessThanOrEqual, Not, ILike, In } from 'typeorm';
 import ExcelJS from "exceljs";
 import { AppError } from '../utils';
+import { Project } from '../entities/projects.entity';
+import { Clients } from '../entities/clients.entity';
+import { ProjectPerformanceReport } from '../types/report';
 
 interface StaffPerformanceReportParams {
     startDate?: string;
@@ -21,6 +24,8 @@ const taskRepo = AppDataSource.getRepository(ProjectTasks);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const attachmentRepo = AppDataSource.getRepository(projectAttachments);
 const followupRepo = AppDataSource.getRepository(LeadFollowup);
+const projectRepo = AppDataSource.getRepository(Project);
+const clientRepo = AppDataSource.getRepository(Clients);
 
 export async function getStaffPerformanceReport(params: StaffPerformanceReportParams): Promise<StaffPerformanceReport> {
 
@@ -178,4 +183,215 @@ export async function exportStaffPerformanceToExcel(params: StaffPerformanceRepo
     const name = data?.staffName?.split(" ")?.join("_");
 
     return { workbook: workbook, name };
+}
+
+export async function getProjectPerformanceReport({ projectId, clientId }: { projectId?: string; clientId?: string }): Promise<ProjectPerformanceReport> {
+  // 1. Fetch the project
+  let project: Project | null = null;
+  if (projectId) {
+    project = await projectRepo.findOne({
+      where: { id: projectId },
+      relations: ['client', 'milestones', 'attachments'],
+    });
+  } else if (clientId) {
+    project = await projectRepo.findOne({
+      where: { client: { id: clientId } },
+      order: { created_at: 'DESC' },
+      relations: ['client', 'milestones', 'attachments'],
+    });
+  } else {
+    const projects = await projectRepo.find({
+      order: { created_at: 'DESC' },
+      relations: ['client', 'milestones', 'attachments'],
+      take: 1,
+    });
+    project = projects[0] || null;
+  }
+  if (!project) throw new AppError(404, 'Project not found');
+
+  // 2. Project Info
+  const projectInfo = {
+    projectId: project.id,
+    description: project.description,
+    name: project.name,
+    client: project.client
+      ? {
+          id: project.client.id,
+          name: project.client.name,
+          company_name: project.client.company_name,
+          contact_number: project.client.contact_number,
+        }
+      : { id: '', name: '', company_name: '', contact_number: '' },
+    status: project.status,
+    start_date: project.start_date,
+    end_date: project.end_date,
+    actual_start_date: project.actual_start_date,
+    actual_end_date: project.actual_end_date,
+  };
+
+  // 3. Cost & Budget
+  const costBudget = {
+    budget: project.budget ?? null,
+    estimated_cost: project.estimated_cost ?? null,
+    actual_cost: project.actual_cost ?? null,
+    budget_utilization_percent:
+      project.budget && project.actual_cost
+        ? Math.round((Number(project.actual_cost) / Number(project.budget)) * 100)
+        : null,
+    overrun:
+      project.budget && project.actual_cost
+        ? Number(project.actual_cost) - Number(project.budget)
+        : null,
+  };
+
+  // 4. Task Metrics
+  // ProjectTasks are linked to Project via ProjectMilestones
+  const milestoneIds = (project.milestones || []).map(m => m.id);
+  let tasks: ProjectTasks[] = [];
+  if (milestoneIds.length) {
+    tasks = await taskRepo.find({ where: { milestone: { id: In(milestoneIds) } } });
+  }
+  const totalTasks = tasks.length;
+  const completed = tasks.filter((t) => t.status.toLowerCase() === 'completed').length;
+  const inProgress = tasks.filter((t) => (t.status.toLowerCase() === 'in progress' || t.status.toLowerCase() === 'in-progress')).length;
+  const overdue = tasks.filter((t) => t.due_date && new Date(t.due_date) < new Date() && t.status.toLowerCase() !== 'completed').length;
+  const avgTaskCompletionTimeDays = (() => {
+    const completedTasks = tasks.filter((t: any) => t.status.toLowerCase() === 'completed' && t.created_at && t.updated_at);
+    if (!completedTasks.length) return 0;
+    const totalDays = completedTasks.reduce((sum: number, t: any) => sum + (new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24), 0);
+    return Number((totalDays / completedTasks.length).toFixed(2));
+  })();
+  // Task reassignment count: count tasks with a reassignment history if available, else 0
+  const taskReassignmentCount = 0; // Placeholder, implement if you have reassignment tracking
+  // Top performer: user with most completed tasks
+  const userTaskMap: Record<string, { name: string; count: number }> = {};
+  for (const t of tasks) {
+    if (t.assigned_to && t.status.toLowerCase() === 'completed') {
+      userTaskMap[t.assigned_to] = userTaskMap[t.assigned_to] || { name: t.assigned_to, count: 0 };
+      userTaskMap[t.assigned_to].count++;
+    }
+  }
+  let topPerformer = null;
+  if (Object.keys(userTaskMap).length) {
+    const top = Object.entries(userTaskMap).sort((a, b) => b[1].count - a[1].count)[0];
+    topPerformer = { userId: top[0], name: top[1].name, tasksCompleted: top[1].count };
+  }
+  const taskMetrics = {
+    totalTasks,
+    completed,
+    inProgress,
+    overdue,
+    avgTaskCompletionTimeDays,
+    taskReassignmentCount,
+    topPerformer,
+  };
+
+  // 5. Resource Utilization
+  // Group by assigned_to
+  const resourceUtilizationMap: Record<string, { name: string; assignedTasks: number; completedTasks: number; followUps: number; activeIssues: number }> = {};
+  for (const t of tasks) {
+    if (!t.assigned_to) continue;
+    if (!resourceUtilizationMap[t.assigned_to]) {
+      resourceUtilizationMap[t.assigned_to] = { name: t.assigned_to, assignedTasks: 0, completedTasks: 0, followUps: 0, activeIssues: 0 };
+    }
+    resourceUtilizationMap[t.assigned_to].assignedTasks++;
+    if (t.status.toLowerCase() === 'completed') resourceUtilizationMap[t.assigned_to].completedTasks++;
+    // Placeholder: followUps and activeIssues, implement if you have this info
+  }
+  const resourceUtilization = Object.entries(resourceUtilizationMap).map(([userId, data]) => ({
+    userId,
+    name: data.name,
+    assignedTasks: data.assignedTasks,
+    completedTasks: data.completedTasks,
+    taskLoadPercent: data.assignedTasks && totalTasks ? Math.round((data.assignedTasks / totalTasks) * 100) : 0,
+    followUps: data.followUps,
+    activeIssues: data.activeIssues,
+  }));
+
+  // 6. Milestone Summary
+  const milestoneSummary = (project.milestones || []).map((m) => ({
+    milestoneId: m.id,
+    name: m.name,
+    status: m.status,
+    start_date: m.start_date,
+    end_date: m.end_date,
+    actual_date: m.actual_date,
+    assigned_to: m.assigned_to,
+    delayDays:
+      m.end_date && m.actual_date
+        ? Math.max(0, Math.ceil((new Date(m.actual_date).getTime() - new Date(m.end_date).getTime()) / (1000 * 60 * 60 * 24)))
+        : null,
+  }));
+
+  // 7. Document Summary
+  const attachments = project.attachments || [];
+  const docTypeMap: Record<string, { count: number; last_updated: Date | string | null }> = {};
+  for (const att of attachments) {
+    if (!att.file_type) continue;
+    if (!docTypeMap[att.file_type]) {
+      docTypeMap[att.file_type] = { count: 0, last_updated: att.created_at };
+    }
+    docTypeMap[att.file_type].count++;
+    if (!docTypeMap[att.file_type].last_updated || (att.created_at && new Date(att.created_at) > new Date(docTypeMap[att.file_type].last_updated!))) {
+      docTypeMap[att.file_type].last_updated = att.created_at;
+    }
+  }
+  const documentSummary = Object.entries(docTypeMap).map(([file_type, data]) => ({
+    file_type,
+    count: data.count,
+    last_updated: data.last_updated,
+  }));
+
+  // 8. Timeline Analysis
+  const now = new Date();
+  const daysSinceStart = project.start_date ? Math.ceil((now.getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const plannedDurationDays = project.start_date && project.end_date ? Math.ceil((new Date(project.end_date).getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+  const progressPercent = milestoneSummary.length
+    ? Math.round((milestoneSummary.filter((m) => m.status.toLowerCase() === 'completed').length / milestoneSummary.length) * 100)
+    : 0;
+  const delayRisk = progressPercent < 100 && milestoneSummary.some((m) => m.delayDays && m.delayDays > 0) ? 'Medium' : 'Low';
+  const timelineAnalysis = {
+    daysSinceStart,
+    plannedDurationDays,
+    progressPercent,
+    delayRisk,
+  };
+
+  // 9. Follow-Up Matrix
+  // Fetch followups for the lead referenced by the client (if any)
+  let followups: LeadFollowup[] = [];
+  const clientLeadId = project.client?.lead?.id;
+  if (clientLeadId) {
+    followups = await followupRepo.find({ where: { lead: { id: clientLeadId } } });
+  }
+  const totalFollowUpsLogged = followups.length;
+  const followUpsCompleted = followups.filter((f) => f.status.toLocaleLowerCase() === FollowupStatus.COMPLETED.toLocaleLowerCase()).length;
+  const pendingFollowUps = followups.filter((f) => f.status.toLocaleLowerCase() === FollowupStatus.PENDING.toLocaleLowerCase() || f.status.toLocaleLowerCase() === FollowupStatus.AWAITING_RESPONSE.toLocaleLowerCase()).length;
+  const missedOrDelayedFollowUps = followups.filter((f) => f.completed_date && f.due_date && f.completed_date > f.due_date).length;
+  const avgResponseTimeHours = (() => {
+    const completed = followups.filter((f) => f.status.toLocaleLowerCase() === FollowupStatus.COMPLETED.toLocaleLowerCase() && f.due_date && f.completed_date);
+    if (!completed.length) return 0;
+    const totalHours = completed.reduce((sum, f) => sum + ((f.completed_date!.getTime() - f.due_date!.getTime()) / (1000 * 60 * 60)), 0);
+    return Number((totalHours / completed.length).toFixed(2));
+  })();
+  const escalatedItems = 0; // Placeholder, implement if you have escalation tracking
+  const followUpMatrix = {
+    totalFollowUpsLogged,
+    followUpsCompleted,
+    pendingFollowUps,
+    missedOrDelayedFollowUps,
+    avgResponseTimeHours,
+    escalatedItems,
+  };
+
+  return {
+    projectInfo,
+    costBudget,
+    taskMetrics,
+    resourceUtilization,
+    milestoneSummary,
+    documentSummary,
+    timelineAnalysis,
+    followUpMatrix,
+  };
 } 

@@ -13,4 +13,76 @@ export interface StaffPerformanceReport {
   pendingFollowUps: number;
   avgFollowUpResponseTime: number;
   missedFollowUps: number;
+}
+
+export interface ProjectPerformanceReport {
+  projectInfo: {
+    projectId: string;
+    name: string;
+    client: {
+      id: string;
+      name: string;
+      company_name?: string;
+      contact_number?: string;
+    };
+    status: string;
+    start_date: Date | string | null;
+    end_date: Date | string | null;
+    actual_start_date: Date | string | null;
+    actual_end_date: Date | string | null;
+  };
+  costBudget: {
+    budget: number | null;
+    estimated_cost: number | null;
+    actual_cost: number | null;
+    budget_utilization_percent: number | null;
+    overrun: number | null;
+  };
+  taskMetrics: {
+    totalTasks: number;
+    completed: number;
+    inProgress: number;
+    overdue: number;
+    avgTaskCompletionTimeDays: number;
+    taskReassignmentCount: number;
+    topPerformer: { userId: string; name: string; tasksCompleted: number } | null;
+  };
+  resourceUtilization: Array<{
+    userId: string;
+    name: string;
+    assignedTasks: number;
+    completedTasks: number;
+    taskLoadPercent: number;
+    followUps: number;
+    activeIssues: number;
+  }>;
+  milestoneSummary: Array<{
+    milestoneId: string;
+    name: string;
+    status: string;
+    start_date: Date | string | null;
+    end_date: Date | string | null;
+    actual_date: Date | string | null;
+    assigned_to: string | null;
+    delayDays: number | null;
+  }>;
+  documentSummary: Array<{
+    file_type: string;
+    count: number;
+    last_updated: Date | string | null;
+  }>;
+  timelineAnalysis: {
+    daysSinceStart: number;
+    plannedDurationDays: number;
+    progressPercent: number;
+    delayRisk: string;
+  };
+  followUpMatrix: {
+    totalFollowUpsLogged: number;
+    followUpsCompleted: number;
+    pendingFollowUps: number;
+    missedOrDelayedFollowUps: number;
+    avgResponseTimeHours: number;
+    escalatedItems: number;
+  };
 } 
