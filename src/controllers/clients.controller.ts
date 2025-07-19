@@ -134,8 +134,9 @@ export const clientController = () => {
       const userId = res.locals.user.id;
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
+      const searchText = req.query.searchText as string | undefined;
 
-      const workbook = await service.exportClientsToExcel(userId, userRole);
+      const workbook = await service.exportClientsToExcel(userId, userRole, searchText);
 
       res.setHeader(
         "Content-Type",
