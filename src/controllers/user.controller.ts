@@ -169,12 +169,13 @@ export const getProfileController = async (
 
 // Get all users
 export const getAllUsersHandler = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const users = await findAllUsers();
+    const searchText = req.query.searchText as string | undefined;
+    const users = await findAllUsers(searchText);
     res.status(200).json({ status: "success", data: users });
   } catch (error) {
     next(error);
@@ -206,7 +207,8 @@ export const exportUsersExcelController = async (
   next: NextFunction
 ) => {
   try {
-    const workbook = await exportUsersToExcel(); // call to service
+    const searchText = req.query.searchText as string | undefined;
+    const workbook = await exportUsersToExcel(searchText); // call to service
 
     res.setHeader(
       "Content-Type",
