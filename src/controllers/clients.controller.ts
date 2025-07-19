@@ -39,7 +39,8 @@ export const clientController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllClients();
+      const searchText = req.query.searchText as string | undefined;
+      const result = await service.getAllClients(searchText);
       res.status(200).json({
         status: "success",
         message: "All Client fetched",

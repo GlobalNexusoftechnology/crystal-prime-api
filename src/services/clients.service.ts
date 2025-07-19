@@ -68,13 +68,23 @@ export const ClientService = () => {
   };
 
   // Get All Clients
-  const getAllClients = async () => {
-    const data = await clientRepo.find({
-      where: { deleted: false },
-      relations: ["lead", "client_details"],
-      order: {created_at: "DESC"}
-    });
-    return data
+  const getAllClients = async (searchText?: string) => {
+    let query = clientRepo.createQueryBuilder("client")
+      .leftJoinAndSelect("client.lead", "lead")
+      .leftJoinAndSelect("client.client_details", "client_details")
+      .where("client.deleted = false");
+
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(client.name) LIKE :search OR LOWER(client.email) LIKE :search OR LOWER(client.contact_number) LIKE :search OR LOWER(client.company_name) LIKE :search OR LOWER(client.contact_person) LIKE :search OR LOWER(client.address) LIKE :search OR LOWER(client.website) LIKE :search`,
+        { search }
+      );
+    }
+
+    query = query.orderBy("client.created_at", "DESC");
+    const data = await query.getMany();
+    return data;
   };
 
   //  Get Client by ID
