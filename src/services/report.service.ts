@@ -370,7 +370,7 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
     const daysSinceStart = project.start_date ? Math.ceil((now.getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const plannedDurationDays = project.start_date && project.end_date ? Math.ceil((new Date(project.end_date).getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const progressPercent = (project.milestones && project.milestones.length)
-        ? Math.round((project.milestones.filter((m) => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status.toLowerCase() === 'completed').length / project.milestones.filter(m => (!dateFrom && !dateTo) || inRange(m.created_at)).length * 100)
+        ? Math.round((project.milestones.filter((m) => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status.toLowerCase() === 'completed').length / project.milestones.filter(m => (!dateFrom && !dateTo) || inRange(m.created_at)).length * 100))
         : 0;
     const delayRisk = progressPercent < 100 && (project.milestones || []).some((m) => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.end_date && m.actual_date && (new Date(m.actual_date).getTime() - new Date(m.end_date).getTime()) / (1000 * 60 * 60 * 24) > 0) ? 'Medium' : 'Low';
     const timelineAnalysis = {
