@@ -198,7 +198,7 @@ export async function exportStaffPerformanceToExcel(
   return { workbook: workbook, name };
 }
 
-export async function getProjectPerformanceReport({ projectId, clientId }: { projectId?: string; clientId?: string }): Promise<any> {
+export async function getProjectPerformanceReport({ projectId, clientId, fromDate, toDate }: { projectId?: string; clientId?: string; fromDate?: string; toDate?: string }): Promise<any> {
     // 1. Fetch the project with all necessary relations
     let project: Project | null = null;
     if (projectId) {
@@ -243,6 +243,20 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
     }
     if (!project) throw new AppError(404, "Project not found");
 
+    // Date filter logic
+    let dateFrom: Date | undefined = fromDate ? new Date(fromDate) : undefined;
+    let dateTo: Date | undefined = toDate ? new Date(toDate) : undefined;
+    if (dateTo) dateTo.setHours(23, 59, 59, 999);
+
+    // Helper: check if a date is in range
+    const inRange = (d: Date | string | undefined | null) => {
+        if (!d) return false;
+        const dt = new Date(d);
+        if (dateFrom && dt < dateFrom) return false;
+        if (dateTo && dt > dateTo) return false;
+        return true;
+    };
+
     // Helper: get user details by id
     const getUserDetails = async (userId: string) => {
         if (!userId) return null;
@@ -257,9 +271,8 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         };
     };
 
-    // Basic Project Info
+    // Basic Project Info (unchanged)
     const projectType = project.project_type?.name || "";
-    // Project Manager: assume first milestone assigned_to or fallback to null
     let projectManager = null;
     if (project.milestones && project.milestones.length > 0) {
         const firstMilestone = project.milestones.find(m => m.assigned_to);
@@ -267,19 +280,19 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
             projectManager = await getUserDetails(firstMilestone.assigned_to);
         }
     }
-    // Assigned Team: all unique assigned_to from milestones and tasks
+    // Assigned Team: all unique assigned_to from milestones and tasks (filtered by date)
     const teamUserIds = new Set<string>();
     (project.milestones || []).forEach(m => {
-        if (m.assigned_to) teamUserIds.add(m.assigned_to);
-        (m.tasks || []).forEach(t => { if (t.assigned_to) teamUserIds.add(t.assigned_to); });
+        if ((!dateFrom && !dateTo) || inRange(m.created_at)) {
+            if (m.assigned_to) teamUserIds.add(m.assigned_to);
+            (m.tasks || []).forEach(t => { if ((!dateFrom && !dateTo) || inRange(t.created_at)) { if (t.assigned_to) teamUserIds.add(t.assigned_to); } });
+        }
     });
     const assignedTeam = await Promise.all(Array.from(teamUserIds).map(getUserDetails));
-    // Project Phase: last milestone with status not completed
-    const projectPhase = (project.milestones || []).find(m => m.status && m.status.toLowerCase() !== 'completed')?.name || "";
-    // Current Status: last milestone with status not completed
-    const currentStatus = (project.milestones || []).find(m => m.status && m.status.toLowerCase() !== 'completed')?.status || project.status;
+    const projectPhase = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.name || "";
+    const currentStatus = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.status || project.status;
 
-    // Cost & Budget Analysis
+    // Cost & Budget Analysis (unchanged)
     const budget = project.budget ? project.budget.toLocaleString() : "-";
     const estimatedCost = project.estimated_cost ? project.estimated_cost.toLocaleString() : "-";
     const actualCost = project.actual_cost ? project.actual_cost.toLocaleString() : "-";
@@ -290,21 +303,19 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         ? (Number(project.actual_cost) - Number(project.budget)).toLocaleString()
         : "-";
 
-    // Task Metrics
-    const allTasks = (project.milestones || []).flatMap(m => m.tasks || []);
+    // Task Metrics (filtered by date)
+    const allTasks = (project.milestones || []).flatMap(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) ? (m.tasks || []).filter(t => (!dateFrom && !dateTo) || inRange(t.created_at)) : []);
     const totalTasks = allTasks.length;
     const completedTasks = allTasks.filter(t => t.status?.toLowerCase() === 'completed').length;
     const inProgressTasks = allTasks.filter(t => t.status?.toLowerCase().includes('progress')).length;
-    const overdueTasks = allTasks.filter(t => t.due_date && new Date(t.due_date) < new Date() && t.status?.toLowerCase() !== 'completed').length;
+    const overdueTasks = allTasks.filter(t => t.due_date && inRange(t.due_date) && new Date(t.due_date) < new Date() && t.status?.toLowerCase() !== 'completed').length;
     const avgTaskCompletionTime = (() => {
         const completed = allTasks.filter(t => t.status?.toLowerCase() === 'completed' && t.created_at && t.updated_at);
         if (!completed.length) return "0 Days";
         const totalDays = completed.reduce((sum, t) => sum + ((new Date(t.updated_at).getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24)), 0);
         return `${(totalDays / completed.length).toFixed(1)} Days`;
     })();
-    // Task reassignment count: not tracked, set to 0
     const taskReassignmentCount = 0;
-    // Top performer: user with most completed tasks
     const userTaskMap: Record<string, { name: string; count: number }> = {};
     for (const t of allTasks) {
         if (t.assigned_to && t.status?.toLowerCase() === 'completed') {
@@ -318,7 +329,6 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         const user = await getUserDetails(top[0]);
         topPerformer = user ? { ...user, tasksCompleted: top[1].count } : null;
     }
-    // Task Metrics Bar Chart
     const taskMetricsChart = [
         { label: "Total Tasks", value: totalTasks },
         { label: "Completed", value: completedTasks },
@@ -326,9 +336,9 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         { label: "Overdue", value: overdueTasks }
     ];
 
-    // Document Summary
+    // Document Summary (filtered by date)
     const docTypeMap: Record<string, { count: number; last_updated: Date | string | null }> = {};
-    for (const att of project.attachments || []) {
+    for (const att of (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at))) {
         if (!att.file_type) continue;
         if (!docTypeMap[att.file_type]) {
             docTypeMap[att.file_type] = { count: 0, last_updated: att.created_at };
@@ -343,10 +353,9 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         count: data.count,
         last_updated: data.last_updated ? new Date(data.last_updated).toLocaleDateString() : null
     }));
-    const totalFiles = (project.attachments || []).length;
+    const totalFiles = (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at)).length;
 
-    // Follow-Up & Communication Matrix (placeholder, as followup logic is not in project entity)
-    // You may need to fetch followups from another service if available
+    // Follow-Up & Communication Matrix (unchanged, placeholder)
     const followUpMatrix = {
         totalFollowUpsLogged: 0,
         followUpsCompleted: 0,
@@ -356,17 +365,14 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         escalatedItems: 0
     };
 
-    // Timeline Analysis
+    // Timeline Analysis (unchanged)
     const now = new Date();
     const daysSinceStart = project.start_date ? Math.ceil((now.getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const plannedDurationDays = project.start_date && project.end_date ? Math.ceil((new Date(project.end_date).getTime() - new Date(project.start_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
     const progressPercent = (project.milestones && project.milestones.length)
-        ? Math.round((project.milestones.filter((m) => m.status.toLowerCase() === 'completed').length / project.milestones.length) * 100)
+        ? Math.round((project.milestones.filter((m) => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status.toLowerCase() === 'completed').length / project.milestones.filter(m => (!dateFrom && !dateTo) || inRange(m.created_at)).length * 100)
         : 0;
-    const delayRisk = progressPercent < 100 && (project.milestones || []).some((m) => {
-        const delay = m.end_date && m.actual_date ? (new Date(m.actual_date).getTime() - new Date(m.end_date).getTime()) / (1000 * 60 * 60 * 24) : 0;
-        return delay > 0;
-    }) ? 'Medium' : 'Low';
+    const delayRisk = progressPercent < 100 && (project.milestones || []).some((m) => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.end_date && m.actual_date && (new Date(m.actual_date).getTime() - new Date(m.end_date).getTime()) / (1000 * 60 * 60 * 24) > 0) ? 'Medium' : 'Low';
     const timelineAnalysis = {
         daysSinceStart,
         plannedDurationDays,
@@ -374,8 +380,8 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         delayRisk
     };
 
-    // Milestone Summary
-    const milestoneSummary = (project.milestones || []).map((m) => ({
+    // Milestone Summary (filtered by date)
+    const milestoneSummary = (project.milestones || []).filter(m => (!dateFrom && !dateTo) || inRange(m.created_at)).map((m) => ({
         milestoneId: m.id,
         name: m.name,
         status: m.status,
@@ -386,13 +392,12 @@ export async function getProjectPerformanceReport({ projectId, clientId }: { pro
         delayDays: m.end_date && m.actual_date ? Math.max(0, Math.ceil((new Date(m.actual_date).getTime() - new Date(m.end_date).getTime()) / (1000 * 60 * 60 * 24))) : null
     }));
 
-    // Resource Utilization
+    // Resource Utilization (filtered by date)
     const resourceUtilization = await Promise.all(assignedTeam.map(async (user) => {
         if (!user) return null;
         const assignedTasks = allTasks.filter(t => t.assigned_to === user.id).length;
         const completedTasks = allTasks.filter(t => t.assigned_to === user.id && t.status?.toLowerCase() === 'completed').length;
         const taskLoadPercent = totalTasks ? Math.round((assignedTasks / totalTasks) * 100) : 0;
-        // Placeholder for followUpsHandled and activeIssues
         return {
             ...user,
             assignedTasks,
