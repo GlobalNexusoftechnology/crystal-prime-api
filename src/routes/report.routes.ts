@@ -5,6 +5,7 @@ import {
   getStaffPerformance,
   getLeadReportsController,
   getBusinessAnalysisController,
+  getPublicDashboardController,
 } from "../controllers/report.controller";
 import { deserializeUser, requireUser } from "../middleware";
 
@@ -21,5 +22,7 @@ router.get("/project-performance", getProjectPerformanceReportController);
 router.get("/leads", getLeadReportsController);
 
 router.get("/business-analysis", getBusinessAnalysisController);
+
+router.get("/public-dashboard", getPublicDashboardController);
 
 export default router;

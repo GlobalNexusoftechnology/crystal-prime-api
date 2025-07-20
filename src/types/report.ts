@@ -225,4 +225,47 @@ export interface BusinessAnalysisReport {
     totalStaff: number;
     overallPerformance: number;
   };
+}
+
+export interface PublicDashboardParams {
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface PublicBusinessOverview {
+  totalProjectsDelivered: number;
+  ongoingProjects: number;
+  clientsServed: number;
+}
+
+export interface PublicLeadClientInterest {
+  leadsThisMonth: number;
+  conversionsThisMonth: number;
+  avgConversionTime: number;
+  topSourceOfLeads: string;
+}
+
+export interface PublicTrendChart {
+  labels: string[];
+  newProject: number[];
+  completedProject: number[];
+}
+
+export interface PublicMonthlyLeadsChart {
+  labels: string[];
+  leads: number[];
+}
+
+export interface PublicTeamPerformance {
+  topPerformer: string;
+  onTimeDeliveryRate: number;
+  avgTaskCompletionRate: number;
+}
+
+export interface PublicDashboardReport {
+  businessOverview: PublicBusinessOverview;
+  leadClientInterest: PublicLeadClientInterest;
+  trendChart: PublicTrendChart;
+  monthlyLeadsChart: PublicMonthlyLeadsChart;
+  teamPerformance: PublicTeamPerformance;
 } 

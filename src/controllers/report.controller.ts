@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports, getBusinessAnalysisReport } from '../services/report.service';
+import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports, getBusinessAnalysisReport, getPublicDashboardReport } from '../services/report.service';
 import { StaffPerformanceReport } from '../types/report';
 import { ProjectPerformanceReport } from '../types/report';
 import { LeadReportsParams, BusinessAnalysisParams } from '../types/report';
@@ -136,6 +136,27 @@ export async function getBusinessAnalysisController(req: Request, res: Response,
     return res.json({
       status: 'success',
       message: 'Business analysis report fetched successfully',
+      data: report
+    });
+  } catch (error) {
+    next(error);
+  }
+} 
+
+/**
+ * Handles GET /api/reports/public-dashboard
+ * Accepts optional fromDate and toDate query params for filtering.
+ */
+export async function getPublicDashboardController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const { fromDate, toDate } = req.query;
+    const report = await getPublicDashboardReport({
+      fromDate: fromDate as string | undefined,
+      toDate: toDate as string | undefined,
+    });
+    return res.json({
+      status: 'success',
+      message: 'Public dashboard report fetched successfully',
       data: report
     });
   } catch (error) {
