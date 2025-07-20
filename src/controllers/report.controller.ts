@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports, getBusinessAnalysisReport, getPublicDashboardReport } from '../services/report.service';
+import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports, getBusinessAnalysisReport, getPublicDashboardReport, exportProjectPerformanceReportToExcel, exportLeadReportToExcel, exportBusinessAnalysisReportToExcel, exportPublicDashboardReportToExcel } from '../services/report.service';
 import { StaffPerformanceReport } from '../types/report';
 import { ProjectPerformanceReport } from '../types/report';
 import { LeadReportsParams, BusinessAnalysisParams } from '../types/report';
@@ -159,6 +159,58 @@ export async function getPublicDashboardController(req: Request, res: Response, 
       message: 'Public dashboard report fetched successfully',
       data: report
     });
+  } catch (error) {
+    next(error);
+  }
+} 
+
+export async function exportProjectPerformanceExcelController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { projectId, clientId, fromDate, toDate } = req.query;
+    const { workbook, name } = await exportProjectPerformanceReportToExcel({ projectId, clientId, fromDate, toDate });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${name}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportLeadReportExcelController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { fromDate, toDate, userId, sourceId, statusId, typeId } = req.query;
+    const { workbook, name } = await exportLeadReportToExcel({ fromDate, toDate, userId, sourceId, statusId, typeId });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${name}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportBusinessAnalysisExcelController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { fromDate, toDate } = req.query;
+    const { workbook, name } = await exportBusinessAnalysisReportToExcel({ fromDate, toDate });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${name}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportPublicDashboardExcelController(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { fromDate, toDate } = req.query;
+    const { workbook, name } = await exportPublicDashboardReportToExcel({ fromDate, toDate });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=${name}.xlsx`);
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     next(error);
   }
