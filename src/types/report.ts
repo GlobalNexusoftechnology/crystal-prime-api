@@ -153,4 +153,76 @@ export interface LeadReportsData {
     activeLeads: number;
     conversionRate: number;
   };
+}
+
+export interface BusinessAnalysisParams {
+  fromDate?: string;
+  toDate?: string;
+  userId?: string;
+}
+
+export interface LeadFunnelMetrics {
+  totalLeads: number;
+  qualifiedLeads: number;
+  convertedLeads: number;
+  dropOfStage: string;
+  conversionRate: number;
+  avgTimeToConvert: number;
+  avgFollowups: number;
+  bestLeadSource: string;
+}
+
+export interface ProjectDeliveryMetrics {
+  totalProjects: number;
+  completedProjects: number;
+  onTimeDeliveryRate: number;
+  budgetOverrunProjects: number;
+  avgProjectProfitability: number;
+  avgProjectDuration: number;
+  resourceUtilization: number;
+  clientSatisfactionIndex: number;
+}
+
+export interface FinancialSummary {
+  totalIncome: number;
+  amountReceivedInBank: number;
+  amountReceivedInUPI: number;
+  amountReceivedInCash: number;
+  amountReceivedInOnline: number;
+  amountSpentInBank: number;
+  amountSpentInUPI: number;
+  amountSpentInCash: number;
+  amountSpentInOnline: number;
+}
+
+export interface TeamStaffPerformance {
+  activeStaffMembers: number;
+  topPerformer: string;
+  taskCompletionRate: number;
+  delayedTasks: number;
+  avgFollowupsPerStaff: number;
+  documentContributions: number;
+}
+
+export interface MonthlyTrendData {
+  labels: string[];
+  started: number[];
+  completed: number[];
+  newLeads: number[];
+  revenue: number[];
+}
+
+export interface BusinessAnalysisReport {
+  leadFunnelMetrics: LeadFunnelMetrics;
+  projectDeliveryMetrics: ProjectDeliveryMetrics;
+  financialSummary: FinancialSummary;
+  teamStaffPerformance: TeamStaffPerformance;
+  monthlyTrends: MonthlyTrendData;
+  summary: {
+    totalRevenue: number;
+    totalProjects: number;
+    totalLeads: number;
+    totalStaff: number;
+    overallPerformance: number;
+  };
 } 

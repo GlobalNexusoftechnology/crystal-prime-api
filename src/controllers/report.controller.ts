@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports } from '../services/report.service';
+import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports, getBusinessAnalysisReport } from '../services/report.service';
 import { StaffPerformanceReport } from '../types/report';
 import { ProjectPerformanceReport } from '../types/report';
-import { LeadReportsParams } from '../types/report';
+import { LeadReportsParams, BusinessAnalysisParams } from '../types/report';
 
 /**
  * Handles GET /api/reports/staff-performance
@@ -102,6 +102,40 @@ export async function getLeadReportsController(req: Request, res: Response, next
     return res.json({
       status: 'success',
       message: 'Lead reports fetched successfully',
+      data: report
+    });
+  } catch (error) {
+    next(error);
+  }
+} 
+
+/**
+ * Handles GET /api/reports/business-analysis
+ * Accepts optional fromDate, toDate, userId query params for flexible filtering.
+ */
+export async function getBusinessAnalysisController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const { fromDate, toDate, userId } = req.query;
+    
+    // Get current user info for role-based filtering
+    const currentUser = res?.locals?.user;
+    const currentUserId = currentUser?.id;
+    const currentUserRole = currentUser?.role?.role;
+
+    // For non-admin users, force userId to be their own ID
+    const filteredUserId = (currentUserRole === 'admin' || currentUserRole === 'Admin') 
+      ? (userId as string | undefined) 
+      : currentUserId;
+
+    const report = await getBusinessAnalysisReport({
+      fromDate: fromDate as string | undefined,
+      toDate: toDate as string | undefined,
+      userId: filteredUserId,
+    });
+
+    return res.json({
+      status: 'success',
+      message: 'Business analysis report fetched successfully',
       data: report
     });
   } catch (error) {

@@ -1,17 +1,25 @@
-import { Router } from 'express';
-import { exportStaffPerformanceExcel, getProjectPerformanceReportController, getStaffPerformance, getLeadReportsController } from '../controllers/report.controller';
-import { deserializeUser, requireUser } from '../middleware';
+import { Router } from "express";
+import {
+  exportStaffPerformanceExcel,
+  getProjectPerformanceReportController,
+  getStaffPerformance,
+  getLeadReportsController,
+  getBusinessAnalysisController,
+} from "../controllers/report.controller";
+import { deserializeUser, requireUser } from "../middleware";
 
 const router = Router();
 
 router.use(deserializeUser, requireUser);
 
-router.get('/staff-performance', getStaffPerformance);
+router.get("/staff-performance", getStaffPerformance);
 
-router.get('/staff-performance/export/excel', exportStaffPerformanceExcel);
+router.get("/staff-performance/export/excel", exportStaffPerformanceExcel);
 
 router.get("/project-performance", getProjectPerformanceReportController);
 
 router.get("/leads", getLeadReportsController);
 
-export default router; 
+router.get("/business-analysis", getBusinessAnalysisController);
+
+export default router;
