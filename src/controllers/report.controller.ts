@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport } from '../services/report.service';
+import { getStaffPerformanceReport, exportStaffPerformanceToExcel, getProjectPerformanceReport, getLeadReports } from '../services/report.service';
 import { StaffPerformanceReport } from '../types/report';
 import { ProjectPerformanceReport } from '../types/report';
+import { LeadReportsParams } from '../types/report';
 
 /**
  * Handles GET /api/reports/staff-performance
@@ -67,7 +68,43 @@ export async function getProjectPerformanceReportController(req: Request, res: R
       data: report
     });
   } catch (error) {
-    console.log("\n\n\n\n\n",error,"\n\n\n\n\n\n");
+    next(error);
+  }
+}
+
+/**
+ * Handles GET /api/reports/leads
+ * Accepts optional fromDate, toDate, userId, sourceId, statusId, typeId query params for flexible filtering.
+ */
+export async function getLeadReportsController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
+  try {
+    const { fromDate, toDate, userId, sourceId, statusId, typeId } = req.query;
+    
+    // Get current user info for role-based filtering
+    const currentUser = res?.locals?.user;
+    const currentUserId = currentUser?.id;
+    const currentUserRole = currentUser?.role?.role;
+
+    // For non-admin users, force userId to be their own ID
+    const filteredUserId = (currentUserRole === 'admin' || currentUserRole === 'Admin') 
+      ? (userId as string | undefined) 
+      : currentUserId;
+
+    const report = await getLeadReports({
+      fromDate: fromDate as string | undefined,
+      toDate: toDate as string | undefined,
+      userId: filteredUserId,
+      sourceId: sourceId as string | undefined,
+      statusId: statusId as string | undefined,
+      typeId: typeId as string | undefined,
+    });
+
+    return res.json({
+      status: 'success',
+      message: 'Lead reports fetched successfully',
+      data: report
+    });
+  } catch (error) {
     next(error);
   }
 } 

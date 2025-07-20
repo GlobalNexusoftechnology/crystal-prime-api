@@ -85,4 +85,72 @@ export interface ProjectPerformanceReport {
     avgResponseTimeHours: number;
     escalatedItems: number;
   };
+}
+
+export interface LeadReportsParams {
+  fromDate?: string;
+  toDate?: string;
+  userId?: string;
+  sourceId?: string;
+  statusId?: string;
+  typeId?: string;
+}
+
+export interface LeadFunnelChart {
+  totalLeads: number;
+  lostLeads: number;
+  convertedLeads: number;
+  dropOfStage: {
+    stage: string;
+    count: number;
+  };
+}
+
+export interface LeadKPIMetrics {
+  conversionRate: number;
+  avgLeadAge: number;
+  avgFollowupsLead: number;
+  topPerformingSource: string;
+  avgTimeToConvert: number;
+  pendingFollowups: number;
+  hotLeadsCount: number;
+  averageResponseTime: number;
+}
+
+export interface StaffConversionPerformance {
+  staffId: string;
+  staffName: string;
+  conversionRate: number;
+}
+
+export interface SourceWiseConversionRate {
+  source: string;
+  conversionRate: number;
+}
+
+export interface LeadFunnelStage {
+  stage: string;
+  count: number;
+  isHighlighted?: boolean;
+}
+
+export interface MonthlyLeadsData {
+  labels: string[];
+  leads: number[];
+}
+
+export interface LeadReportsData {
+  leadFunnelChart: LeadFunnelChart;
+  kpiMetrics: LeadKPIMetrics;
+  staffConversionPerformance: StaffConversionPerformance[];
+  sourceWiseConversionRates: SourceWiseConversionRate[];
+  leadFunnelStages: LeadFunnelStage[];
+  monthlyLeadsChart: MonthlyLeadsData;
+  summary: {
+    totalLeads: number;
+    convertedLeads: number;
+    lostLeads: number;
+    activeLeads: number;
+    conversionRate: number;
+  };
 } 
