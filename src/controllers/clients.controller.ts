@@ -39,7 +39,8 @@ export const clientController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllClients();
+      const searchText = req.query.searchText as string | undefined;
+      const result = await service.getAllClients(searchText);
       res.status(200).json({
         status: "success",
         message: "All Client fetched",
@@ -133,8 +134,9 @@ export const clientController = () => {
       const userId = res.locals.user.id;
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
+      const searchText = req.query.searchText as string | undefined;
 
-      const workbook = await service.exportClientsToExcel(userId, userRole);
+      const workbook = await service.exportClientsToExcel(userId, userRole, searchText);
 
       res.setHeader(
         "Content-Type",
