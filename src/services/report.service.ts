@@ -1086,16 +1086,76 @@ export async function getBusinessAnalysisReport(params: BusinessAnalysisParams):
 export async function exportBusinessAnalysisReportToExcel(params: any): Promise<{ workbook: ExcelJS.Workbook; name: string }> {
   const report = await getBusinessAnalysisReport(params);
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Business Analysis');
-  worksheet.columns = [
+
+  // 1. Lead Funnel Metrics
+  const funnelSheet = workbook.addWorksheet('LeadFunnelMetrics');
+  funnelSheet.columns = [
     { header: 'Metric', key: 'metric', width: 30 },
     { header: 'Value', key: 'value', width: 20 },
   ];
-  worksheet.addRow({ metric: 'Total Revenue', value: report.summary.totalRevenue });
-  worksheet.addRow({ metric: 'Total Projects', value: report.summary.totalProjects });
-  worksheet.addRow({ metric: 'Total Leads', value: report.summary.totalLeads });
-  worksheet.addRow({ metric: 'Total Staff', value: report.summary.totalStaff });
-  worksheet.addRow({ metric: 'Overall Performance', value: report.summary.overallPerformance });
+  Object.entries(report.leadFunnelMetrics).forEach(([metric, value]) => {
+    funnelSheet.addRow({ metric, value });
+  });
+
+  // 2. Project Delivery Metrics
+  const projectSheet = workbook.addWorksheet('ProjectDeliveryMetrics');
+  projectSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.projectDeliveryMetrics).forEach(([metric, value]) => {
+    projectSheet.addRow({ metric, value });
+  });
+
+  // 3. Financial Summary
+  const financialSheet = workbook.addWorksheet('FinancialSummary');
+  financialSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.financialSummary).forEach(([metric, value]) => {
+    financialSheet.addRow({ metric, value });
+  });
+
+  // 4. Team & Staff Performance
+  const teamSheet = workbook.addWorksheet('TeamStaffPerformance');
+  teamSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.teamStaffPerformance).forEach(([metric, value]) => {
+    teamSheet.addRow({ metric, value });
+  });
+
+  // 5. Monthly Trends
+  const trendsSheet = workbook.addWorksheet('MonthlyTrends');
+  trendsSheet.columns = [
+    { header: 'Month', key: 'month', width: 12 },
+    { header: 'Projects Started', key: 'started', width: 18 },
+    { header: 'Projects Completed', key: 'completed', width: 18 },
+    { header: 'New Leads', key: 'newLeads', width: 12 },
+    { header: 'Revenue', key: 'revenue', width: 15 },
+  ];
+  report.monthlyTrends.labels.forEach((month, i) => {
+    trendsSheet.addRow({
+      month,
+      started: report.monthlyTrends.started[i],
+      completed: report.monthlyTrends.completed[i],
+      newLeads: report.monthlyTrends.newLeads[i],
+      revenue: report.monthlyTrends.revenue[i],
+    });
+  });
+
+  // 6. Summary
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.columns = [
+    { header: 'Metric', key: 'metric', width: 25 },
+    { header: 'Value', key: 'value', width: 15 },
+  ];
+  Object.entries(report.summary).forEach(([metric, value]) => {
+    summarySheet.addRow({ metric, value });
+  });
+
   const name = `business_analysis_${Date.now()}`;
   return { workbook, name };
 }
