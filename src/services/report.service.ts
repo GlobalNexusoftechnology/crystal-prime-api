@@ -659,51 +659,92 @@ export async function getLeadReports(params: LeadReportsParams): Promise<LeadRep
 }
 
 export async function exportLeadReportToExcel(params: any): Promise<{ workbook: ExcelJS.Workbook; name: string }> {
-  // Fetch all leads for the filters
-  const leads = await leadRepo.find({
-    where: { deleted: false },
-    relations: ['source', 'type', 'status', 'assigned_to']
-  });
+  // Fetch the full report for the filters
+  const report = await getLeadReports(params);
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Leads');
-  worksheet.columns = [
-    { header: 'First Name', key: 'first_name', width: 15 },
-    { header: 'Last Name', key: 'last_name', width: 15 },
-    { header: 'Company', key: 'company', width: 20 },
-    { header: 'Phone', key: 'phone', width: 15 },
-    { header: 'Other Contact', key: 'other_contact', width: 15 },
-    { header: 'Email', key: 'email', width: 25 },
-    { header: 'Location', key: 'location', width: 15 },
-    { header: 'Budget', key: 'budget', width: 12 },
-    { header: 'Requirement', key: 'requirement', width: 20 },
-    { header: 'Possibility of Conversion', key: 'possibility_of_conversion', width: 10 },
-    { header: 'Source', key: 'source', width: 15 },
-    { header: 'Type', key: 'type', width: 15 },
-    { header: 'Status', key: 'status', width: 15 },
-    { header: 'Assigned To', key: 'assigned_to', width: 15 },
-    { header: 'Created At', key: 'created_at', width: 20 },
-    { header: 'Updated At', key: 'updated_at', width: 20 },
+
+  // 1. Lead Funnel Chart
+  const funnelSheet = workbook.addWorksheet('LeadFunnelChart');
+  funnelSheet.columns = [
+    { header: 'Total Leads', key: 'totalLeads', width: 15 },
+    { header: 'Lost Leads', key: 'lostLeads', width: 15 },
+    { header: 'Converted Leads', key: 'convertedLeads', width: 18 },
+    { header: 'Drop Off Stage', key: 'dropOfStage', width: 20 },
+    { header: 'Drop Off Count', key: 'dropOfCount', width: 15 },
   ];
-  leads.forEach(lead => {
-    worksheet.addRow({
-      first_name: lead.first_name,
-      last_name: lead.last_name,
-      company: lead.company,
-      phone: lead.phone,
-      other_contact: lead.other_contact,
-      email: Array.isArray(lead.email) ? lead.email.join(', ') : lead.email,
-      location: lead.location,
-      budget: lead.budget,
-      requirement: lead.requirement,
-      possibility_of_conversion: lead.possibility_of_conversion,
-      source: lead.source?.name,
-      type: lead.type?.name,
-      status: lead.status?.name,
-      assigned_to: lead.assigned_to ? `${lead.assigned_to.first_name || ''} ${lead.assigned_to.last_name || ''}`.trim() : '',
-      created_at: lead.created_at,
-      updated_at: lead.updated_at,
+  funnelSheet.addRow({
+    totalLeads: report.leadFunnelChart.totalLeads,
+    lostLeads: report.leadFunnelChart.lostLeads,
+    convertedLeads: report.leadFunnelChart.convertedLeads,
+    dropOfStage: report.leadFunnelChart.dropOfStage.stage,
+    dropOfCount: report.leadFunnelChart.dropOfStage.count,
+  });
+
+  // 2. KPI Metrics
+  const kpiSheet = workbook.addWorksheet('KPIMetrics');
+  kpiSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.kpiMetrics).forEach(([metric, value]) => {
+    kpiSheet.addRow({ metric, value });
+  });
+
+  // 3. Staff Conversion Performance
+  const staffSheet = workbook.addWorksheet('StaffConversionPerformance');
+  staffSheet.columns = [
+    { header: 'Staff ID', key: 'staffId', width: 15 },
+    { header: 'Staff Name', key: 'staffName', width: 25 },
+    { header: 'Conversion Rate (%)', key: 'conversionRate', width: 20 },
+  ];
+  report.staffConversionPerformance.forEach(staff => {
+    staffSheet.addRow(staff);
+  });
+
+  // 4. Source Wise Conversion Rates
+  const sourceSheet = workbook.addWorksheet('SourceWiseConversionRates');
+  sourceSheet.columns = [
+    { header: 'Source', key: 'source', width: 20 },
+    { header: 'Conversion Rate (%)', key: 'conversionRate', width: 20 },
+  ];
+  report.sourceWiseConversionRates.forEach(source => {
+    sourceSheet.addRow(source);
+  });
+
+  // 5. Lead Funnel Stages
+  const stageSheet = workbook.addWorksheet('LeadFunnelStages');
+  stageSheet.columns = [
+    { header: 'Stage', key: 'stage', width: 25 },
+    { header: 'Count', key: 'count', width: 15 },
+    { header: 'Is Highlighted', key: 'isHighlighted', width: 15 },
+  ];
+  report.leadFunnelStages.forEach(stage => {
+    stageSheet.addRow(stage);
+  });
+
+  // 6. Monthly Leads Chart
+  const monthlySheet = workbook.addWorksheet('MonthlyLeadsChart');
+  monthlySheet.columns = [
+    { header: 'Month', key: 'month', width: 12 },
+    { header: 'Leads', key: 'leads', width: 10 },
+  ];
+  report.monthlyLeadsChart.labels.forEach((month, i) => {
+    monthlySheet.addRow({
+      month,
+      leads: report.monthlyLeadsChart.leads[i],
     });
   });
+
+  // 7. Summary
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.columns = [
+    { header: 'Metric', key: 'metric', width: 25 },
+    { header: 'Value', key: 'value', width: 15 },
+  ];
+  Object.entries(report.summary).forEach(([metric, value]) => {
+    summarySheet.addRow({ metric, value });
+  });
+
   const name = `lead_report_${Date.now()}`;
   return { workbook, name };
 }
