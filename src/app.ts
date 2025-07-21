@@ -42,6 +42,7 @@ import dashboardRoutes from "./routes/dashboard.routes";
 import eilogTypeRouter from './routes/eilog-type.routes';
 import eilogHeadRouter from './routes/eilog-head.routes';
 import eilogRouter from './routes/eilog.routes';
+import reportRoutes from './routes/report.routes';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -112,6 +113,7 @@ AppDataSource.initialize()
     app.use('/api/ei-log-types', eilogTypeRouter);
     app.use('/api/ei-log-heads', eilogHeadRouter);
     app.use('/api/ei-logs', eilogRouter);
+    app.use('/api/reports', reportRoutes);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
