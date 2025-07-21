@@ -332,23 +332,14 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
     ];
 
     // Document Summary (filtered by date)
-    const docTypeMap: Record<string, { count: number; last_updated: Date | string | null }> = {};
-    for (const att of (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at))) {
-        if (!att.file_type) continue;
-        if (!docTypeMap[att.file_type]) {
-            docTypeMap[att.file_type] = { count: 0, last_updated: att.created_at };
-        }
-        docTypeMap[att.file_type].count++;
-        if (!docTypeMap[att.file_type].last_updated || (att.created_at && new Date(att.created_at) > new Date(docTypeMap[att.file_type].last_updated!))) {
-            docTypeMap[att.file_type].last_updated = att.created_at;
-        }
-    }
-    const documentSummary = Object.entries(docTypeMap).map(([file_type, data]) => ({
-        file_type,
-        count: data.count,
-        last_updated: data.last_updated ? new Date(data.last_updated).toLocaleDateString() : null
-    }));
-    const totalFiles = (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at)).length;
+    const documentSummary = (project.attachments || [])
+        .filter(a => (!dateFrom && !dateTo) || inRange(a.created_at))
+        .map(att => ({
+            file_url: att.file_path || null,
+            last_updated: att.created_at ? new Date(att.created_at).toLocaleDateString() : null,
+            file_name: att.file_name || null
+        }));
+    const totalFiles = documentSummary.length;
 
     // Follow-Up & Communication Matrix (unchanged, placeholder)
     const followUpMatrix = {
@@ -537,23 +528,23 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
     if (!docColumnsSet) {
       docSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        { header: 'File Type', key: 'file_type', width: 20 },
-        { header: 'File Count', key: 'count', width: 12 },
+        { header: 'File URL', key: 'file_url', width: 40 },
         { header: 'Last Updated', key: 'last_updated', width: 18 },
+        { header: 'File Name', key: 'file_name', width: 25 },
       ];
       docColumnsSet = true;
     }
     if (Array.isArray(report.documentSummary.files)) {
-      report.documentSummary.files.forEach((file: { file_type: string; count: number; last_updated: string }, idx: number) => {
+      report.documentSummary.files.forEach((file: { file_url: string; last_updated: string; file_name: string }, idx: number) => {
         docSheet.addRow({
           sno: docSno++,
-          file_type: file.file_type,
-          count: file.count,
+          file_url: { text: file.file_name || file.file_url, hyperlink: file.file_url },
           last_updated: file.last_updated,
+          file_name: file.file_name,
         });
       });
       docSheet.addRow({});
-      docSheet.addRow({ file_type: 'Total Files', count: report.documentSummary.totalFiles });
+      docSheet.addRow({ file_name: 'Total Files', file_url: report.documentSummary.totalFiles });
     }
     // followUpMatrix
     if (!followupColumnsSet) {
