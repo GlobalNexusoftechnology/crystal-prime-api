@@ -458,55 +458,76 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
   });
   const workbook = new ExcelJS.Workbook();
 
-  // Prepare sheets for each section
-  const basicSheet = workbook.addWorksheet('basicProjectInfo');
-  const costSheet = workbook.addWorksheet('costBudgetAnalysis');
-  const taskSheet = workbook.addWorksheet('taskMetrics');
-  const docSheet = workbook.addWorksheet('documentSummary');
-  const followupSheet = workbook.addWorksheet('followUpMatrix');
-  const timelineSheet = workbook.addWorksheet('timelineAnalysis');
-  const milestoneSheet = workbook.addWorksheet('milestoneSummary');
-  const resourceSheet = workbook.addWorksheet('resourceUtilization');
+  // 1. Basic Project Info
+  const basicSheet = workbook.addWorksheet('BasicProjectInfo');
+  let basicColumnsSet = false;
+  // 2. Cost & Budget Analysis
+  const costSheet = workbook.addWorksheet('CostBudgetAnalysis');
+  let costColumnsSet = false;
+  // 3. Task Metrics
+  const taskSheet = workbook.addWorksheet('TaskMetrics');
+  let taskColumnsSet = false;
+  // 4. Document Summary
+  const docSheet = workbook.addWorksheet('DocumentSummary');
+  let docColumnsSet = false;
+  // 5. Follow-Up Matrix
+  const followupSheet = workbook.addWorksheet('FollowUpMatrix');
+  let followupColumnsSet = false;
+  // 6. Timeline Analysis
+  const timelineSheet = workbook.addWorksheet('TimelineAnalysis');
+  let timelineColumnsSet = false;
+  // 7. Milestone Summary
+  const milestoneSheet = workbook.addWorksheet('MilestoneSummary');
+  let milestoneColumnsSet = false;
+  // 8. Resource Utilization
+  const resourceSheet = workbook.addWorksheet('ResourceUtilization');
+  let resourceColumnsSet = false;
+  // 9. Assigned Team
+  const assignedTeamSheet = workbook.addWorksheet('AssignedTeam');
+  assignedTeamSheet.columns = [
+    { header: 'Project S.No.', key: 'projectSno', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Role', key: 'role', width: 18 },
+  ];
 
-  // For each project, get the full report and add a row to each sheet
-  let basicColumnsSet = false, costColumnsSet = false, taskColumnsSet = false, docColumnsSet = false, followupColumnsSet = false, timelineColumnsSet = false, milestoneColumnsSet = false, resourceColumnsSet = false;
+  // 10. Project Manager
+  const projectManagerSheet = workbook.addWorksheet('ProjectManager');
+  projectManagerSheet.columns = [
+    { header: 'Project S.No.', key: 'projectSno', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Role', key: 'role', width: 18 },
+  ];
+
   let basicSno = 1, costSno = 1, taskSno = 1, docSno = 1, followupSno = 1, timelineSno = 1, milestoneSno = 1, resourceSno = 1;
   for (const project of projects) {
     const report = await getProjectPerformanceReport({ projectId: project.id });
-    // basicProjectInfo
+    // Basic Project Info
     const basicInfo = { ...report.basicProjectInfo };
-    // Fix projectManager
-    if (basicInfo.projectManager && typeof basicInfo.projectManager === 'object') {
-      basicInfo.projectManager = `${basicInfo.projectManager.first_name || ''} ${basicInfo.projectManager.last_name || ''}`.trim();
-    } else if (!basicInfo.projectManager) {
-      basicInfo.projectManager = '';
-    }
-    // Fix assignedTeam
-    if (Array.isArray(basicInfo.assignedTeam)) {
-      basicInfo.assignedTeam = basicInfo.assignedTeam
-        .map((member: { first_name?: string; last_name?: string } | string) =>
-          typeof member === 'object'
-            ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
-            : member
-        )
-        .filter(Boolean)
-        .join(', ');
-    } else if (!basicInfo.assignedTeam) {
-      basicInfo.assignedTeam = '';
-    }
-    // Fix projectPhase
-    if (!basicInfo.projectPhase) {
-      basicInfo.projectPhase = '';
-    }
+    // Remove 'assignedTeam' and 'projectManager' from basicInfo before adding to worksheet
+    const { assignedTeam, projectManager, ...basicInfoWithoutTeamManager } = basicInfo;
     if (!basicColumnsSet) {
       basicSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        ...Object.keys(basicInfo).map(key => ({ header: key, key, width: 20 }))
+        ...Object.keys(basicInfoWithoutTeamManager).map(key => ({ header: key, key, width: 20 }))
       ];
       basicColumnsSet = true;
     }
-    basicSheet.addRow({ sno: basicSno++, ...basicInfo });
-    // costBudgetAnalysis
+    basicSheet.addRow({ sno: basicSno++, ...basicInfoWithoutTeamManager });
+    // Project Manager worksheet
+    if (projectManager && typeof projectManager === 'object') {
+      projectManagerSheet.addRow({
+        projectSno: basicSno - 1,
+        name: projectManager.name || '',
+        email: projectManager.email || '',
+        phone: projectManager.phone || '',
+        role: projectManager.role || '',
+      });
+    }
+    // Cost & Budget Analysis
     if (!costColumnsSet) {
       costSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -515,16 +536,37 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       costColumnsSet = true;
     }
     costSheet.addRow({ sno: costSno++, ...report.costBudgetAnalysis });
-    // taskMetrics
+    // Task Metrics
     if (!taskColumnsSet) {
       taskSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        ...Object.keys(report.taskMetrics).map(key => ({ header: key, key, width: 20 }))
+        ...Object.keys(report.taskMetrics)
+          .filter(key => key !== 'chart')
+          .map(key => ({ header: key, key, width: 20 }))
       ];
       taskColumnsSet = true;
     }
-    taskSheet.addRow({ sno: taskSno++, ...report.taskMetrics });
-    // documentSummary
+    const taskMetricsRow = { ...report.taskMetrics };
+    if (typeof taskMetricsRow.topPerformer === 'object' && taskMetricsRow.topPerformer !== null) {
+      taskMetricsRow.topPerformer = taskMetricsRow.topPerformer.name || '';
+    } else if (!taskMetricsRow.topPerformer) {
+      taskMetricsRow.topPerformer = '';
+    }
+    // Remove 'chart' property from row
+    delete taskMetricsRow.chart;
+    taskSheet.addRow({ sno: taskSno++, ...taskMetricsRow });
+    // Task Metrics Chart (separate sheet)
+    if (!workbook.getWorksheet('TaskMetricsChart')) {
+      const chartSheet = workbook.addWorksheet('TaskMetricsChart');
+      chartSheet.columns = [
+        { header: 'Label', key: 'label', width: 20 },
+        { header: 'Value', key: 'value', width: 15 },
+      ];
+      if (Array.isArray(report.taskMetrics.chart)) {
+        report.taskMetrics.chart.forEach((row: { label: string; value: number }) => chartSheet.addRow(row));
+      }
+    }
+    // Document Summary
     if (!docColumnsSet) {
       docSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -546,7 +588,7 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       docSheet.addRow({});
       docSheet.addRow({ file_name: 'Total Files', file_url: report.documentSummary.totalFiles });
     }
-    // followUpMatrix
+    // Follow-Up Matrix
     if (!followupColumnsSet) {
       followupSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -555,7 +597,7 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       followupColumnsSet = true;
     }
     followupSheet.addRow({ sno: followupSno++, ...report.followUpMatrix });
-    // timelineAnalysis
+    // Timeline Analysis
     if (!timelineColumnsSet) {
       timelineSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -564,7 +606,7 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       timelineColumnsSet = true;
     }
     timelineSheet.addRow({ sno: timelineSno++, ...report.timelineAnalysis });
-    // milestoneSummary (array)
+    // Milestone Summary (array)
     if (Array.isArray(report.milestoneSummary)) {
       if (!milestoneColumnsSet && report.milestoneSummary.length > 0) {
         milestoneSheet.columns = [
@@ -585,6 +627,20 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
         resourceColumnsSet = true;
       }
       report.resourceUtilization.forEach((row: Record<string, unknown>, idx: number) => resourceSheet.addRow({ sno: resourceSno++, ...row }));
+    }
+    // Assigned Team worksheet
+    if (Array.isArray(report.basicProjectInfo.assignedTeam)) {
+      report.basicProjectInfo.assignedTeam.forEach((member: any) => {
+        if (member && typeof member === 'object') {
+          assignedTeamSheet.addRow({
+            projectSno: basicSno,
+            name: member.name || '',
+            email: member.email || '',
+            phone: member.phone || '',
+            role: member.role || '',
+          });
+        }
+      });
     }
   }
   const name = `project_performance_${Date.now()}`;
