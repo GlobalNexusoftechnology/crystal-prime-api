@@ -332,23 +332,14 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
     ];
 
     // Document Summary (filtered by date)
-    const docTypeMap: Record<string, { count: number; last_updated: Date | string | null }> = {};
-    for (const att of (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at))) {
-        if (!att.file_type) continue;
-        if (!docTypeMap[att.file_type]) {
-            docTypeMap[att.file_type] = { count: 0, last_updated: att.created_at };
-        }
-        docTypeMap[att.file_type].count++;
-        if (!docTypeMap[att.file_type].last_updated || (att.created_at && new Date(att.created_at) > new Date(docTypeMap[att.file_type].last_updated!))) {
-            docTypeMap[att.file_type].last_updated = att.created_at;
-        }
-    }
-    const documentSummary = Object.entries(docTypeMap).map(([file_type, data]) => ({
-        file_type,
-        count: data.count,
-        last_updated: data.last_updated ? new Date(data.last_updated).toLocaleDateString() : null
-    }));
-    const totalFiles = (project.attachments || []).filter(a => (!dateFrom && !dateTo) || inRange(a.created_at)).length;
+    const documentSummary = (project.attachments || [])
+        .filter(a => (!dateFrom && !dateTo) || inRange(a.created_at))
+        .map(att => ({
+            file_url: att.file_path || null,
+            last_updated: att.created_at ? new Date(att.created_at).toLocaleDateString() : null,
+            file_name: att.file_name || null
+        }));
+    const totalFiles = documentSummary.length;
 
     // Follow-Up & Communication Matrix (unchanged, placeholder)
     const followUpMatrix = {
@@ -467,55 +458,76 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
   });
   const workbook = new ExcelJS.Workbook();
 
-  // Prepare sheets for each section
-  const basicSheet = workbook.addWorksheet('basicProjectInfo');
-  const costSheet = workbook.addWorksheet('costBudgetAnalysis');
-  const taskSheet = workbook.addWorksheet('taskMetrics');
-  const docSheet = workbook.addWorksheet('documentSummary');
-  const followupSheet = workbook.addWorksheet('followUpMatrix');
-  const timelineSheet = workbook.addWorksheet('timelineAnalysis');
-  const milestoneSheet = workbook.addWorksheet('milestoneSummary');
-  const resourceSheet = workbook.addWorksheet('resourceUtilization');
+  // 1. Basic Project Info
+  const basicSheet = workbook.addWorksheet('BasicProjectInfo');
+  let basicColumnsSet = false;
+  // 2. Cost & Budget Analysis
+  const costSheet = workbook.addWorksheet('CostBudgetAnalysis');
+  let costColumnsSet = false;
+  // 3. Task Metrics
+  const taskSheet = workbook.addWorksheet('TaskMetrics');
+  let taskColumnsSet = false;
+  // 4. Document Summary
+  const docSheet = workbook.addWorksheet('DocumentSummary');
+  let docColumnsSet = false;
+  // 5. Follow-Up Matrix
+  const followupSheet = workbook.addWorksheet('FollowUpMatrix');
+  let followupColumnsSet = false;
+  // 6. Timeline Analysis
+  const timelineSheet = workbook.addWorksheet('TimelineAnalysis');
+  let timelineColumnsSet = false;
+  // 7. Milestone Summary
+  const milestoneSheet = workbook.addWorksheet('MilestoneSummary');
+  let milestoneColumnsSet = false;
+  // 8. Resource Utilization
+  const resourceSheet = workbook.addWorksheet('ResourceUtilization');
+  let resourceColumnsSet = false;
+  // 9. Assigned Team
+  const assignedTeamSheet = workbook.addWorksheet('AssignedTeam');
+  assignedTeamSheet.columns = [
+    { header: 'Project S.No.', key: 'projectSno', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Role', key: 'role', width: 18 },
+  ];
 
-  // For each project, get the full report and add a row to each sheet
-  let basicColumnsSet = false, costColumnsSet = false, taskColumnsSet = false, docColumnsSet = false, followupColumnsSet = false, timelineColumnsSet = false, milestoneColumnsSet = false, resourceColumnsSet = false;
+  // 10. Project Manager
+  const projectManagerSheet = workbook.addWorksheet('ProjectManager');
+  projectManagerSheet.columns = [
+    { header: 'Project S.No.', key: 'projectSno', width: 12 },
+    { header: 'Name', key: 'name', width: 25 },
+    { header: 'Email', key: 'email', width: 25 },
+    { header: 'Phone', key: 'phone', width: 18 },
+    { header: 'Role', key: 'role', width: 18 },
+  ];
+
   let basicSno = 1, costSno = 1, taskSno = 1, docSno = 1, followupSno = 1, timelineSno = 1, milestoneSno = 1, resourceSno = 1;
   for (const project of projects) {
     const report = await getProjectPerformanceReport({ projectId: project.id });
-    // basicProjectInfo
+    // Basic Project Info
     const basicInfo = { ...report.basicProjectInfo };
-    // Fix projectManager
-    if (basicInfo.projectManager && typeof basicInfo.projectManager === 'object') {
-      basicInfo.projectManager = `${basicInfo.projectManager.first_name || ''} ${basicInfo.projectManager.last_name || ''}`.trim();
-    } else if (!basicInfo.projectManager) {
-      basicInfo.projectManager = '';
-    }
-    // Fix assignedTeam
-    if (Array.isArray(basicInfo.assignedTeam)) {
-      basicInfo.assignedTeam = basicInfo.assignedTeam
-        .map((member: { first_name?: string; last_name?: string } | string) =>
-          typeof member === 'object'
-            ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
-            : member
-        )
-        .filter(Boolean)
-        .join(', ');
-    } else if (!basicInfo.assignedTeam) {
-      basicInfo.assignedTeam = '';
-    }
-    // Fix projectPhase
-    if (!basicInfo.projectPhase) {
-      basicInfo.projectPhase = '';
-    }
+    // Remove 'assignedTeam' and 'projectManager' from basicInfo before adding to worksheet
+    const { assignedTeam, projectManager, ...basicInfoWithoutTeamManager } = basicInfo;
     if (!basicColumnsSet) {
       basicSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        ...Object.keys(basicInfo).map(key => ({ header: key, key, width: 20 }))
+        ...Object.keys(basicInfoWithoutTeamManager).map(key => ({ header: key, key, width: 20 }))
       ];
       basicColumnsSet = true;
     }
-    basicSheet.addRow({ sno: basicSno++, ...basicInfo });
-    // costBudgetAnalysis
+    basicSheet.addRow({ sno: basicSno++, ...basicInfoWithoutTeamManager });
+    // Project Manager worksheet
+    if (projectManager && typeof projectManager === 'object') {
+      projectManagerSheet.addRow({
+        projectSno: basicSno - 1,
+        name: projectManager.name || '',
+        email: projectManager.email || '',
+        phone: projectManager.phone || '',
+        role: projectManager.role || '',
+      });
+    }
+    // Cost & Budget Analysis
     if (!costColumnsSet) {
       costSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -524,38 +536,59 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       costColumnsSet = true;
     }
     costSheet.addRow({ sno: costSno++, ...report.costBudgetAnalysis });
-    // taskMetrics
+    // Task Metrics
     if (!taskColumnsSet) {
       taskSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        ...Object.keys(report.taskMetrics).map(key => ({ header: key, key, width: 20 }))
+        ...Object.keys(report.taskMetrics)
+          .filter(key => key !== 'chart')
+          .map(key => ({ header: key, key, width: 20 }))
       ];
       taskColumnsSet = true;
     }
-    taskSheet.addRow({ sno: taskSno++, ...report.taskMetrics });
-    // documentSummary
+    const taskMetricsRow = { ...report.taskMetrics };
+    if (typeof taskMetricsRow.topPerformer === 'object' && taskMetricsRow.topPerformer !== null) {
+      taskMetricsRow.topPerformer = taskMetricsRow.topPerformer.name || '';
+    } else if (!taskMetricsRow.topPerformer) {
+      taskMetricsRow.topPerformer = '';
+    }
+    // Remove 'chart' property from row
+    delete taskMetricsRow.chart;
+    taskSheet.addRow({ sno: taskSno++, ...taskMetricsRow });
+    // Task Metrics Chart (separate sheet)
+    if (!workbook.getWorksheet('TaskMetricsChart')) {
+      const chartSheet = workbook.addWorksheet('TaskMetricsChart');
+      chartSheet.columns = [
+        { header: 'Label', key: 'label', width: 20 },
+        { header: 'Value', key: 'value', width: 15 },
+      ];
+      if (Array.isArray(report.taskMetrics.chart)) {
+        report.taskMetrics.chart.forEach((row: { label: string; value: number }) => chartSheet.addRow(row));
+      }
+    }
+    // Document Summary
     if (!docColumnsSet) {
       docSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
-        { header: 'File Type', key: 'file_type', width: 20 },
-        { header: 'File Count', key: 'count', width: 12 },
+        { header: 'File URL', key: 'file_url', width: 40 },
         { header: 'Last Updated', key: 'last_updated', width: 18 },
+        { header: 'File Name', key: 'file_name', width: 25 },
       ];
       docColumnsSet = true;
     }
     if (Array.isArray(report.documentSummary.files)) {
-      report.documentSummary.files.forEach((file: { file_type: string; count: number; last_updated: string }, idx: number) => {
+      report.documentSummary.files.forEach((file: { file_url: string; last_updated: string; file_name: string }, idx: number) => {
         docSheet.addRow({
           sno: docSno++,
-          file_type: file.file_type,
-          count: file.count,
+          file_url: { text: file.file_name || file.file_url, hyperlink: file.file_url },
           last_updated: file.last_updated,
+          file_name: file.file_name,
         });
       });
       docSheet.addRow({});
-      docSheet.addRow({ file_type: 'Total Files', count: report.documentSummary.totalFiles });
+      docSheet.addRow({ file_name: 'Total Files', file_url: report.documentSummary.totalFiles });
     }
-    // followUpMatrix
+    // Follow-Up Matrix
     if (!followupColumnsSet) {
       followupSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -564,7 +597,7 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       followupColumnsSet = true;
     }
     followupSheet.addRow({ sno: followupSno++, ...report.followUpMatrix });
-    // timelineAnalysis
+    // Timeline Analysis
     if (!timelineColumnsSet) {
       timelineSheet.columns = [
         { header: 'S.No.', key: 'sno', width: 8 },
@@ -573,7 +606,7 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
       timelineColumnsSet = true;
     }
     timelineSheet.addRow({ sno: timelineSno++, ...report.timelineAnalysis });
-    // milestoneSummary (array)
+    // Milestone Summary (array)
     if (Array.isArray(report.milestoneSummary)) {
       if (!milestoneColumnsSet && report.milestoneSummary.length > 0) {
         milestoneSheet.columns = [
@@ -594,6 +627,20 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
         resourceColumnsSet = true;
       }
       report.resourceUtilization.forEach((row: Record<string, unknown>, idx: number) => resourceSheet.addRow({ sno: resourceSno++, ...row }));
+    }
+    // Assigned Team worksheet
+    if (Array.isArray(report.basicProjectInfo.assignedTeam)) {
+      report.basicProjectInfo.assignedTeam.forEach((member: any) => {
+        if (member && typeof member === 'object') {
+          assignedTeamSheet.addRow({
+            projectSno: basicSno,
+            name: member.name || '',
+            email: member.email || '',
+            phone: member.phone || '',
+            role: member.role || '',
+          });
+        }
+      });
     }
   }
   const name = `project_performance_${Date.now()}`;
@@ -668,51 +715,92 @@ export async function getLeadReports(params: LeadReportsParams): Promise<LeadRep
 }
 
 export async function exportLeadReportToExcel(params: any): Promise<{ workbook: ExcelJS.Workbook; name: string }> {
-  // Fetch all leads for the filters
-  const leads = await leadRepo.find({
-    where: { deleted: false },
-    relations: ['source', 'type', 'status', 'assigned_to']
-  });
+  // Fetch the full report for the filters
+  const report = await getLeadReports(params);
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Leads');
-  worksheet.columns = [
-    { header: 'First Name', key: 'first_name', width: 15 },
-    { header: 'Last Name', key: 'last_name', width: 15 },
-    { header: 'Company', key: 'company', width: 20 },
-    { header: 'Phone', key: 'phone', width: 15 },
-    { header: 'Other Contact', key: 'other_contact', width: 15 },
-    { header: 'Email', key: 'email', width: 25 },
-    { header: 'Location', key: 'location', width: 15 },
-    { header: 'Budget', key: 'budget', width: 12 },
-    { header: 'Requirement', key: 'requirement', width: 20 },
-    { header: 'Possibility of Conversion', key: 'possibility_of_conversion', width: 10 },
-    { header: 'Source', key: 'source', width: 15 },
-    { header: 'Type', key: 'type', width: 15 },
-    { header: 'Status', key: 'status', width: 15 },
-    { header: 'Assigned To', key: 'assigned_to', width: 15 },
-    { header: 'Created At', key: 'created_at', width: 20 },
-    { header: 'Updated At', key: 'updated_at', width: 20 },
+
+  // 1. Lead Funnel Chart
+  const funnelSheet = workbook.addWorksheet('LeadFunnelChart');
+  funnelSheet.columns = [
+    { header: 'Total Leads', key: 'totalLeads', width: 15 },
+    { header: 'Lost Leads', key: 'lostLeads', width: 15 },
+    { header: 'Converted Leads', key: 'convertedLeads', width: 18 },
+    { header: 'Drop Off Stage', key: 'dropOfStage', width: 20 },
+    { header: 'Drop Off Count', key: 'dropOfCount', width: 15 },
   ];
-  leads.forEach(lead => {
-    worksheet.addRow({
-      first_name: lead.first_name,
-      last_name: lead.last_name,
-      company: lead.company,
-      phone: lead.phone,
-      other_contact: lead.other_contact,
-      email: Array.isArray(lead.email) ? lead.email.join(', ') : lead.email,
-      location: lead.location,
-      budget: lead.budget,
-      requirement: lead.requirement,
-      possibility_of_conversion: lead.possibility_of_conversion,
-      source: lead.source?.name,
-      type: lead.type?.name,
-      status: lead.status?.name,
-      assigned_to: lead.assigned_to ? `${lead.assigned_to.first_name || ''} ${lead.assigned_to.last_name || ''}`.trim() : '',
-      created_at: lead.created_at,
-      updated_at: lead.updated_at,
+  funnelSheet.addRow({
+    totalLeads: report.leadFunnelChart.totalLeads,
+    lostLeads: report.leadFunnelChart.lostLeads,
+    convertedLeads: report.leadFunnelChart.convertedLeads,
+    dropOfStage: report.leadFunnelChart.dropOfStage.stage,
+    dropOfCount: report.leadFunnelChart.dropOfStage.count,
+  });
+
+  // 2. KPI Metrics
+  const kpiSheet = workbook.addWorksheet('KPIMetrics');
+  kpiSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.kpiMetrics).forEach(([metric, value]) => {
+    kpiSheet.addRow({ metric, value });
+  });
+
+  // 3. Staff Conversion Performance
+  const staffSheet = workbook.addWorksheet('StaffConversionPerformance');
+  staffSheet.columns = [
+    { header: 'Staff ID', key: 'staffId', width: 15 },
+    { header: 'Staff Name', key: 'staffName', width: 25 },
+    { header: 'Conversion Rate (%)', key: 'conversionRate', width: 20 },
+  ];
+  report.staffConversionPerformance.forEach(staff => {
+    staffSheet.addRow(staff);
+  });
+
+  // 4. Source Wise Conversion Rates
+  const sourceSheet = workbook.addWorksheet('SourceWiseConversionRates');
+  sourceSheet.columns = [
+    { header: 'Source', key: 'source', width: 20 },
+    { header: 'Conversion Rate (%)', key: 'conversionRate', width: 20 },
+  ];
+  report.sourceWiseConversionRates.forEach(source => {
+    sourceSheet.addRow(source);
+  });
+
+  // 5. Lead Funnel Stages
+  const stageSheet = workbook.addWorksheet('LeadFunnelStages');
+  stageSheet.columns = [
+    { header: 'Stage', key: 'stage', width: 25 },
+    { header: 'Count', key: 'count', width: 15 },
+    { header: 'Is Highlighted', key: 'isHighlighted', width: 15 },
+  ];
+  report.leadFunnelStages.forEach(stage => {
+    stageSheet.addRow(stage);
+  });
+
+  // 6. Monthly Leads Chart
+  const monthlySheet = workbook.addWorksheet('MonthlyLeadsChart');
+  monthlySheet.columns = [
+    { header: 'Month', key: 'month', width: 12 },
+    { header: 'Leads', key: 'leads', width: 10 },
+  ];
+  report.monthlyLeadsChart.labels.forEach((month, i) => {
+    monthlySheet.addRow({
+      month,
+      leads: report.monthlyLeadsChart.leads[i],
     });
   });
+
+  // 7. Summary
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.columns = [
+    { header: 'Metric', key: 'metric', width: 25 },
+    { header: 'Value', key: 'value', width: 15 },
+  ];
+  Object.entries(report.summary).forEach(([metric, value]) => {
+    summarySheet.addRow({ metric, value });
+  });
+
   const name = `lead_report_${Date.now()}`;
   return { workbook, name };
 }
@@ -1054,16 +1142,76 @@ export async function getBusinessAnalysisReport(params: BusinessAnalysisParams):
 export async function exportBusinessAnalysisReportToExcel(params: any): Promise<{ workbook: ExcelJS.Workbook; name: string }> {
   const report = await getBusinessAnalysisReport(params);
   const workbook = new ExcelJS.Workbook();
-  const worksheet = workbook.addWorksheet('Business Analysis');
-  worksheet.columns = [
+
+  // 1. Lead Funnel Metrics
+  const funnelSheet = workbook.addWorksheet('LeadFunnelMetrics');
+  funnelSheet.columns = [
     { header: 'Metric', key: 'metric', width: 30 },
     { header: 'Value', key: 'value', width: 20 },
   ];
-  worksheet.addRow({ metric: 'Total Revenue', value: report.summary.totalRevenue });
-  worksheet.addRow({ metric: 'Total Projects', value: report.summary.totalProjects });
-  worksheet.addRow({ metric: 'Total Leads', value: report.summary.totalLeads });
-  worksheet.addRow({ metric: 'Total Staff', value: report.summary.totalStaff });
-  worksheet.addRow({ metric: 'Overall Performance', value: report.summary.overallPerformance });
+  Object.entries(report.leadFunnelMetrics).forEach(([metric, value]) => {
+    funnelSheet.addRow({ metric, value });
+  });
+
+  // 2. Project Delivery Metrics
+  const projectSheet = workbook.addWorksheet('ProjectDeliveryMetrics');
+  projectSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.projectDeliveryMetrics).forEach(([metric, value]) => {
+    projectSheet.addRow({ metric, value });
+  });
+
+  // 3. Financial Summary
+  const financialSheet = workbook.addWorksheet('FinancialSummary');
+  financialSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.financialSummary).forEach(([metric, value]) => {
+    financialSheet.addRow({ metric, value });
+  });
+
+  // 4. Team & Staff Performance
+  const teamSheet = workbook.addWorksheet('TeamStaffPerformance');
+  teamSheet.columns = [
+    { header: 'Metric', key: 'metric', width: 30 },
+    { header: 'Value', key: 'value', width: 20 },
+  ];
+  Object.entries(report.teamStaffPerformance).forEach(([metric, value]) => {
+    teamSheet.addRow({ metric, value });
+  });
+
+  // 5. Monthly Trends
+  const trendsSheet = workbook.addWorksheet('MonthlyTrends');
+  trendsSheet.columns = [
+    { header: 'Month', key: 'month', width: 12 },
+    { header: 'Projects Started', key: 'started', width: 18 },
+    { header: 'Projects Completed', key: 'completed', width: 18 },
+    { header: 'New Leads', key: 'newLeads', width: 12 },
+    { header: 'Revenue', key: 'revenue', width: 15 },
+  ];
+  report.monthlyTrends.labels.forEach((month, i) => {
+    trendsSheet.addRow({
+      month,
+      started: report.monthlyTrends.started[i],
+      completed: report.monthlyTrends.completed[i],
+      newLeads: report.monthlyTrends.newLeads[i],
+      revenue: report.monthlyTrends.revenue[i],
+    });
+  });
+
+  // 6. Summary
+  const summarySheet = workbook.addWorksheet('Summary');
+  summarySheet.columns = [
+    { header: 'Metric', key: 'metric', width: 25 },
+    { header: 'Value', key: 'value', width: 15 },
+  ];
+  Object.entries(report.summary).forEach(([metric, value]) => {
+    summarySheet.addRow({ metric, value });
+  });
+
   const name = `business_analysis_${Date.now()}`;
   return { workbook, name };
 }
