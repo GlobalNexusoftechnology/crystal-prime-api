@@ -223,10 +223,10 @@ export const resetPassword = async (
   next: NextFunction
 ) => {
   try {
-    const { email, oldPassword, newPassword } = req.body;
+    const { email, newPassword } = req.body;
 
-    if (!email || !oldPassword || !newPassword) {
-      return res.status(400).json({ message: "Email, old password, and new password are required." });
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Email and New Password are required." });
     }
 
     const user = await User.findOne({ where: { email } });
@@ -235,10 +235,7 @@ export const resetPassword = async (
       return res.status(400).json({ message: "OTP verification required before resetting password." });
     }
 
-    const isPasswordMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordMatch) {
-      return res.status(401).json({ message: "Old password is incorrect." });
-    }
+  
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
