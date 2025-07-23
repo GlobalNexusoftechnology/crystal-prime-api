@@ -1,9 +1,9 @@
 import express from "express";
 import {
+  forgotPassword,
   loginUserHandler,
   registerUserHandler,
   resetPassword,
-  sendOtp,
   verifyOtp,
 } from "../controllers/auth.controller";
 import { validate } from "../middleware/validate";
@@ -22,12 +22,12 @@ router.post("/register", validate(createUserSchema), registerUserHandler);
 router.post("/login", validate(loginUserSchema), loginUserHandler);
 
 // Send OTP to user's email or phone
-router.post("/sendOTP", sendOtp);
+router.post("/forgot-password", forgotPassword);
 
 // Verify OTP for authentication or password reset
-router.post("/verifyOTP", verifyOtp);
+router.post("/verify-otp", verifyOtp);
 
 // Reset user password using verified OTP
-router.post("/resetPassword", resetPassword);
+router.post("/reset-password", resetPassword);
 
 export default router;
