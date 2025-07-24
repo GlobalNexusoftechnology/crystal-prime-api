@@ -13,6 +13,7 @@ import {
   FollowupStatus,
 } from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
+import { Clients } from "../entities/clients.entity";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -20,6 +21,7 @@ const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
 const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
+const clientRepo = AppDataSource.getRepository(Clients);
 
 const notificationService = NotificationService();
 // Create lead
@@ -364,11 +366,38 @@ export const LeadService = () => {
           : await leadSourceRepo.findOne({ where: { id: source_id } });
     }
 
-    if (status_id !== undefined) {
-      lead.status =
-        status_id === null
-          ? null
-          : await leadStatusRepo.findOne({ where: { id: status_id } });
+    if (status_id) {
+      const status =  await leadStatusRepo.findOne({ where: { id: status_id } });
+      if(status){
+        lead.status = status;
+
+        //Status is completed add lead into client table.
+        if(status?.name?.toLocaleLowerCase() === "completed"){
+
+          const name = (lead.first_name ?? "") + (lead.last_name ?? "");
+
+          let email = "";
+          if(Array.isArray(lead?.email) && lead.email.length > 0){
+            email = lead.email[0];
+          }
+
+          const contact_number = lead?.phone ?? "";
+          const address = lead?.location ?? "";
+          const company_name = lead?.company ?? "";
+          const leadId = lead.id;
+
+         const client =  clientRepo.create({
+            name,
+            email,
+            lead: { id: leadId },
+            contact_number,
+            address,
+            company_name,
+            contact_person: name,
+         });
+            await clientRepo.save(client);  //save lead to client.
+        }
+      } 
     }
 
     if (type_id !== undefined) {
