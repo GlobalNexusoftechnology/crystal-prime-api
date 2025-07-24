@@ -14,6 +14,7 @@ interface ClientInput {
   company_name?: string;
   contact_person?: string;
   website?: string;
+  gst_number?: string;
 }
 
 const clientRepo = AppDataSource.getRepository(Clients);
@@ -31,6 +32,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
       client_details,
     } = data;
 
@@ -49,6 +51,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
     });
 
     const savedClient = await clientRepo.save(client);
@@ -112,6 +115,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
       client_details,
     } = data;
 
@@ -129,6 +133,7 @@ export const ClientService = () => {
     if (company_name !== undefined) client.company_name = company_name;
     if (contact_person !== undefined) client.contact_person = contact_person;
     if (website !== undefined) client.website = website;
+    if (gst_number !== undefined) client.gst_number = gst_number;
 
     const savedClient = await clientRepo.save(client);
 

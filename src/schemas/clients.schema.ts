@@ -9,6 +9,7 @@ export const createClientSchema = z.object({
   lead_id: z.string().uuid("Invalid lead ID").optional(),
   company_name: z.string().optional(),
   contact_person: z.string().optional(),
+  gst_number: z.string().max(20).optional(),
   website: z.string().optional(),
   client_details: z.array(
     z.object({
