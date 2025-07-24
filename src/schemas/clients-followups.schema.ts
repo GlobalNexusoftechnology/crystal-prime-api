@@ -14,6 +14,7 @@ export const createClientFollowupSchema = z.object({
   due_date: z.coerce.date().optional().nullable(),
   completed_date:z.coerce.date().optional().nullable(),
   remarks: z.string().optional().nullable(),
+  project_task_id: z.string().uuid("Invalid project task ID").optional().nullable(),
 });
 
 export const updateClientFollowupSchema = z.object({
@@ -30,4 +31,5 @@ export const updateClientFollowupSchema = z.object({
   due_date: z.coerce.date().optional().nullable(),
   completed_date:z.coerce.date().optional().nullable(),
   remarks: z.string().optional().nullable(),
+  project_task_id: z.string().uuid("Invalid project task ID").optional().nullable(),
 });

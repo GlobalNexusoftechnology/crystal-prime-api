@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
 import { Clients } from "./clients.entity";
 import { User } from "./user.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 export enum ClientFollowupStatus {
     RESCHEDULE = "RESCHEDULE",
@@ -21,6 +22,10 @@ export class ClientFollowup extends Model {
     @ManyToOne(() => User, (user) => user.id, { nullable: true, onDelete: "SET NULL" })
     @JoinColumn({ name: "user_id" })
     user: User | null;
+
+    @ManyToOne(() => ProjectTasks, { nullable: true, onDelete: "SET NULL" })
+    @JoinColumn({ name: "project_task_id" })
+    project_task: ProjectTasks | null;
 
     @Column({
         type: "enum",

@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class InitialAllTablesMigration1753369279976 implements MigrationInterface {
-    name = 'InitialAllTablesMigration1753369279976'
+export class addedUserEntity1753382749426 implements MigrationInterface {
+    name = 'addedUserEntity1753382749426'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "lead_sources" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "name" character varying NOT NULL, CONSTRAINT "UQ_330b3b33744bda1d17d3053a49c" UNIQUE ("name"), CONSTRAINT "PK_bc885a4409ec70ee5a810dbbd6f" PRIMARY KEY ("id"))`);
@@ -32,13 +32,13 @@ export class InitialAllTablesMigration1753369279976 implements MigrationInterfac
         await queryRunner.query(`CREATE TYPE "public"."lead_followups_status_enum" AS ENUM('RESCHEDULE', 'PENDING', 'AWAITING RESPONSE', 'NO RESPONSE', 'FAILED', 'COMPLETED')`);
         await queryRunner.query(`CREATE TABLE "lead_followups" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "status" "public"."lead_followups_status_enum" NOT NULL DEFAULT 'PENDING', "due_date" TIMESTAMP, "completed_date" TIMESTAMP, "remarks" text, "lead_id" uuid, "user_id" uuid, CONSTRAINT "PK_676d6790527ecab481091776cd2" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "leads" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "first_name" character varying, "last_name" character varying, "created_by" character varying, "updated_by" character varying, "company" character varying, "phone" character varying, "escalate_to" boolean DEFAULT false, "other_contact" character varying, "email" text array, "location" character varying, "budget" numeric, "requirement" text, "possibility_of_conversion" numeric(5,2), "source_id" uuid, "type_id" uuid, "status_id" uuid, "assigned_to" uuid, CONSTRAINT "PK_cd102ed7a9a4ca7d4d8bfeba406" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "client_details" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "client_contact" character varying(100) NOT NULL, "contact_person" character varying(100), "email" character varying(100), "other_contact" character varying(20), "designation" character varying(100), "client_id" uuid NOT NULL, CONSTRAINT "PK_65926657762853a6281b7d9b9f0" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "clients" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "name" character varying(100) NOT NULL, "email" character varying(100), "contact_number" character varying(20) NOT NULL, "address" text, "website" text, "company_name" character varying(150), "contact_person" character varying(100), "gst_number" character varying(20), "lead_id" uuid, CONSTRAINT "PK_f1ab7cf3a5714dbc6bb4e1c28a4" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "client_details" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "client_contact" character varying(100) NOT NULL, "contact_person" character varying(100), "email" character varying(100), "other_contact" character varying(20), "designation" character varying(100), "client_id" uuid NOT NULL, CONSTRAINT "PK_65926657762853a6281b7d9b9f0" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."client_followups_status_enum" AS ENUM('RESCHEDULE', 'PENDING', 'AWAITING RESPONSE', 'NO RESPONSE', 'FAILED', 'COMPLETED')`);
-        await queryRunner.query(`CREATE TABLE "client_followups" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "status" "public"."client_followups_status_enum" NOT NULL DEFAULT 'PENDING', "due_date" TIMESTAMP, "completed_date" TIMESTAMP, "remarks" text, "client_id" uuid, "user_id" uuid, CONSTRAINT "PK_493cbd6d4437d569e07448e5854" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "client_followups" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "status" "public"."client_followups_status_enum" NOT NULL DEFAULT 'PENDING', "due_date" TIMESTAMP, "completed_date" TIMESTAMP, "remarks" text, "client_id" uuid, "user_id" uuid, "project_task_id" uuid, CONSTRAINT "PK_493cbd6d4437d569e07448e5854" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "daily_task_entries" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "task_title" character varying(150) NOT NULL, "assigned_to" character varying(150), "description" text, "entry_date" date NOT NULL, "hours_spent" numeric(5,2), "status" character varying(50) NOT NULL DEFAULT 'Pending', "priority" character varying(20) NOT NULL DEFAULT 'Medium', "remarks" text, "project_id" uuid NOT NULL, CONSTRAINT "PK_2d1d90232fbc41387daeece1609" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."notifications_type_enum" AS ENUM('TASK_ASSIGNED', 'TASK_UPDATED', 'TASK_COMPLETED', 'LEAD_ASSIGNED', 'LEAD_UPDATED', 'LEAD_STATUS_CHANGED', 'FOLLOWUP_CREATED', 'FOLLOWUP_UPDATED', 'FOLLOWUP_REMINDER', 'QUOTATION_SENT', 'BUSINESS_DONE', 'LEAD_ESCALATED')`);
         await queryRunner.query(`CREATE TABLE "notifications" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "type" "public"."notifications_type_enum" NOT NULL, "message" character varying NOT NULL, "isRead" boolean NOT NULL DEFAULT false, "metadata" jsonb, "userId" character varying NOT NULL, "user_id" uuid, CONSTRAINT "PK_6a72c3c0f683f6462415e653c3a" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "daily_task_entries" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "task_title" character varying(150) NOT NULL, "assigned_to" character varying(150), "description" text, "entry_date" date NOT NULL, "hours_spent" numeric(5,2), "status" character varying(50) NOT NULL DEFAULT 'Pending', "priority" character varying(20) NOT NULL DEFAULT 'Medium', "remarks" text, "project_id" uuid NOT NULL, CONSTRAINT "PK_2d1d90232fbc41387daeece1609" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "sessions" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "userId" character varying NOT NULL, "isExpired" boolean NOT NULL DEFAULT false, "ipAddress" character varying NOT NULL, "userAgent" character varying NOT NULL, CONSTRAINT "PK_3238ef96f18b355b671619111bc" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "task_comments" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted" boolean DEFAULT false, "deleted_at" TIMESTAMP, "remarks" text NOT NULL, "task_id" uuid NOT NULL, "assigned_to" uuid NOT NULL, CONSTRAINT "PK_83b99b0b03db29d4cafcb579b77" PRIMARY KEY ("id"))`);
         await queryRunner.query(`ALTER TABLE "lead_attachments" ADD CONSTRAINT "FK_9294774726472d04ec4d527102e" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
@@ -67,12 +67,13 @@ export class InitialAllTablesMigration1753369279976 implements MigrationInterfac
         await queryRunner.query(`ALTER TABLE "leads" ADD CONSTRAINT "FK_6e28c8e9b340c0f5dcbf8415b6a" FOREIGN KEY ("type_id") REFERENCES "lead_types"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "leads" ADD CONSTRAINT "FK_a2c42b471f34d261cfbad2427d6" FOREIGN KEY ("status_id") REFERENCES "lead_statuses"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "leads" ADD CONSTRAINT "FK_5c37aa54e3b06f6733d56007e0c" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "client_details" ADD CONSTRAINT "FK_0be14bbd3b8d2582604b4e41222" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "clients" ADD CONSTRAINT "FK_0d6be4fdc136070fefe2154b03e" FOREIGN KEY ("lead_id") REFERENCES "leads"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "client_details" ADD CONSTRAINT "FK_0be14bbd3b8d2582604b4e41222" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "client_followups" ADD CONSTRAINT "FK_d16b24511aa0885871a88970bf4" FOREIGN KEY ("client_id") REFERENCES "clients"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "client_followups" ADD CONSTRAINT "FK_a514e7f0cbb10d41e4af5235d42" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "notifications" ADD CONSTRAINT "FK_9a8a82462cab47c73d25f49261f" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "client_followups" ADD CONSTRAINT "FK_01d83f1697ba365eccf11e2373b" FOREIGN KEY ("project_task_id") REFERENCES "project_tasks"("id") ON DELETE SET NULL ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "daily_task_entries" ADD CONSTRAINT "FK_554ede8c5e95b8a47c3d9d9c995" FOREIGN KEY ("project_id") REFERENCES "Project "("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "notifications" ADD CONSTRAINT "FK_9a8a82462cab47c73d25f49261f" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "task_comments" ADD CONSTRAINT "FK_ba9e465cfc707006e60aae59946" FOREIGN KEY ("task_id") REFERENCES "project_tasks"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "task_comments" ADD CONSTRAINT "FK_c56dff50f457ef3fd7fce14a12c" FOREIGN KEY ("assigned_to") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
     }
@@ -80,12 +81,13 @@ export class InitialAllTablesMigration1753369279976 implements MigrationInterfac
     public async down(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "task_comments" DROP CONSTRAINT "FK_c56dff50f457ef3fd7fce14a12c"`);
         await queryRunner.query(`ALTER TABLE "task_comments" DROP CONSTRAINT "FK_ba9e465cfc707006e60aae59946"`);
-        await queryRunner.query(`ALTER TABLE "daily_task_entries" DROP CONSTRAINT "FK_554ede8c5e95b8a47c3d9d9c995"`);
         await queryRunner.query(`ALTER TABLE "notifications" DROP CONSTRAINT "FK_9a8a82462cab47c73d25f49261f"`);
+        await queryRunner.query(`ALTER TABLE "daily_task_entries" DROP CONSTRAINT "FK_554ede8c5e95b8a47c3d9d9c995"`);
+        await queryRunner.query(`ALTER TABLE "client_followups" DROP CONSTRAINT "FK_01d83f1697ba365eccf11e2373b"`);
         await queryRunner.query(`ALTER TABLE "client_followups" DROP CONSTRAINT "FK_a514e7f0cbb10d41e4af5235d42"`);
         await queryRunner.query(`ALTER TABLE "client_followups" DROP CONSTRAINT "FK_d16b24511aa0885871a88970bf4"`);
-        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "FK_0d6be4fdc136070fefe2154b03e"`);
         await queryRunner.query(`ALTER TABLE "client_details" DROP CONSTRAINT "FK_0be14bbd3b8d2582604b4e41222"`);
+        await queryRunner.query(`ALTER TABLE "clients" DROP CONSTRAINT "FK_0d6be4fdc136070fefe2154b03e"`);
         await queryRunner.query(`ALTER TABLE "leads" DROP CONSTRAINT "FK_5c37aa54e3b06f6733d56007e0c"`);
         await queryRunner.query(`ALTER TABLE "leads" DROP CONSTRAINT "FK_a2c42b471f34d261cfbad2427d6"`);
         await queryRunner.query(`ALTER TABLE "leads" DROP CONSTRAINT "FK_6e28c8e9b340c0f5dcbf8415b6a"`);
@@ -114,13 +116,13 @@ export class InitialAllTablesMigration1753369279976 implements MigrationInterfac
         await queryRunner.query(`ALTER TABLE "lead_attachments" DROP CONSTRAINT "FK_9294774726472d04ec4d527102e"`);
         await queryRunner.query(`DROP TABLE "task_comments"`);
         await queryRunner.query(`DROP TABLE "sessions"`);
-        await queryRunner.query(`DROP TABLE "daily_task_entries"`);
         await queryRunner.query(`DROP TABLE "notifications"`);
         await queryRunner.query(`DROP TYPE "public"."notifications_type_enum"`);
+        await queryRunner.query(`DROP TABLE "daily_task_entries"`);
         await queryRunner.query(`DROP TABLE "client_followups"`);
         await queryRunner.query(`DROP TYPE "public"."client_followups_status_enum"`);
-        await queryRunner.query(`DROP TABLE "clients"`);
         await queryRunner.query(`DROP TABLE "client_details"`);
+        await queryRunner.query(`DROP TABLE "clients"`);
         await queryRunner.query(`DROP TABLE "leads"`);
         await queryRunner.query(`DROP TABLE "lead_followups"`);
         await queryRunner.query(`DROP TYPE "public"."lead_followups_status_enum"`);
