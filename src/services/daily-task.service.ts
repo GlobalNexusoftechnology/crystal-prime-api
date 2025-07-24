@@ -41,7 +41,7 @@ export const DailyTaskEntryService = () => {
     const getAllEntries = async (
       userId?: string,
       role?: string,
-      filters?: { status?: string; priority?: string; from?: string; to?: string; search?: string }
+      filters?: { status?: string; priority?: string; from?: string; to?: string; search?: string; taskId?: string }
     ) => {
       let whereClause: any = { deleted: false };
       if (role?.toLowerCase() !== "admin") {
@@ -74,7 +74,11 @@ export const DailyTaskEntryService = () => {
         query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
         query = query.addOrderBy("entry.created_at", "DESC");
         const entries = await query.getMany();
-        return await addTaskAndMilestoneIds(entries);
+        let enriched = await addTaskAndMilestoneIds(entries);
+        if (filters?.taskId) {
+          enriched = enriched.filter(e => e.taskId === filters.taskId);
+        }
+        return enriched;
       }
 
       // For repository find, fetch and sort in-memory by priority then created_at
@@ -92,7 +96,11 @@ export const DailyTaskEntryService = () => {
         // If same priority, sort by created_at DESC
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
-      return await addTaskAndMilestoneIds(entries);
+      let enriched = await addTaskAndMilestoneIds(entries);
+      if (filters?.taskId) {
+        enriched = enriched.filter(e => e.taskId === filters.taskId);
+      }
+      return enriched;
     };
 
     // Helper to add projectId, milestoneId, and taskId to each entry
