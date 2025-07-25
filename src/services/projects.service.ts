@@ -3,6 +3,7 @@ import { Project, ProjectStatus } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { LeadTypeService } from "./lead-types.service";
+import { mergeDateWithCurrentTime } from "../utils";
 
 interface ProjectInput {
   client_id?: string;
@@ -118,8 +119,8 @@ export const ProjectService = () => {
       extra_cost,
       estimated_cost,
       actual_cost: calculatedActualCost,
-      start_date,
-      end_date,
+      start_date: mergeDateWithCurrentTime(start_date),
+      end_date: mergeDateWithCurrentTime(end_date),
       actual_start_date,
       actual_end_date,
       renewal_type,
@@ -264,8 +265,8 @@ export const ProjectService = () => {
       project.actual_cost = actual_cost;
     }
     
-    if (start_date !== undefined) project.start_date = start_date;
-    if (end_date !== undefined) project.end_date = end_date;
+    if (start_date !== undefined) project.start_date = mergeDateWithCurrentTime(start_date);
+    if (end_date !== undefined) project.end_date = mergeDateWithCurrentTime(end_date);
     if (actual_start_date !== undefined)
       project.actual_start_date = actual_start_date;
     if (actual_end_date !== undefined)

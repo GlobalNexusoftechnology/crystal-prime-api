@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
+import { mergeDateWithCurrentTime } from "../utils";
 
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const projectRepo = AppDataSource.getRepository(Project);
@@ -29,8 +30,8 @@ export const MilestoneService = () => {
     const milestone = repo.create({
       name: data.name,
       description: data.description,
-      start_date: data.start_date,
-      end_date: data.end_date,
+      start_date: mergeDateWithCurrentTime(data.start_date),
+      end_date: mergeDateWithCurrentTime(data.end_date),
       actual_date: data.actual_date,
       estimated_date: data.estimated_date,
       assigned_to: data.assigned_to,
@@ -82,8 +83,11 @@ export const MilestoneService = () => {
 
     if (data.name !== undefined) milestone.name = data.name;
     if (data.description !== undefined) milestone.description = data.description;
-    if (data.start_date !== undefined) milestone.start_date = data.start_date;
-    if (data.end_date !== undefined) milestone.end_date = data.end_date;
+
+    if (data.start_date !== undefined) milestone.start_date = mergeDateWithCurrentTime(data.start_date);
+
+    if (data.end_date !== undefined) milestone.end_date = mergeDateWithCurrentTime(data.end_date);
+
     if (data.actual_date !== undefined) milestone.actual_date = data.actual_date;
     if (data.estimated_date !== undefined) milestone.estimated_date = data.estimated_date;
     if (data.assigned_to !== undefined) milestone.assigned_to = data.assigned_to;
