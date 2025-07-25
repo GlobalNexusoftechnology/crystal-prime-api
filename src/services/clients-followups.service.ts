@@ -4,13 +4,15 @@ import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import { ClientFollowup } from "../entities/clients-followups.entity";
 import { Clients } from "../entities/clients.entity";
+import { ProjectTasks } from "../entities/project-task.entity";
 
 const followupRepo = AppDataSource.getRepository(ClientFollowup);
 const clientRepo = AppDataSource.getRepository(Clients);
 const userRepo = AppDataSource.getRepository(User);
+const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const ClientFollowupService = () => {
-  const createFollowup = async (data: { client_id: string; user_id?: string; status?: any; due_date?: Date; remarks?: string; }) => {
+  const createFollowup = async (data: { client_id: string; user_id?: string; status?: any; due_date?: Date; remarks?: string; project_task_id?: string; }) => {
     const client = await clientRepo.findOneBy({ id: data.client_id });
     if (!client) throw new AppError(404, "Client not found");
 
@@ -20,7 +22,13 @@ export const ClientFollowupService = () => {
       if (!user) throw new AppError(404, "User not found");
     }
 
-    let completed_date
+    let project_task = null;
+    if (data.project_task_id) {
+      project_task = await taskRepo.findOneBy({ id: data.project_task_id });
+      if (!project_task) throw new AppError(404, "Project Task not found");
+    }
+
+    let completed_date;
     if (data.status === 'COMPLETED' && !completed_date) {
       completed_date = new Date();
     }
@@ -28,6 +36,7 @@ export const ClientFollowupService = () => {
     const followup = followupRepo.create({
       client,
       user,
+      project_task,
       status: data.status,
       due_date: data.due_date,
       completed_date,
@@ -37,20 +46,23 @@ export const ClientFollowupService = () => {
     return await followupRepo.save(followup);
   };
 
-  const getAllFollowups = async () => {
-     const followup = await followupRepo.find({
-      where: { deleted: false },
-      relations: ["user"],
+  const getAllFollowups = async (project_task_id?: string) => {
+    let where: any = { deleted: false };
+    if (project_task_id) {
+      where.project_task = { id: project_task_id };
+    }
+    const followup = await followupRepo.find({
+      where,
+      relations: ["user", "project_task"],
       order: { created_at: "DESC" },
     });
-    return followup
-    
+    return followup;
   };
 
   const getFollowupById = async (id: string) => {
     const followup = await followupRepo.findOne({
       where: { id, deleted: false },
-      relations: ["user"],
+      relations: ["user", "project_task"],
     });
     if (!followup) throw new AppError(404, "Followup not found");
     return followup;

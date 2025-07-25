@@ -22,6 +22,7 @@ export const clientFollowupController = () => {
         due_date: parsed.due_date === null ? undefined : parsed.due_date,
         completed_date: parsed.completed_date === null ? undefined : parsed.completed_date,
         remarks: parsed.remarks === null ? undefined : parsed.remarks,
+        project_task_id: parsed.project_task_id === null ? undefined : parsed.project_task_id,
       };
       const result = await service.createFollowup(toCreate);
       res.status(201).json({
@@ -41,7 +42,8 @@ export const clientFollowupController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllFollowups();
+      const { project_task_id } = req.query;
+      const result = await service.getAllFollowups(project_task_id as string | undefined);
       res.status(200).json({
         status: "success",
         message: "All Client Follow-ups fetched",
