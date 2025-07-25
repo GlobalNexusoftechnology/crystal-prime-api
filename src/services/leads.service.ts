@@ -261,22 +261,38 @@ export const LeadService = () => {
       // For admin, assignedToMe is all leads; for user, only their own
       isAdmin
         ? leadRepo.count({ where: { deleted: false } })
-        : leadRepo.count({ where: { deleted: false, assigned_to: { id: userId } }, relations: ["assigned_to"] }),
+        : leadRepo.count({
+            where: { deleted: false, assigned_to: { id: userId } },
+            relations: ["assigned_to"],
+          }),
 
       leadRepo.count({
-        where: { deleted: false, status: { name: "Profile Sent" }, ...assignedToFilter },
+        where: {
+          deleted: false,
+          status: { name: "Profile Sent" },
+          ...assignedToFilter,
+        },
         relations: ["status"],
       }),
 
       // Converted leads: status.name === 'completed'
-      leadRepo.count({
-        where: { deleted: false, status: { name: "completed" }, ...assignedToFilter },
-        relations: ["status"],
-      }),
+      leadRepo
+        .createQueryBuilder("lead")
+        .leftJoinAndSelect("lead.status", "status")
+        .where("lead.deleted = :deleted", { deleted: false })
+        .andWhere(`LOWER(status.name) IN (:...statuses)`, {
+          statuses: ["completed", "business done", "business-done", "complete"],
+        })
+        .andWhere(assignedToFilter) // assuming it's a query fragment or conditions
+        .getCount(),
 
       // Lost leads: status.name === 'no-interested'
       leadRepo.count({
-        where: { deleted: false, status: { name: "no-interested" }, ...assignedToFilter },
+        where: {
+          deleted: false,
+          status: { name: "no-interested" },
+          ...assignedToFilter,
+        },
         relations: ["status"],
       }),
 
@@ -372,12 +388,25 @@ export const LeadService = () => {
         lead.status = status;
 
         //Status is completed add lead into client table.
-        if(status?.name?.toLocaleLowerCase() === "completed"){
+        const currentStatus = status?.name?.toLocaleLowerCase();
+        if (
+          currentStatus === "completed" ||
+          currentStatus === "business done" ||
+          currentStatus === "business-done" ||
+          currentStatus === "completed"
+        ) {
 
-          const name = (lead.first_name ?? "") + (lead.last_name ?? "");
+          const existingLead = await clientRepo.findOne({
+            where: {
+              lead: { id: lead.id}
+            }
+          });
+          //if not already exist then create
+          if(!existingLead){
+            const name = (lead.first_name ?? "") + (lead.last_name ?? "");
 
           let email = "";
-          if(Array.isArray(lead?.email) && lead.email.length > 0){
+          if (Array.isArray(lead?.email) && lead.email.length > 0) {
             email = lead.email[0];
           }
 
@@ -386,7 +415,7 @@ export const LeadService = () => {
           const company_name = lead?.company ?? "";
           const leadId = lead.id;
 
-         const client =  clientRepo.create({
+          const client = clientRepo.create({
             name,
             email,
             lead: { id: leadId },
@@ -394,8 +423,9 @@ export const LeadService = () => {
             address,
             company_name,
             contact_person: name,
-         });
-            await clientRepo.save(client);  //save lead to client.
+          });
+          await clientRepo.save(client); //save lead to client.
+          }
         }
       } 
     }
