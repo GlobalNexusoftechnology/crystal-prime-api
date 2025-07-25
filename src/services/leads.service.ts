@@ -281,7 +281,7 @@ export const LeadService = () => {
         .leftJoinAndSelect("lead.status", "status")
         .where("lead.deleted = :deleted", { deleted: false })
         .andWhere(`LOWER(status.name) IN (:...statuses)`, {
-          statuses: ["completed", "business done", "business-done", "complete"],
+          statuses: ["business done"], //add if required.
         })
         .andWhere(assignedToFilter) // assuming it's a query fragment or conditions
         .getCount(),
@@ -389,42 +389,36 @@ export const LeadService = () => {
 
         //Status is completed add lead into client table.
         const currentStatus = status?.name?.toLocaleLowerCase();
-        if (
-          currentStatus === "completed" ||
-          currentStatus === "business done" ||
-          currentStatus === "business-done" ||
-          currentStatus === "completed"
-        ) {
-
+        if (currentStatus === "business done") {
           const existingLead = await clientRepo.findOne({
             where: {
-              lead: { id: lead.id}
-            }
+              lead: { id: lead.id },
+            },
           });
           //if not already exist then create
-          if(!existingLead){
+          if (!existingLead) {
             const name = (lead.first_name ?? "") + (lead.last_name ?? "");
 
-          let email = "";
-          if (Array.isArray(lead?.email) && lead.email.length > 0) {
-            email = lead.email[0];
-          }
+            let email = "";
+            if (Array.isArray(lead?.email) && lead.email.length > 0) {
+              email = lead.email[0];
+            }
 
-          const contact_number = lead?.phone ?? "";
-          const address = lead?.location ?? "";
-          const company_name = lead?.company ?? "";
-          const leadId = lead.id;
+            const contact_number = lead?.phone ?? "";
+            const address = lead?.location ?? "";
+            const company_name = lead?.company ?? "";
+            const leadId = lead.id;
 
-          const client = clientRepo.create({
-            name,
-            email,
-            lead: { id: leadId },
-            contact_number,
-            address,
-            company_name,
-            contact_person: name,
-          });
-          await clientRepo.save(client); //save lead to client.
+            const client = clientRepo.create({
+              name,
+              email,
+              lead: { id: leadId },
+              contact_number,
+              address,
+              company_name,
+              contact_person: name,
+            });
+            await clientRepo.save(client); //save lead to client.
           }
         }
       } 
