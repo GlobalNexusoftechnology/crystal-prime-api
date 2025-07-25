@@ -13,6 +13,7 @@ import {
   FollowupStatus,
 } from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
+import { Clients } from "../entities/clients.entity";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -20,6 +21,7 @@ const leadSourceRepo = AppDataSource.getRepository(LeadSources);
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
 const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
+const clientRepo = AppDataSource.getRepository(Clients);
 
 const notificationService = NotificationService();
 // Create lead
@@ -259,22 +261,38 @@ export const LeadService = () => {
       // For admin, assignedToMe is all leads; for user, only their own
       isAdmin
         ? leadRepo.count({ where: { deleted: false } })
-        : leadRepo.count({ where: { deleted: false, assigned_to: { id: userId } }, relations: ["assigned_to"] }),
+        : leadRepo.count({
+            where: { deleted: false, assigned_to: { id: userId } },
+            relations: ["assigned_to"],
+          }),
 
       leadRepo.count({
-        where: { deleted: false, status: { name: "Profile Sent" }, ...assignedToFilter },
+        where: {
+          deleted: false,
+          status: { name: "Profile Sent" },
+          ...assignedToFilter,
+        },
         relations: ["status"],
       }),
 
       // Converted leads: status.name === 'completed'
-      leadRepo.count({
-        where: { deleted: false, status: { name: "completed" }, ...assignedToFilter },
-        relations: ["status"],
-      }),
+      leadRepo
+        .createQueryBuilder("lead")
+        .leftJoinAndSelect("lead.status", "status")
+        .where("lead.deleted = :deleted", { deleted: false })
+        .andWhere(`LOWER(status.name) IN (:...statuses)`, {
+          statuses: ["completed", "business done", "business-done", "complete"],
+        })
+        .andWhere(assignedToFilter) // assuming it's a query fragment or conditions
+        .getCount(),
 
       // Lost leads: status.name === 'no-interested'
       leadRepo.count({
-        where: { deleted: false, status: { name: "no-interested" }, ...assignedToFilter },
+        where: {
+          deleted: false,
+          status: { name: "no-interested" },
+          ...assignedToFilter,
+        },
         relations: ["status"],
       }),
 
@@ -364,11 +382,52 @@ export const LeadService = () => {
           : await leadSourceRepo.findOne({ where: { id: source_id } });
     }
 
-    if (status_id !== undefined) {
-      lead.status =
-        status_id === null
-          ? null
-          : await leadStatusRepo.findOne({ where: { id: status_id } });
+    if (status_id) {
+      const status =  await leadStatusRepo.findOne({ where: { id: status_id } });
+      if(status){
+        lead.status = status;
+
+        //Status is completed add lead into client table.
+        const currentStatus = status?.name?.toLocaleLowerCase();
+        if (
+          currentStatus === "completed" ||
+          currentStatus === "business done" ||
+          currentStatus === "business-done" ||
+          currentStatus === "completed"
+        ) {
+
+          const existingLead = await clientRepo.findOne({
+            where: {
+              lead: { id: lead.id}
+            }
+          });
+          //if not already exist then create
+          if(!existingLead){
+            const name = (lead.first_name ?? "") + (lead.last_name ?? "");
+
+          let email = "";
+          if (Array.isArray(lead?.email) && lead.email.length > 0) {
+            email = lead.email[0];
+          }
+
+          const contact_number = lead?.phone ?? "";
+          const address = lead?.location ?? "";
+          const company_name = lead?.company ?? "";
+          const leadId = lead.id;
+
+          const client = clientRepo.create({
+            name,
+            email,
+            lead: { id: leadId },
+            contact_number,
+            address,
+            company_name,
+            contact_person: name,
+          });
+          await clientRepo.save(client); //save lead to client.
+          }
+        }
+      } 
     }
 
     if (type_id !== undefined) {

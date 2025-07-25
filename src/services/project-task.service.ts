@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { ProjectTasks } from "../entities/project-task.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import AppError from "../utils/appError";
+import { mergeDateWithCurrentTime } from "../utils";
 
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
@@ -26,7 +27,7 @@ export const ProjectTaskService = () => {
       milestone,
       title: data.title,
       description: data.description,
-      due_date: data.due_date,
+      due_date: mergeDateWithCurrentTime(data.due_date),
       status: data.status,
       assigned_to: data.assigned_to,
     });
@@ -62,7 +63,7 @@ export const ProjectTaskService = () => {
 
     if (data.title !== undefined) task.title = data.title;
     if (data.description !== undefined) task.description = data.description;
-    if (data.due_date !== undefined) task.due_date = data.due_date;
+    if (data.due_date !== undefined) task.due_date = mergeDateWithCurrentTime(data.due_date);
     if (data.status !== undefined) task.status = data.status;
     if (data.assigned_to !== undefined) task.assigned_to = data.assigned_to;
 

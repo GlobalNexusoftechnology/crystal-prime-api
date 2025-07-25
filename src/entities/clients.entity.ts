@@ -30,6 +30,9 @@ export class Clients extends Model {
   @Column({ type: 'varchar', length: 100, nullable: true })
   contact_person: string;
 
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  gst_number: string;
+
   @OneToMany(() => ClientDetails, (detail) => detail.client)
   client_details: ClientDetails[];
 }
