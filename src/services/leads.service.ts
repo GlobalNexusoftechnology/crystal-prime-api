@@ -672,7 +672,31 @@ export const LeadService = () => {
 
       const leadData: any = {};
       headers.forEach((header, colIndex) => {
-        leadData[header] = row.getCell(colIndex + 1).value || "";
+        const cell = row.getCell(colIndex + 1);
+        const cellValue = cell.value;
+
+        let value = "";
+        if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          cellValue.text &&
+          typeof cellValue.text === "object" &&
+          "richText" in (cellValue.text as any) &&
+          Array.isArray((cellValue.text as any).richText)
+        ) {
+          value = ((cellValue.text as any).richText as any[]).map((rt: any) => rt.text).join("");
+        } else if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          typeof (cellValue as any).text === "string"
+        ) {
+          value = (cellValue as any).text;
+        } else {
+          value = cell.text || "";
+        }
+        leadData[header] = value;
       });
 
       leadData._rowNumber = rowNumber; // Attach row number for error tracking
@@ -685,7 +709,7 @@ export const LeadService = () => {
       const rowNumber = data._rowNumber;
 
       // Check if email already exists
-      const email = data.email?.text || data.email || "";
+      const email = data.email || "";
       const emailList = String(email)
         .split(",")
         .map((e) => e.trim())
@@ -711,10 +735,7 @@ export const LeadService = () => {
         company: data.company || "",
         phone: data.phone || "",
         other_contact: data.other_contact || "",
-        email: String(email)
-          .split(",")
-          .map((e) => e.trim())
-          .filter(Boolean),
+        email: emailList,
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
@@ -722,8 +743,6 @@ export const LeadService = () => {
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
-
-      lead.email = emailList;
 
       // Find Source by Name
       if (data.source) {
