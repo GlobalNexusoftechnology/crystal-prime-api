@@ -40,7 +40,7 @@ export const dashboardController = () => {
           leadService.groupLeadsByType("Weekly", userId, role),
           leadService.groupLeadsByType("Monthly", userId, role),
           leadService.groupLeadsByType("Yearly", userId, role),
-          projectService.getAllProject(),
+          projectService.getAllProjectDashboard(userId, role),
           getEILogChartData(userId, role, 'yearly'),
           getEILogChartData(userId, role, 'monthly'),
           getEILogChartData(userId, role, 'weekly')
@@ -84,18 +84,71 @@ export const dashboardController = () => {
           open: projectStatusCounts.find((s: any) => s.status === "Open")?.count || 0
         };
 
-        // Project renewal data (unchanged)
-        const projectRenewalData = [];
-        const categories = [...new Set(allProjects.map((p: any) => p.project_type || "Other"))];
-        for (const category of categories) {
-          const projects = allProjects
-            .filter((p: any) => (p.project_type || "Other") === category)
-            .map((p: any) => ({
-              name: p.name,
-              date: p.renewal_date ? new Date(p.renewal_date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "",
-              status: p.completion || 0
-            }));
-          projectRenewalData.push({ category, projects });
+        const monthWiseProjectRenewalData: Record<string, any[]> = {};
+
+        const monthNames = [
+          "January",
+          "February",
+          "March",
+          "April",
+          "May",
+          "June",
+          "July",
+          "August",
+          "September",
+          "October",
+          "November",
+          "December",
+        ];
+
+        for (const project of allProjects) {
+          const renewalDate = project.renewal_date;
+
+          if (!renewalDate) continue;
+
+          const dateObj = new Date(renewalDate);
+          const month = monthNames[dateObj.getMonth()];
+
+          if (!monthWiseProjectRenewalData[month]) {
+            monthWiseProjectRenewalData[month] = [];
+          }
+
+          const category = project.project_type?.name || "Other";
+
+          let categoryGroup = monthWiseProjectRenewalData[month].find(
+            (cat) => cat.category === category
+          );
+
+          if (!categoryGroup) {
+            categoryGroup = {
+              category,
+              projects: [],
+            };
+            monthWiseProjectRenewalData[month].push(categoryGroup);
+          }
+
+          // ✅ Calculate milestone completion %
+          const totalMilestones = project.milestones?.length || 0;
+          console.log(totalMilestones);
+          const completedMilestones =
+            project.milestones?.filter(
+              (m) => m.status?.toLowerCase() === "completed"
+            ).length || 0;
+
+          const completionPercentage =
+            totalMilestones > 0
+              ? Math.round((completedMilestones / totalMilestones) * 100)
+              : 0;
+
+          categoryGroup.projects.push({
+            name: project.name,
+            date: dateObj.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "long",
+              year: "numeric",
+            }),
+            status: completionPercentage,
+          });
         }
 
         // Expenses data (unchanged)
@@ -124,7 +177,7 @@ export const dashboardController = () => {
             projectSnapshot,
             leadAnalytics,
             leadType,
-            projectRenewalData,
+            projectRenewalData: monthWiseProjectRenewalData,
             expenses
           }
         });
