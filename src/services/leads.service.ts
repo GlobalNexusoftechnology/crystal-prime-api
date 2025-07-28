@@ -121,16 +121,26 @@ export const LeadService = () => {
 
   // Get All Leads
   const getAllLeads = async (
-    searchText?: string,
-    statusId?: string,
-    typeId?: string,
-    dateRange?: "All" | "Daily" | "Weekly" | "Monthly",
-    referenceDate?: Date,
-    followupFrom?: Date,
-    followupTo?: Date,
-    sourceId?: string,
-    assignedToId?: string
+    filters: any = {},
+    userId?: string,
+    role?: string
   ) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const {
+      searchText,
+      statusId,
+      typeId,
+      dateRange,
+      referenceDate,
+      followupFrom,
+      followupTo,
+      sourceId,
+      assignedToId
+    } = filters;
+
     let query = leadRepo.createQueryBuilder("lead")
       .leftJoinAndSelect("lead.source", "source")
       .leftJoinAndSelect("lead.status", "status")
@@ -138,6 +148,11 @@ export const LeadService = () => {
       .leftJoinAndSelect("lead.type", "type")
       .leftJoinAndSelect("lead.followups", "followup")
       .where("lead.deleted = false");
+  
+    // Role-based filtering - non-admins can only see their assigned leads
+    if (role && role !== "admin" && role !== "Admin") {
+      query = query.andWhere("assigned_to.id = :userId", { userId });
+    }
   
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
@@ -205,7 +220,20 @@ export const LeadService = () => {
       query = query.andWhere("followup.due_date <= :followupTo", { followupTo });
     }
   
-    return await query.orderBy("lead.created_at", "DESC").getMany();
+    query.orderBy("lead.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [leads, total] = await query.getManyAndCount();
+
+    return {
+      data: leads,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   // Get Lead By ID
@@ -544,32 +572,22 @@ export const LeadService = () => {
     sourceId?: string,
     assignedToId?: string
   ): Promise<ExcelJS.Workbook> => {
-    let leads: Leads[];
-    if (userRole === "admin" || userRole === "Admin") {
-      leads = await getAllLeads(
-        searchText,
-        statusId,
-        typeId,
-        dateRange,
-        referenceDate,
-        followupFrom,
-        followupTo,
-        sourceId,
-        assignedToId
-      );
-    } else {
-      leads = await getAllLeads(
-        searchText,
-        statusId,
-        typeId,
-        dateRange,
-        referenceDate,
-        followupFrom,
-        followupTo,
-        sourceId,
-        userId // force assignedToId to userId for non-admins
-      );
-    }
+    const filters = {
+      searchText,
+      statusId,
+      typeId,
+      dateRange,
+      referenceDate,
+      followupFrom,
+      followupTo,
+      sourceId,
+      assignedToId,
+      page: 1,
+      limit: 10000 // Large limit to get all leads for export
+    };
+
+    const result = await getAllLeads(filters, userId, userRole);
+    const leads = result.data;
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Leads");
