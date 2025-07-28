@@ -1,5 +1,5 @@
 import { AppDataSource } from "../utils/data-source";
-import { Leads } from "../entities/leads.entity";
+import { ChannelType, Leads } from "../entities/leads.entity";
 import { LeadSources } from "../entities/lead-sources.entity";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import { User } from "../entities/user.entity";
@@ -15,7 +15,6 @@ import {
 import { Between, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
 import { createLeadSchema } from "../schemas/leads.schema";
-import { email } from "envalid";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -864,7 +863,7 @@ export const LeadService = () => {
   return false;
 };
 
-const handleMetaLead = async (leadId: string) => {
+const handleMetaLead = async (leadId: string, channel: ChannelType) => {
   const PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN;
   const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT;
 
@@ -914,6 +913,7 @@ for (const item of fieldData) {
     budget: mapped.budget ? parseFloat(mapped.budget) : undefined,
     requirement: mapped.requirement,
     attachments: mapped.attachments || [],
+    channel,
   });
 
   await leadRepo.save(newLead);
@@ -960,6 +960,7 @@ const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
       budget: data.budget,
       requirement: data.requirement,
       attachments: data.attachments,
+      channel: ChannelType.GOOGLE,
     });
 
     await leadRepo.save(newLead);

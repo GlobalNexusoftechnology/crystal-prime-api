@@ -3,6 +3,7 @@ import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
 import { verifyMetaSignature } from "../utils";
+import { ChannelType } from "entities/leads.entity";
 
 const service = LeadService();
 
@@ -277,7 +278,12 @@ const metaLeadWebhook = async (
       const leadgenData = body.entry[0].changes[0].value;
       const leadId = leadgenData.leadgen_id;
 
-      await service.handleMetaLead(leadId);
+      let channel = ChannelType.FACEBOOK;
+
+      if (body.object === 'instagram') {
+        channel = ChannelType.INSTAGRAM;
+      }
+      await service.handleMetaLead(leadId, channel);
       res.status(200).json({ status: "success", message: "Lead processed" });
     } else {
       res.status(400).json({ status: "error", message: "Invalid webhook payload" });
