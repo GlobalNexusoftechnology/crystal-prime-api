@@ -34,10 +34,18 @@ export const leadTypeController = () => {
     next: NextFunction
   ) => {
     try {
-      const result = await service.getAllLeadTypes();
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const filters = {
+        page,
+        limit
+      };
+
+      const result = await service.getAllLeadTypes(filters);
       res.status(200).json({
         status: "success",
-        ...result,
+        data: { list: result.data, pagination: result.pagination },
       });
     } catch (error) {
       next(error);

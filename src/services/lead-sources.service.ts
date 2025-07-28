@@ -33,14 +33,27 @@ export const LeadSourceService = () => {
   };
 
   // Get All Lead Sources
-  const getAllLeadSources = async () => {
-    const data = await leadSourceRepo.find({
-      where: { deleted: false },
-    });
+  const getAllLeadSources = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const query = leadSourceRepo.createQueryBuilder("leadSource")
+      .where("leadSource.deleted = false")
+      .orderBy("leadSource.created_at", "DESC");
+
+    query.skip(skip).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
 
     return {
       data,
-      total: data.length,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   };
 

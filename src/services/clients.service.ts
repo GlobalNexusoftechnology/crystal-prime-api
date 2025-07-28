@@ -71,7 +71,13 @@ export const ClientService = () => {
   };
 
   // Get All Clients
-  const getAllClients = async (searchText?: string) => {
+  const getAllClients = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const { searchText } = filters;
+
     let query = clientRepo.createQueryBuilder("client")
       .leftJoinAndSelect("client.lead", "lead")
       .leftJoinAndSelect("client.client_details", "client_details")
@@ -86,8 +92,19 @@ export const ClientService = () => {
     }
 
     query = query.orderBy("client.created_at", "DESC");
-    const data = await query.getMany();
-    return data;
+    query.skip(skip).take(limit);
+
+    const [clients, total] = await query.getManyAndCount();
+
+    return {
+      data: clients,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   //  Get Client by ID

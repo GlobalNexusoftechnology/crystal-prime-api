@@ -25,11 +25,19 @@ export const createEILogHeadHandler = async (req: Request, res: Response, next: 
 // Handler to get all EILogHeads
 export const getAllEILogHeadsHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const eilogHeads = await getAllEILogHeads();
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    const filters = {
+      page,
+      limit
+    };
+
+    const result = await getAllEILogHeads(filters);
     res.status(200).json({
       status: 'success',
       message: 'EI Log Heads fetched successfully',
-      data: eilogHeads,
+      data: { list: result.data, pagination: result.pagination },
     });
   } catch (err) {
     next(err);
