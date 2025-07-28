@@ -14,6 +14,8 @@ import {
 } from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
+import { createLeadSchema } from "../schemas/leads.schema";
+import { email } from "envalid";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -853,7 +855,120 @@ export const LeadService = () => {
     return await qb.groupBy("type.name").getRawMany();
   };
 
+ const verifyWebhook = (mode: any, token: any): boolean => {
+  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    return true;
+  }
+  return false;
+};
+
+const handleMetaLead = async (leadId: string) => {
+  const PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN;
+  const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT;
+
+  const url = `${META_DATA_SOURCE_ENDPOINT}/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new AppError(400, "Failed to fetch lead from Meta");
+  }
+
+  const data = await response.json();
+
+  const fieldData = data.field_data;
+
+  const mapped: Record<string, any> = {};
+
+for (const item of fieldData) {
+  const value = item.values?.[0]; 
+
+  switch (item.name) {
+    case "email":
+      mapped.email = [value]; 
+      break;
+
+    case "attachments":
+      mapped.attachments = item.values; 
+      break;
+
+    default:
+      mapped[item.name] = value; 
+      break;
+  }
+}
+
+
+    createLeadSchema.parse(mapped); //parse to make sure its form
+
+  // Create the lead object to match your DB schema
+  const newLead = leadRepo.create({
+    first_name: mapped.first_name,
+    last_name: mapped.last_name,
+    company: mapped.company,
+    phone: mapped.phone,
+    other_contact: mapped.other_contact,
+    email: mapped.email || [],
+    location: mapped.location,
+    budget: mapped.budget ? parseFloat(mapped.budget) : undefined,
+    requirement: mapped.requirement,
+    attachments: mapped.attachments || [],
+  });
+
+  await leadRepo.save(newLead);
+};
+
+const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
+
+    const expectedApiKey = process.env.GOOGLE_SECRETE_KEY;
+
+    if (!expectedApiKey || receivedApiKey !== expectedApiKey) {
+      throw new AppError(401, "Unauthorized: Invalid API Key");
+    }
+
+    if (!payload) {
+      throw new AppError(400, "Invalid payload from Google");
+    }
+
+    const prepData = {
+      ...payload,
+      email: Array.isArray(payload.email)
+        ? payload.email
+        : payload.email
+        ? [payload.email]
+        : [],
+      budget: parseInt(payload.budget),
+
+      attachments: Array.isArray(payload.attachments)
+        ? payload.attachments
+        : payload.attachments
+        ? [payload.attachments]
+        : [],
+    };
+
+    const data = createLeadSchema.parse(prepData);
+
+    const newLead = leadRepo.create({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      company: data.company,
+      phone: data.phone,
+      other_contact: data.other_contact,
+      email: data.email,
+      location: data.location,
+      budget: data.budget,
+      requirement: data.requirement,
+      attachments: data.attachments,
+    });
+
+    await leadRepo.save(newLead);
+};
+
   return {
+    handleGoogleLead,
+    handleMetaLead,
+    verifyWebhook,
     createLead,
     getAllLeads,
     getLeadStats,

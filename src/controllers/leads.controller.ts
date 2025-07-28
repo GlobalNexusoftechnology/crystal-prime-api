@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import { verifyMetaSignature } from "../utils";
 
 const service = LeadService();
 
@@ -243,7 +244,73 @@ export const leadController = () => {
     }
   };
 
+ const verifyMetaWebhook = (req: Request, res: Response) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  const verified = service.verifyWebhook(mode, token);
+
+  if (verified) {
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send("Forbidden");
+  }
+};
+
+const metaLeadWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    
+    verifyMetaSignature(req); //verify its meta.
+    const body = req.body;
+
+    if (
+      body.object === "page" &&
+      body.entry &&
+      body.entry[0]?.changes &&
+      body.entry[0].changes[0]?.field === "leadgen"
+    ) {
+      const leadgenData = body.entry[0].changes[0].value;
+      const leadId = leadgenData.leadgen_id;
+
+      await service.handleMetaLead(leadId);
+      res.status(200).json({ status: "success", message: "Lead processed" });
+    } else {
+      res.status(400).json({ status: "error", message: "Invalid webhook payload" });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+const googleLeadWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const receivedApiKey = req.headers["x-api-key"] as string;
+    const payload = req.body;
+
+    await service.handleGoogleLead(payload, receivedApiKey);
+
+    res.status(200).json({
+      status: "success",
+      message: "Google lead processed successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
   return {
+    googleLeadWebhook,
+    metaLeadWebhook,
+    verifyMetaWebhook,
     createLead,
     getAllLeads,
     getLeadById,
