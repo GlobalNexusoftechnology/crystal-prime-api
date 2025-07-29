@@ -43,14 +43,27 @@ export const LeadStatusService = () => {
   };
 
   // Get All Lead Statuses
-  const getAllLeadStatuses = async () => {
-    const data = await leadStatusRepo.find({
-      where: { deleted: false },
-    });
+  const getAllLeadStatuses = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const query = leadStatusRepo.createQueryBuilder("leadStatus")
+      .where("leadStatus.deleted = false")
+      .orderBy("leadStatus.created_at", "DESC");
+
+    query.skip(skip).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
 
     return {
       data,
-      total: data.length,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   };
 

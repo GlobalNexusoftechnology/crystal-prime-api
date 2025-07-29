@@ -6,6 +6,10 @@ import { excelUpload } from "../utils/upload";
 const router = express.Router();
 const controller = leadController();
 
+router.get("/meta/webhook", controller.verifyMetaWebhook);
+router.post("/meta/webhook", controller.metaLeadWebhook);
+router.post("/google/webhook", controller.googleLeadWebhook);
+
 router.use(deserializeUser, requireUser);
 
 router.post("/", controller.createLead);

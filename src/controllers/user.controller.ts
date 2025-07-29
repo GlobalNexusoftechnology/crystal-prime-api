@@ -175,8 +175,20 @@ export const getAllUsersHandler = async (
 ) => {
   try {
     const searchText = req.query.searchText as string | undefined;
-    const users = await findAllUsers(searchText);
-    res.status(200).json({ status: "success", data: users });
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    const filters = {
+      searchText,
+      page,
+      limit
+    };
+
+    const result = await findAllUsers(filters);
+    res.status(200).json({ 
+      status: "success", 
+      data: { list: result.data, pagination: result.pagination }
+    });
   } catch (error) {
     next(error);
   }
