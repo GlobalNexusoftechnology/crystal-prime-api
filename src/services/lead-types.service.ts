@@ -33,14 +33,27 @@ export const LeadTypeService = () => {
   };
 
   // Get All Lead Types
-  const getAllLeadTypes = async () => {
-    const data = await leadTypeRepo.find({
-      where: { deleted: false },
-    });
+  const getAllLeadTypes = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const query = leadTypeRepo.createQueryBuilder("leadType")
+      .where("leadType.deleted = false")
+      .orderBy("leadType.created_at", "DESC");
+
+    query.skip(skip).take(limit);
+
+    const [data, total] = await query.getManyAndCount();
 
     return {
       data,
-      total: data.length,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   };
 

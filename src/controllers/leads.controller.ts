@@ -52,30 +52,30 @@ export const leadController = () => {
       const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
       const sourceId = req.query.sourceId as string | undefined;
       const assignedToId = req.query.assignedToId as string | undefined;
-      let result;
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
-      if (role === "Admin" || role === "admin") {
-        result = await service.getAllLeads(searchText, statusId, typeId, dateRange, referenceDate, followupFrom, followupTo, sourceId, assignedToId);
-      } else {
-        result = await service.getAllLeads(
-          searchText,
-          statusId,
-          typeId,
-          dateRange,
-          referenceDate,
-          followupFrom,
-          followupTo,
-          sourceId,
-          userId // force assignedToId to userId for non-admins
-        );
-      }
+      const filters = {
+        searchText,
+        statusId,
+        typeId,
+        dateRange,
+        referenceDate,
+        followupFrom,
+        followupTo,
+        sourceId,
+        assignedToId,
+        page,
+        limit
+      };
 
+      const result = await service.getAllLeads(filters, userId, role);
       const leadStats = await service.getLeadStats(userId, role);
 
       res.status(200).json({
         status: "success",
         message: "All Leads fetched",
-        data: { list: result, stats: leadStats },
+        data: { list: result.data, pagination: result.pagination, stats: leadStats },
       });
     } catch (error) {
       next(error);
