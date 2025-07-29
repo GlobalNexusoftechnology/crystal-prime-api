@@ -13,8 +13,12 @@ export const createEILogHead = async (payload: { name: string }) => {
 };
 
 // Get all EILogHeads (not deleted)
-export const getAllEILogHeads = async () => {
-  return await eilogHeadRepository
+export const getAllEILogHeads = async (filters: any = {}) => {
+  const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+  const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+  const skip = (page - 1) * limit;
+
+  const query = eilogHeadRepository
     .createQueryBuilder("eilogHead")
     .select([
       "eilogHead.id",
@@ -23,8 +27,21 @@ export const getAllEILogHeads = async () => {
       "eilogHead.updated_at"
     ])
     .where("eilogHead.deleted = :deleted", { deleted: false })
-    .orderBy("eilogHead.created_at", "DESC")
-    .getMany();
+    .orderBy("eilogHead.created_at", "DESC");
+
+  query.skip(skip).take(limit);
+
+  const [eilogHeads, total] = await query.getManyAndCount();
+
+  return {
+    data: eilogHeads,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // Get a single EILogHead by ID

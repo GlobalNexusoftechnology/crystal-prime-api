@@ -40,11 +40,20 @@ export const clientController = () => {
   ) => {
     try {
       const searchText = req.query.searchText as string | undefined;
-      const result = await service.getAllClients(searchText);
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+      const filters = {
+        searchText,
+        page,
+        limit
+      };
+
+      const result = await service.getAllClients(filters);
       res.status(200).json({
         status: "success",
         message: "All Client fetched",
-        data: result,
+        data: { list: result.data, pagination: result.pagination },
       });
     } catch (error) {
       next(error);

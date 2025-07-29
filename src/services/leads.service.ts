@@ -1,5 +1,5 @@
 import { AppDataSource } from "../utils/data-source";
-import { Leads } from "../entities/leads.entity";
+import { ChannelType, Leads } from "../entities/leads.entity";
 import { LeadSources } from "../entities/lead-sources.entity";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import { User } from "../entities/user.entity";
@@ -14,6 +14,7 @@ import {
 } from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
+import { createLeadSchema } from "../schemas/leads.schema";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -121,16 +122,26 @@ export const LeadService = () => {
 
   // Get All Leads
   const getAllLeads = async (
-    searchText?: string,
-    statusId?: string,
-    typeId?: string,
-    dateRange?: "All" | "Daily" | "Weekly" | "Monthly",
-    referenceDate?: Date,
-    followupFrom?: Date,
-    followupTo?: Date,
-    sourceId?: string,
-    assignedToId?: string
+    filters: any = {},
+    userId?: string,
+    role?: string
   ) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const {
+      searchText,
+      statusId,
+      typeId,
+      dateRange,
+      referenceDate,
+      followupFrom,
+      followupTo,
+      sourceId,
+      assignedToId
+    } = filters;
+
     let query = leadRepo.createQueryBuilder("lead")
       .leftJoinAndSelect("lead.source", "source")
       .leftJoinAndSelect("lead.status", "status")
@@ -138,6 +149,11 @@ export const LeadService = () => {
       .leftJoinAndSelect("lead.type", "type")
       .leftJoinAndSelect("lead.followups", "followup")
       .where("lead.deleted = false");
+  
+    // Role-based filtering - non-admins can only see their assigned leads
+    if (role && role !== "admin" && role !== "Admin") {
+      query = query.andWhere("assigned_to.id = :userId", { userId });
+    }
   
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
@@ -205,7 +221,20 @@ export const LeadService = () => {
       query = query.andWhere("followup.due_date <= :followupTo", { followupTo });
     }
   
-    return await query.orderBy("lead.created_at", "DESC").getMany();
+    query.orderBy("lead.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [leads, total] = await query.getManyAndCount();
+
+    return {
+      data: leads,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   // Get Lead By ID
@@ -281,7 +310,7 @@ export const LeadService = () => {
         .leftJoinAndSelect("lead.status", "status")
         .where("lead.deleted = :deleted", { deleted: false })
         .andWhere(`LOWER(status.name) IN (:...statuses)`, {
-          statuses: ["completed", "business done", "business-done", "complete"],
+          statuses: ["business done"], //add if required.
         })
         .andWhere(assignedToFilter) // assuming it's a query fragment or conditions
         .getCount(),
@@ -389,42 +418,36 @@ export const LeadService = () => {
 
         //Status is completed add lead into client table.
         const currentStatus = status?.name?.toLocaleLowerCase();
-        if (
-          currentStatus === "completed" ||
-          currentStatus === "business done" ||
-          currentStatus === "business-done" ||
-          currentStatus === "completed"
-        ) {
-
+        if (currentStatus === "business done") {
           const existingLead = await clientRepo.findOne({
             where: {
-              lead: { id: lead.id}
-            }
+              lead: { id: lead.id },
+            },
           });
           //if not already exist then create
-          if(!existingLead){
+          if (!existingLead) {
             const name = (lead.first_name ?? "") + (lead.last_name ?? "");
 
-          let email = "";
-          if (Array.isArray(lead?.email) && lead.email.length > 0) {
-            email = lead.email[0];
-          }
+            let email = "";
+            if (Array.isArray(lead?.email) && lead.email.length > 0) {
+              email = lead.email[0];
+            }
 
-          const contact_number = lead?.phone ?? "";
-          const address = lead?.location ?? "";
-          const company_name = lead?.company ?? "";
-          const leadId = lead.id;
+            const contact_number = lead?.phone ?? "";
+            const address = lead?.location ?? "";
+            const company_name = lead?.company ?? "";
+            const leadId = lead.id;
 
-          const client = clientRepo.create({
-            name,
-            email,
-            lead: { id: leadId },
-            contact_number,
-            address,
-            company_name,
-            contact_person: name,
-          });
-          await clientRepo.save(client); //save lead to client.
+            const client = clientRepo.create({
+              name,
+              email,
+              lead: { id: leadId },
+              contact_number,
+              address,
+              company_name,
+              contact_person: name,
+            });
+            await clientRepo.save(client); //save lead to client.
           }
         }
       } 
@@ -550,32 +573,22 @@ export const LeadService = () => {
     sourceId?: string,
     assignedToId?: string
   ): Promise<ExcelJS.Workbook> => {
-    let leads: Leads[];
-    if (userRole === "admin" || userRole === "Admin") {
-      leads = await getAllLeads(
-        searchText,
-        statusId,
-        typeId,
-        dateRange,
-        referenceDate,
-        followupFrom,
-        followupTo,
-        sourceId,
-        assignedToId
-      );
-    } else {
-      leads = await getAllLeads(
-        searchText,
-        statusId,
-        typeId,
-        dateRange,
-        referenceDate,
-        followupFrom,
-        followupTo,
-        sourceId,
-        userId // force assignedToId to userId for non-admins
-      );
-    }
+    const filters = {
+      searchText,
+      statusId,
+      typeId,
+      dateRange,
+      referenceDate,
+      followupFrom,
+      followupTo,
+      sourceId,
+      assignedToId,
+      page: 1,
+      limit: 10000 // Large limit to get all leads for export
+    };
+
+    const result = await getAllLeads(filters, userId, userRole);
+    const leads = result.data;
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Leads");
@@ -678,7 +691,31 @@ export const LeadService = () => {
 
       const leadData: any = {};
       headers.forEach((header, colIndex) => {
-        leadData[header] = row.getCell(colIndex + 1).value || "";
+        const cell = row.getCell(colIndex + 1);
+        const cellValue = cell.value;
+
+        let value = "";
+        if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          cellValue.text &&
+          typeof cellValue.text === "object" &&
+          "richText" in (cellValue.text as any) &&
+          Array.isArray((cellValue.text as any).richText)
+        ) {
+          value = ((cellValue.text as any).richText as any[]).map((rt: any) => rt.text).join("");
+        } else if (
+          cellValue &&
+          typeof cellValue === "object" &&
+          "text" in cellValue &&
+          typeof (cellValue as any).text === "string"
+        ) {
+          value = (cellValue as any).text;
+        } else {
+          value = cell.text || "";
+        }
+        leadData[header] = value;
       });
 
       leadData._rowNumber = rowNumber; // Attach row number for error tracking
@@ -691,7 +728,7 @@ export const LeadService = () => {
       const rowNumber = data._rowNumber;
 
       // Check if email already exists
-      const email = data.email?.text || data.email || "";
+      const email = data.email || "";
       const emailList = String(email)
         .split(",")
         .map((e) => e.trim())
@@ -717,10 +754,7 @@ export const LeadService = () => {
         company: data.company || "",
         phone: data.phone || "",
         other_contact: data.other_contact || "",
-        email: String(email)
-          .split(",")
-          .map((e) => e.trim())
-          .filter(Boolean),
+        email: emailList,
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
@@ -728,8 +762,6 @@ export const LeadService = () => {
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
-
-      lead.email = emailList;
 
       // Find Source by Name
       if (data.source) {
@@ -859,7 +891,122 @@ export const LeadService = () => {
     return await qb.groupBy("type.name").getRawMany();
   };
 
+ const verifyWebhook = (mode: any, token: any): boolean => {
+  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
+
+  if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    return true;
+  }
+  return false;
+};
+
+const handleMetaLead = async (leadId: string, channel: ChannelType) => {
+  const PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN;
+  const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT;
+
+  const url = `${META_DATA_SOURCE_ENDPOINT}/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new AppError(400, "Failed to fetch lead from Meta");
+  }
+
+  const data = await response.json();
+
+  const fieldData = data.field_data;
+
+  const mapped: Record<string, any> = {};
+
+for (const item of fieldData) {
+  const value = item.values?.[0]; 
+
+  switch (item.name) {
+    case "email":
+      mapped.email = [value]; 
+      break;
+
+    case "attachments":
+      mapped.attachments = item.values; 
+      break;
+
+    default:
+      mapped[item.name] = value; 
+      break;
+  }
+}
+
+
+    createLeadSchema.parse(mapped); //parse to make sure its form
+
+  // Create the lead object to match your DB schema
+  const newLead = leadRepo.create({
+    first_name: mapped.first_name,
+    last_name: mapped.last_name,
+    company: mapped.company,
+    phone: mapped.phone,
+    other_contact: mapped.other_contact,
+    email: mapped.email || [],
+    location: mapped.location,
+    budget: mapped.budget ? parseFloat(mapped.budget) : undefined,
+    requirement: mapped.requirement,
+    attachments: mapped.attachments || [],
+    channel,
+  });
+
+  await leadRepo.save(newLead);
+};
+
+const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
+
+    const expectedApiKey = process.env.GOOGLE_SECRETE_KEY;
+
+    if (!expectedApiKey || receivedApiKey !== expectedApiKey) {
+      throw new AppError(401, "Unauthorized: Invalid API Key");
+    }
+
+    if (!payload) {
+      throw new AppError(400, "Invalid payload from Google");
+    }
+
+    const prepData = {
+      ...payload,
+      email: Array.isArray(payload.email)
+        ? payload.email
+        : payload.email
+        ? [payload.email]
+        : [],
+      budget: parseInt(payload.budget),
+
+      attachments: Array.isArray(payload.attachments)
+        ? payload.attachments
+        : payload.attachments
+        ? [payload.attachments]
+        : [],
+    };
+
+    const data = createLeadSchema.parse(prepData);
+
+    const newLead = leadRepo.create({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      company: data.company,
+      phone: data.phone,
+      other_contact: data.other_contact,
+      email: data.email,
+      location: data.location,
+      budget: data.budget,
+      requirement: data.requirement,
+      attachments: data.attachments,
+      channel: ChannelType.GOOGLE,
+    });
+
+    await leadRepo.save(newLead);
+};
+
   return {
+    handleGoogleLead,
+    handleMetaLead,
+    verifyWebhook,
     createLead,
     getAllLeads,
     getLeadStats,
