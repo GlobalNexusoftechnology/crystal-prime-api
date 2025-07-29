@@ -1,9 +1,9 @@
 import { AppDataSource } from '../utils/data-source';
 import AppError from '../utils/appError';
-import { EILogType } from '../entities';
+import { EILog, EILogType } from '../entities';
 
 const eilogTypeRepository = AppDataSource.getRepository(EILogType);
-
+const eilogRepository = AppDataSource.getRepository(EILog);
 // Create a new EILogType
 export const createEILogType = async (payload: { name: string }) => {
   const existEilogType = await eilogTypeRepository.findOne({
@@ -75,6 +75,19 @@ export const updateEILogTypeById = async (eiId: string, payload: { name: string 
 
 // Soft delete an EILogType by ID
 export const deleteEILogTypeById = async (id: string) => {
+
+    const exist = await eilogRepository.findOne({
+      where: {
+        eilogType: {
+          id: id,
+        },
+        deleted: false,
+      },
+    });
+  
+    if(exist){
+      throw new AppError(400, "This EI log type is in use cannot delete.");
+    }
     const eilogTypeEntity = await eilogTypeRepository.findOneBy({ id });
     if (!eilogTypeEntity || eilogTypeEntity.deleted) throw new AppError(404, 'EILogType not found');
     eilogTypeEntity.deleted = true;

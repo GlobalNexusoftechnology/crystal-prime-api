@@ -1,8 +1,9 @@
 import { AppDataSource } from '../utils/data-source';
 import AppError from '../utils/appError';
-import { EILogHead } from '../entities';
+import { EILog, EILogHead } from '../entities';
 
 const eilogHeadRepository = AppDataSource.getRepository(EILogHead);
+const eilogRepository = AppDataSource.getRepository(EILog);
 
 // Create a new EILogHead
 export const createEILogHead = async (payload: { name: string }) => {
@@ -75,6 +76,18 @@ export const updateEILogHeadById = async (eiId: string, payload: { name: string 
 
 // Soft delete an EILogHead by ID
 export const deleteEILogHeadById = async (id: string) => {
+  const exist = await eilogRepository.findOne({
+    where: {
+      eilogHead: {
+        id: id,
+      },
+      deleted: false,
+    },
+  });
+
+  if(exist){
+    throw new AppError(400, "This EI log head is in use cannot delete.");
+  }
     const eilogHeadEntity = await eilogHeadRepository.findOneBy({ id });
     if (!eilogHeadEntity || eilogHeadEntity.deleted) throw new AppError(404, 'EI Log Head not found');
     eilogHeadEntity.deleted = true;

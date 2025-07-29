@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
 import AppError from "../utils/appError";
 import { Not } from "typeorm";
+import { Leads } from "../entities/leads.entity";
 
 interface LeadStatusInput {
   name: string;
@@ -17,6 +18,7 @@ export interface GetLeadStatusesQuery {
 }
 
 const leadStatusRepo = AppDataSource.getRepository(LeadStatuses);
+const leadRepo = AppDataSource.getRepository(Leads);
 
 export const LeadStatusService = () => {
   // Create Lead Status
@@ -111,6 +113,17 @@ export const LeadStatusService = () => {
 
   // Soft Delete Lead Status
   const softDeleteLeadStatus = async (id: string) => {
+
+      const exist = await leadRepo.findOne({
+          where: {
+            status:{id: id},
+            deleted: false,
+          }
+        });
+        if(exist){
+          throw new AppError(400, "This lead status is in use cannot delete.");
+        }
+
     const leadStatus = await leadStatusRepo.findOne({
       where: { id, deleted: false },
     });

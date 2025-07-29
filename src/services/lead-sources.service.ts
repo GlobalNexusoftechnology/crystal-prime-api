@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { LeadSources } from "../entities/lead-sources.entity";
 import AppError from "../utils/appError";
 import { Not } from "typeorm";
+import { Leads } from "../entities/leads.entity";
 
 interface LeadSourceInput {
   name: string;
@@ -16,6 +17,8 @@ interface GetLeadSourcesQuery {
 }
 
 const leadSourceRepo = AppDataSource.getRepository(LeadSources);
+const leadRepo = AppDataSource.getRepository(Leads);
+
 
 export const LeadSourceService = () => {
   // Create Lead Source
@@ -92,6 +95,15 @@ export const LeadSourceService = () => {
 
   // Soft Delete Lead Source
   const softDeleteLeadSource = async (id: string) => {
+    const exist = await leadRepo.findOne({
+      where: {
+        source:{id: id},
+        deleted: false,
+      }
+    });
+    if(exist){
+      throw new AppError(400, "This lead source is in use cannot delete.");
+    }
     const leadSource = await leadSourceRepo.findOne({
       where: { id, deleted: false },
     });
