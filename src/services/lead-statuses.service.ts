@@ -24,10 +24,10 @@ export const LeadStatusService = () => {
     const { name, color } = data;
 
     const existingLeadStatus = await leadStatusRepo.findOne({
-      where: { name },
+      where: { name, deleted: false },
     });
     if (existingLeadStatus)
-      throw new AppError(400, `${existingLeadStatus.name} status already exists`);
+      throw new AppError(409, `${existingLeadStatus.name} status already exists`);
 
     // Check for duplicate color if color is provided
     if (color) {
@@ -37,7 +37,7 @@ export const LeadStatusService = () => {
       if (existingColorStatus)
         throw new AppError(400, `Color "${color}" is already used by another status`);
     }
-
+    
     const leadStatus = leadStatusRepo.create({ name, color });
     return await leadStatusRepo.save(leadStatus);
   };

@@ -6,6 +6,17 @@ const eilogTypeRepository = AppDataSource.getRepository(EILogType);
 
 // Create a new EILogType
 export const createEILogType = async (payload: { name: string }) => {
+  const existEilogType = await eilogTypeRepository.findOne({
+    where: {
+      name: payload.name,
+      deleted: false,
+    }
+  });
+
+  if(existEilogType){
+    throw new AppError(409, "EI log type with this name already exist.");
+  }
+  
   const eilogType = eilogTypeRepository.create(payload);
   const saved = await eilogTypeRepository.save(eilogType);
   const { deleted, deleted_at, ...sanitized } = saved;

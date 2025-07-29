@@ -6,6 +6,17 @@ const eilogHeadRepository = AppDataSource.getRepository(EILogHead);
 
 // Create a new EILogHead
 export const createEILogHead = async (payload: { name: string }) => {
+  const ExisteilogHead = await eilogHeadRepository.findOne({
+    where: {
+      name: payload.name,
+      deleted: false,
+    }
+  });
+
+  if(ExisteilogHead){
+    throw new AppError(409, "EI log head with this name already exist.");
+  }
+
   const eilogHead = eilogHeadRepository.create(payload);
   const saved = await eilogHeadRepository.save(eilogHead);
   const { deleted, deleted_at, ...sanitized } = saved;

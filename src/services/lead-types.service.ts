@@ -23,10 +23,10 @@ export const LeadTypeService = () => {
     const { name } = data;
 
     const existingLeadType = await leadTypeRepo.findOne({
-      where: { name },
+      where: { name, deleted: false },
     });
     if (existingLeadType)
-      throw new AppError(400, `${existingLeadType.name} source already exists`);
+      throw new AppError(409, `${existingLeadType.name} source already exists`);
 
     const leadType = leadTypeRepo.create({ name });
     return await leadTypeRepo.save(leadType);

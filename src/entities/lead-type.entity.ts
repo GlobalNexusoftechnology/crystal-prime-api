@@ -5,7 +5,7 @@ import { Project } from "./projects.entity";
 
 @Entity("lead_types")
 export class LeadTypes extends Model {
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @OneToMany(() => Leads, (lead) => lead.type)
