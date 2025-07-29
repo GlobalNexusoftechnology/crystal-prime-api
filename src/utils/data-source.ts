@@ -17,12 +17,14 @@ export const AppDataSource = new DataSource({
   ...postgresConfig,
   type: "postgres",
   // TODO: make it false and use migration later
-  synchronize: false, // Automatically sync in development
+  synchronize: true, // Automatically sync in development
   logging: process.env.NODE_ENV === "development", // Log SQL queries in development
   entities: [`${isProd ? "build" : "src"}/entities/**/*.entity{.ts,.js}`],
   migrations: [`${isProd ? "build" : "src"}/migrations/**/*{.ts,.js}`],
   subscribers: [`${isProd ? "build" : "src"}/subscribers/**/*{.ts,.js}`],
-  ssl: isProd ? {
-    rejectUnauthorized: true
-  } : false
+  ssl: isProd
+    ? {
+        rejectUnauthorized: true,
+      }
+    : false,
 });
