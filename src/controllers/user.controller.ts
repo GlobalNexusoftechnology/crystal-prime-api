@@ -169,13 +169,26 @@ export const getProfileController = async (
 
 // Get all users
 export const getAllUsersHandler = async (
-  _req: Request,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const users = await findAllUsers();
-    res.status(200).json({ status: "success", data: users });
+    const searchText = req.query.searchText as string | undefined;
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    const filters = {
+      searchText,
+      page,
+      limit
+    };
+
+    const result = await findAllUsers(filters);
+    res.status(200).json({ 
+      status: "success", 
+      data: { list: result.data, pagination: result.pagination }
+    });
   } catch (error) {
     next(error);
   }
@@ -206,7 +219,8 @@ export const exportUsersExcelController = async (
   next: NextFunction
 ) => {
   try {
-    const workbook = await exportUsersToExcel(); // call to service
+    const searchText = req.query.searchText as string | undefined;
+    const workbook = await exportUsersToExcel(searchText); // call to service
 
     res.setHeader(
       "Content-Type",

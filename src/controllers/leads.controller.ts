@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import { verifyMetaSignature } from "../utils";
+import { ChannelType } from "../entities/leads.entity";
 
 const service = LeadService();
 
@@ -52,30 +54,30 @@ export const leadController = () => {
       const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
       const sourceId = req.query.sourceId as string | undefined;
       const assignedToId = req.query.assignedToId as string | undefined;
-      let result;
+      const page = req.query.page ? parseInt(req.query.page as string) : 1;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
 
-      if (role === "Admin" || role === "admin") {
-        result = await service.getAllLeads(searchText, statusId, typeId, dateRange, referenceDate, followupFrom, followupTo, sourceId, assignedToId);
-      } else {
-        result = await service.getAllLeads(
-          searchText,
-          statusId,
-          typeId,
-          dateRange,
-          referenceDate,
-          followupFrom,
-          followupTo,
-          sourceId,
-          userId // force assignedToId to userId for non-admins
-        );
-      }
+      const filters = {
+        searchText,
+        statusId,
+        typeId,
+        dateRange,
+        referenceDate,
+        followupFrom,
+        followupTo,
+        sourceId,
+        assignedToId,
+        page,
+        limit
+      };
 
+      const result = await service.getAllLeads(filters, userId, role);
       const leadStats = await service.getLeadStats(userId, role);
 
       res.status(200).json({
         status: "success",
         message: "All Leads fetched",
-        data: { list: result, stats: leadStats },
+        data: { list: result.data, pagination: result.pagination, stats: leadStats },
       });
     } catch (error) {
       next(error);
@@ -243,7 +245,78 @@ export const leadController = () => {
     }
   };
 
+ const verifyMetaWebhook = (req: Request, res: Response) => {
+  const mode = req.query["hub.mode"];
+  const token = req.query["hub.verify_token"];
+  const challenge = req.query["hub.challenge"];
+
+  const verified = service.verifyWebhook(mode, token);
+
+  if (verified) {
+    res.status(200).send(challenge);
+  } else {
+    res.status(403).send("Forbidden");
+  }
+};
+
+const metaLeadWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    
+    verifyMetaSignature(req); //verify its meta.
+    const body = req.body;
+
+    if (
+      body.object === "page" &&
+      body.entry &&
+      body.entry[0]?.changes &&
+      body.entry[0].changes[0]?.field === "leadgen"
+    ) {
+      const leadgenData = body.entry[0].changes[0].value;
+      const leadId = leadgenData.leadgen_id;
+
+      let channel = ChannelType.FACEBOOK;
+
+      if (body.object === 'instagram') {
+        channel = ChannelType.INSTAGRAM;
+      }
+      await service.handleMetaLead(leadId, channel);
+      res.status(200).json({ status: "success", message: "Lead processed" });
+    } else {
+      res.status(400).json({ status: "error", message: "Invalid webhook payload" });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+const googleLeadWebhook = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const receivedApiKey = req.headers["x-api-key"] as string;
+    const payload = req.body;
+
+    await service.handleGoogleLead(payload, receivedApiKey);
+
+    res.status(200).json({
+      status: "success",
+      message: "Google lead processed successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
   return {
+    googleLeadWebhook,
+    metaLeadWebhook,
+    verifyMetaWebhook,
     createLead,
     getAllLeads,
     getLeadById,

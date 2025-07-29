@@ -25,11 +25,19 @@ export const createEILogTypeHandler = async (req: Request, res: Response, next: 
 // Handler to get all EILogTypes
 export const getAllEILogTypesHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const eilogTypes = await getAllEILogTypes();
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+
+    const filters = {
+      page,
+      limit
+    };
+
+    const result = await getAllEILogTypes(filters);
     res.status(200).json({
       status: 'success',
       message: 'EI Log Types fetched successfully',
-      data: eilogTypes,
+      data: { list: result.data, pagination: result.pagination },
     });
   } catch (err) {
     next(err);

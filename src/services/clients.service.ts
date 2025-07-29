@@ -14,6 +14,7 @@ interface ClientInput {
   company_name?: string;
   contact_person?: string;
   website?: string;
+  gst_number?: string;
 }
 
 const clientRepo = AppDataSource.getRepository(Clients);
@@ -31,6 +32,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
       client_details,
     } = data;
 
@@ -49,6 +51,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
     });
 
     const savedClient = await clientRepo.save(client);
@@ -68,13 +71,40 @@ export const ClientService = () => {
   };
 
   // Get All Clients
-  const getAllClients = async () => {
-    const data = await clientRepo.find({
-      where: { deleted: false },
-      relations: ["lead", "client_details"],
-      order: {created_at: "DESC"}
-    });
-    return data
+  const getAllClients = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const { searchText } = filters;
+
+    let query = clientRepo.createQueryBuilder("client")
+      .leftJoinAndSelect("client.lead", "lead")
+      .leftJoinAndSelect("client.client_details", "client_details")
+      .where("client.deleted = false");
+
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(client.name) LIKE :search OR LOWER(client.email) LIKE :search OR LOWER(client.contact_number) LIKE :search OR LOWER(client.company_name) LIKE :search OR LOWER(client.contact_person) LIKE :search OR LOWER(client.address) LIKE :search OR LOWER(client.website) LIKE :search`,
+        { search }
+      );
+    }
+
+    query = query.orderBy("client.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [clients, total] = await query.getManyAndCount();
+
+    return {
+      data: clients,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   //  Get Client by ID
@@ -102,6 +132,7 @@ export const ClientService = () => {
       company_name,
       contact_person,
       website,
+      gst_number,
       client_details,
     } = data;
 
@@ -119,6 +150,7 @@ export const ClientService = () => {
     if (company_name !== undefined) client.company_name = company_name;
     if (contact_person !== undefined) client.contact_person = contact_person;
     if (website !== undefined) client.website = website;
+    if (gst_number !== undefined) client.gst_number = gst_number;
 
     const savedClient = await clientRepo.save(client);
 
@@ -161,28 +193,26 @@ export const ClientService = () => {
     return await clientRepo.save(client);
   };
 
-
   const exportClientsToExcel = async (
     userId: string,
-    userRole: string
+    userRole: string,
+    searchText?: string
   ): Promise<ExcelJS.Workbook> => {
-    const clientRepo = AppDataSource.getRepository(Clients);
+    let query = clientRepo.createQueryBuilder("client")
+      .leftJoinAndSelect("client.lead", "lead")
+      .leftJoinAndSelect("client.client_details", "client_details")
+      .where("client.deleted = false");
 
-    let clients: Clients[];
-
-    if (userRole.toLowerCase() === "admin") {
-      clients = await clientRepo.find({
-        where: { deleted: false },
-        relations: ["lead", "client_details"],
-        order: { created_at: "DESC" },
-      });
-    } else {
-      clients = await clientRepo.find({
-        where: { deleted: false },
-        relations: ["lead", "client_details"],
-        order: { created_at: "DESC" },
-      });
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(client.name) LIKE :search OR LOWER(client.email) LIKE :search OR LOWER(client.contact_number) LIKE :search OR LOWER(client.company_name) LIKE :search OR LOWER(client.contact_person) LIKE :search OR LOWER(client.address) LIKE :search OR LOWER(client.website) LIKE :search`,
+        { search }
+      );
     }
+
+    query = query.orderBy("client.created_at", "DESC");
+    const clients = await query.getMany();
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Clients");

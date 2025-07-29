@@ -3,6 +3,7 @@ import { Project, ProjectStatus } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { LeadTypeService } from "./lead-types.service";
+import { mergeDateWithCurrentTime } from "../utils";
 
 interface ProjectInput {
   client_id?: string;
@@ -118,8 +119,8 @@ export const ProjectService = () => {
       extra_cost,
       estimated_cost,
       actual_cost: calculatedActualCost,
-      start_date,
-      end_date,
+      start_date: mergeDateWithCurrentTime(start_date),
+      end_date: mergeDateWithCurrentTime(end_date),
       actual_start_date,
       actual_end_date,
       renewal_type,
@@ -264,8 +265,8 @@ export const ProjectService = () => {
       project.actual_cost = actual_cost;
     }
     
-    if (start_date !== undefined) project.start_date = start_date;
-    if (end_date !== undefined) project.end_date = end_date;
+    if (start_date !== undefined) project.start_date = mergeDateWithCurrentTime(start_date);
+    if (end_date !== undefined) project.end_date = mergeDateWithCurrentTime(end_date);
     if (actual_start_date !== undefined)
       project.actual_start_date = actual_start_date;
     if (actual_end_date !== undefined)
@@ -306,7 +307,44 @@ export const ProjectService = () => {
     return await qb.groupBy("project.status").getRawMany();
   };
 
+  // Get All Projects
+  const getAllProjectDashboard = async (userId?: string, userRole?: string) => {
+    // If admin, return all projects
+    if (userRole && userRole.toLowerCase() === 'admin') {
+      return await ProjectRepo.find({
+        where: { deleted: false },
+        order: { created_at: "DESC" },
+        relations: [
+          "client",
+          "milestones",
+          "milestones.tasks",
+          "attachments",
+          "attachments.uploaded_by",
+          "project_type"
+        ],
+      });
+    }
+
+    // Otherwise, return only projects where user is assigned to a milestone or task
+    // Use QueryBuilder for complex joins
+    const qb = ProjectRepo.createQueryBuilder("project")
+      .leftJoinAndSelect("project.client", "client")
+      .leftJoinAndSelect("project.milestones", "milestones")
+      .leftJoinAndSelect("milestones.tasks", "tasks")
+      .leftJoinAndSelect("project.attachments", "attachments")
+      .leftJoinAndSelect("attachments.uploaded_by", "uploaded_by")
+      .where("project.deleted = false")
+      .andWhere(
+        "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
+        { userId }
+      )
+      .orderBy("project.created_at", "DESC");
+
+    return await qb.getMany();
+  };
+
   return {
+    getAllProjectDashboard,
     createProject,
     getAllProject,
     getProjectById,

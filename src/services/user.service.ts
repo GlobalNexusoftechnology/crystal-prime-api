@@ -56,12 +56,39 @@ export const findUserByPhoneNumber = async ({ phone_number }: { phone_number: st
 };
 
 // Find All user 
-export const findAllUsers = async () => {
-  return await userRepository.find({
-    where: { deleted: false },
-    order: { created_at: "DESC" },
-    relations: ["role"]
-  });
+export const findAllUsers = async (filters: any = {}) => {
+  const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+  const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+  const skip = (page - 1) * limit;
+
+  const { searchText } = filters;
+
+  const query = userRepository.createQueryBuilder("user")
+    .leftJoinAndSelect("user.role", "role")
+    .where("user.deleted = false");
+
+  if (searchText && searchText.trim() !== "") {
+    const search = `%${searchText.trim().toLowerCase()}%`;
+    query.andWhere(
+      `LOWER(user.first_name) LIKE :search OR LOWER(user.last_name) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(user.phone_number) LIKE :search OR LOWER(role.role) LIKE :search`,
+      { search }
+    );
+  }
+
+  query.orderBy("user.created_at", "DESC");
+  query.skip(skip).take(limit);
+
+  const [users, total] = await query.getManyAndCount();
+
+  return {
+    data: users,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // Sign access and refresh tokens
@@ -147,12 +174,21 @@ export const softDeleteUser = async (id: string) => {
 
 
 // Export all users to Excel
-export const exportUsersToExcel = async (): Promise<ExcelJS.Workbook> => {
-  const userList = await userRepository.find({
-    where: { deleted: false },
-    order: { created_at: "DESC" },
-    relations: ["role"]
-  });
+export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.Workbook> => {
+  const query = userRepository.createQueryBuilder("user")
+    .leftJoinAndSelect("user.role", "role")
+    .where("user.deleted = false");
+
+  if (searchText && searchText.trim() !== "") {
+    const search = `%${searchText.trim().toLowerCase()}%`;
+    query.andWhere(
+      `LOWER(user.first_name) LIKE :search OR LOWER(user.last_name) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(user.phone_number) LIKE :search OR LOWER(role.role) LIKE :search`,
+      { search }
+    );
+  }
+
+  query.orderBy("user.created_at", "DESC");
+  const userList = await query.getMany();
 
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("User List");

@@ -9,6 +9,13 @@ import { LeadAttachments } from "./lead-attachments.entity";
 import { LeadStatusHistory } from "./lead-status-history.entity";
 import { LeadTypes } from "./lead-type.entity";
 
+export enum ChannelType {
+  INTERNAL = "Internal",
+  FACEBOOK = "Facebook",
+  INSTAGRAM = "Instagram",
+  GOOGLE = "Google",
+}
+
 @Entity('leads')
 export class Leads extends Model {
   @Column({ nullable: true })
@@ -47,6 +54,9 @@ export class Leads extends Model {
 
   @Column('text', { nullable: true })
   requirement: string;
+
+  @Column({ type: "enum", enum: ChannelType, nullable: true, default: ChannelType.INTERNAL} )
+  channel: ChannelType;
 
   @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
   possibility_of_conversion?: number | null;

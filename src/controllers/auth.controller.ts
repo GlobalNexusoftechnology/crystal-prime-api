@@ -13,7 +13,7 @@ import {
 import AppError from "../utils/appError";
 import { User } from "../entities/user.entity";
 import bcrypt from "bcryptjs";
-import { sendEmail } from "../utils";
+import { sendForgotPasswordMail } from "../utils/email";
 
 const cookiesOptions: CookieOptions = {
   httpOnly: true,
@@ -139,10 +139,8 @@ export const loginUserHandler = async (
   }
 };
 
-/**
- * Sends a one-time password (OTP) to the user's email for verification.
- */
-export const sendOtp = async (
+// Forgot Password
+export const forgotPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -151,127 +149,112 @@ export const sendOtp = async (
     const { email } = req.body;
 
     if (!email) {
-      return next(new AppError(400, "Email is required."));
+      return res.status(400).json({ message: "Email is required." });
     }
 
-    // Find user by email
     const user = await User.findOne({ where: { email } });
+
     if (!user) {
-      return next(new AppError(404, "User with this email does not exist."));
+      return res.status(404).json({ message: "User not found." });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
 
-    // Store OTP and expiry on the user
     user.otp = otp;
-    user.otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
-    await user.save();
+    user.otpExpiresAt = otpExpiresAt;
+    user.isOtpVerified = false;
 
-    // Combine first and last name
-    const fullName = `${user.first_name} ${user.last_name}`.trim();
+    await User.save(user);
 
-    // Send OTP via email
-    const templateId = 5;
-    const params = { otp, userName: fullName };
-
-    await sendEmail(email, templateId, params);
+    await sendForgotPasswordMail(email, otp); //  Send OTP mail
 
     res.status(200).json({
       status: "success",
-      message: "OTP sent to email successfully",
+      message: "OTP sent to your email."
     });
-  } catch (error) {
+  }
+  catch (error) {
     next(error);
   }
 };
 
-/**
- * Verifies the OTP entered by the user for authentication or password reset.
- */
-export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+
+// Verify OTP
+export const verifyOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return next(new AppError(400, "Email and OTP are required."));
+      return res.status(400).json({ message: "Email and OTP are required." });
     }
 
     const user = await User.findOne({ where: { email } });
 
-    if (!user) {
-      return next(new AppError(404, "User not found."));
+    if (!user || user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP or Email." });
     }
 
-    if (user.otp !== otp) {
-      return next(new AppError(400, "Invalid OTP."));
+    if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
+      return res.status(400).json({ message: "OTP has expired." });
     }
 
-    if (user.otpExpiresAt && new Date(user.otpExpiresAt) < new Date()) {
-      return next(new AppError(400, "OTP has expired."));
-    }
-
-    user.otp = null;
-    user.otpExpiresAt = null;
     user.isOtpVerified = true;
-    await user.save();
+    await User.save(user);
 
-    return res.status(200).json({
+    res.status(200).json({
       status: "success",
-      message: "OTP verified successfully",
+      message: "OTP verified. You can now reset your password."
     });
   } catch (error) {
     next(error);
   }
 };
 
-/**
- * Resets the user's password after OTP verification.
- */
+
+// Reset Password
 export const resetPassword = async (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { userId, email, newPassword } = req.body;
+    const { email, newPassword } = req.body;
 
-    if (!userId) {
-      return next(new AppError(400, "User ID is required."));
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Email and New Password are required." });
     }
 
-    if (!email) {
-      return next(new AppError(400, "Email is required."));
+    const user = await User.findOne({ where: { email } });
+
+    if (!user || !user.isOtpVerified) {
+      return res.status(400).json({ message: "OTP verification required before resetting password." });
     }
 
-    if (!newPassword) {
-      return next(new AppError(400, "New password is required."));
-    }
+  
 
-    const user = await User.findOne({ where: { id: userId, email } });
-    if (!user) {
-      return next(new AppError(404, "User with this ID and email does not exist."));
-    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    if (!user.isOtpVerified) {
-      return next(
-        new AppError(403, "OTP verification is required to reset password.")
-      );
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
     user.password = hashedPassword;
+    user.otp = null;
+    user.otpExpiresAt = null;
     user.isOtpVerified = false;
-    await user.save();
+
+    await User.save(user);
 
     res.status(200).json({
       status: "success",
-      message: "Password reset successfully",
+      message: "Password reset successful."
     });
   } catch (error) {
     next(error);
   }
 };
+
 
 
 

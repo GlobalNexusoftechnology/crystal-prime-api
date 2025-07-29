@@ -37,7 +37,7 @@ export const roleController = () => {
 
       res.status(200).json({
         status: 'success',
-        ...result,
+        data: { list: result.data, pagination: result },
       });
     } catch (error) {
       next(error);

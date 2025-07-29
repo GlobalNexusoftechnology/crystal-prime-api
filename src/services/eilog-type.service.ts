@@ -13,8 +13,12 @@ export const createEILogType = async (payload: { name: string }) => {
 };
 
 // Get all EILogTypes (not deleted)
-export const getAllEILogTypes = async () => {
-  return await eilogTypeRepository
+export const getAllEILogTypes = async (filters: any = {}) => {
+  const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+  const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+  const skip = (page - 1) * limit;
+
+  const query = eilogTypeRepository
     .createQueryBuilder("eilogType")
     .select([
       "eilogType.id",
@@ -23,8 +27,21 @@ export const getAllEILogTypes = async () => {
       "eilogType.updated_at"
     ])
     .where("eilogType.deleted = :deleted", { deleted: false })
-    .orderBy("eilogType.created_at", "DESC")
-    .getMany();
+    .orderBy("eilogType.created_at", "DESC");
+
+  query.skip(skip).take(limit);
+
+  const [eilogTypes, total] = await query.getManyAndCount();
+
+  return {
+    data: eilogTypes,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
 };
 
 // Get a single EILogType by ID

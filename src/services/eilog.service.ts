@@ -216,6 +216,7 @@ export const getAllEILogs = async (filters: any = {}, userId: string) => {
         name: e.eilogHead?.name,
       },
       createdBy: e.createdBy?.id ?? null,
+      deleted: e.deleted
     })),
     pagination: {
       total,
@@ -471,7 +472,7 @@ export const exportEILogsToExcel = async (
     { header: 'Expense', key: 'expense', width: 15 },
     { header: 'Payment Mode', key: 'payment_mode', width: 15 },
     { header: 'Attachment', key: 'attachment', width: 30 },
-    { header: 'Created At', key: 'created_at', width: 25 },
+    { header: 'Date', key: 'created_at', width: 25 },
   ];
 
   worksheet.getRow(1).eachCell((cell) => {
