@@ -1,10 +1,12 @@
 import { AppDataSource } from "../utils/data-source";
 import { ProjectMilestoneMaster } from "../entities/milestone-master.entity";
 import { ProjectTemplates } from "../entities/project-templates.entity";
+import { ProjectTaskMaster } from "../entities/task-master.entity";
 import AppError from "../utils/appError";
 
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestoneMaster);
 const templateRepo = AppDataSource.getRepository(ProjectTemplates);
+const taskRepo = AppDataSource.getRepository(ProjectTaskMaster);
 
 interface MilestoneMasterInput {
   template_id: string;
@@ -66,6 +68,17 @@ export const ProjectMilestoneMasterService = () => {
 
   // delete
   const softDeleteMilestone = async (id: string) => {
+    // Check if any tasks are using this milestone
+    const exist = await taskRepo.findOne({
+      where: {
+        milestone: { id: id },
+        deleted: false,
+      }
+    });
+    if (exist) {
+      throw new AppError(400, "This milestone is in use by tasks cannot delete.");
+    }
+
     const milestone = await milestoneRepo.findOne({ where: { id, deleted: false } });
     if (!milestone) throw new AppError(404, "Milestone not found");
 

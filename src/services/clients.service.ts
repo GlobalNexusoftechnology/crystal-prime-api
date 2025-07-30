@@ -1,5 +1,7 @@
 import { AppDataSource } from "../utils/data-source";
 import { Clients } from "../entities/clients.entity";
+import { Project } from "../entities/projects.entity";
+import { ClientFollowup } from "../entities/clients-followups.entity";
 import AppError from "../utils/appError";
 import { Leads } from "../entities/leads.entity";
 import ExcelJS from "exceljs";
@@ -19,6 +21,8 @@ interface ClientInput {
 
 const clientRepo = AppDataSource.getRepository(Clients);
 const leadRepo = AppDataSource.getRepository(Leads);
+const projectRepo = AppDataSource.getRepository(Project);
+const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
 
 export const ClientService = () => {
   // Create Client
@@ -184,6 +188,28 @@ export const ClientService = () => {
 
   //  Soft Delete
   const softDeleteClient = async (id: string) => {
+    // Check if any projects are using this client
+    const existProject = await projectRepo.findOne({
+      where: {
+        client: { id: id },
+        deleted: false,
+      }
+    });
+    if (existProject) {
+      throw new AppError(400, "This client is in use by a project cannot delete.");
+    }
+
+    // Check if any client followups are using this client
+    const existFollowup = await clientFollowupRepo.findOne({
+      where: {
+        client: { id: id },
+        deleted: false,
+      }
+    });
+    if (existFollowup) {
+      throw new AppError(400, "This client is in use by client followups cannot delete.");
+    }
+
     const client = await clientRepo.findOne({ where: { id, deleted: false } });
     if (!client) throw new AppError(404, "Client not found");
 

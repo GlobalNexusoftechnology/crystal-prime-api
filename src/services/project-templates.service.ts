@@ -1,10 +1,12 @@
 import { AppDataSource } from "../utils/data-source";
 import { ProjectTemplates } from "../entities/project-templates.entity";
+import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
 import { ProjectMilestoneMasterService } from "./milestone-master.service";
 import { ProjectTaskMasterService } from "./task-master.service";
 
 const templateRepo = AppDataSource.getRepository(ProjectTemplates);
+const projectRepo = AppDataSource.getRepository(Project);
 
 // Local Interface (cleaned: no `| null`)
 interface ProjectTemplateInput {
@@ -195,6 +197,17 @@ export const ProjectTemplateService = () => {
 
   // Soft Delete
   const softDeleteTemplate = async (id: string) => {
+    // Check if any projects are using this template
+    const exist = await projectRepo.findOne({
+      where: {
+        template: { id: id },
+        deleted: false,
+      }
+    });
+    if (exist) {
+      throw new AppError(400, "This project template is in use cannot delete.");
+    }
+
     const template = await templateRepo.findOne({
       where: { id, deleted: false },
     });

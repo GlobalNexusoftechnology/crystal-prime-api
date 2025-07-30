@@ -92,7 +92,7 @@ export const LeadStatusService = () => {
       where: { name: data.name, id: Not(id) },
     });
     if (existingLeadStatus)
-      throw new AppError(400, `"${existingLeadStatus.name} status already exists`);
+      throw new AppError(400, `${existingLeadStatus.name} status already exists`);
 
     // Check for duplicate color if color is being updated
     if (data.color) {
