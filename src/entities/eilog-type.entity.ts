@@ -4,7 +4,7 @@ import { Entity, Column, OneToMany } from 'typeorm';
 
 @Entity({ name: 'eilog_types' })
 export class EILogType extends Model {
-  @Column({ type: 'text', unique: true, nullable: true })
+  @Column({ type: 'text', nullable: true })
   name: string;
   
   @OneToMany(() => EILog, (eilog: EILog) => eilog.eilogType)

@@ -1,8 +1,10 @@
 import { AppDataSource } from "../utils/data-source";
 import { Role } from "../entities/roles.entity";
+import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 
 const roleRepo = AppDataSource.getRepository(Role);
+const userRepo = AppDataSource.getRepository(User);
 
 interface RoleInput {
   role: string; // use the enum here
@@ -81,6 +83,17 @@ export const roleService = () => {
 
   // Soft Delete Role
   const softDeleteRole = async (id: string) => {
+    // Check if any users are using this role
+    const exist = await userRepo.findOne({
+      where: {
+        role: { id: id },
+        deleted: false,
+      }
+    });
+    if (exist) {
+      throw new AppError(400, "This role is in use cannot delete.");
+    }
+
     const role = await roleRepo.findOne({ where: { id, deleted: false } });
     if (!role) throw new AppError(404, "Role not found");
 
