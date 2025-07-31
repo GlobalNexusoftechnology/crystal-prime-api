@@ -74,36 +74,104 @@ export const ProjectTaskService = () => {
     return await repo.save(task);
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = async (id: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const commentRepo = queryRunner ? queryRunner.manager.getRepository(TaskComment) : taskCommentRepo;
+    const followupRepo = queryRunner ? queryRunner.manager.getRepository(ClientFollowup) : clientFollowupRepo;
+    
     // Check if any task comments are using this task
-    const existComment = await taskCommentRepo.findOne({
+    const existComment = await commentRepo.findOne({
       where: {
         task: { id: id },
         deleted: false,
       }
     });
+    
     if (existComment) {
       throw new AppError(400, "This task is in use by task comments cannot delete.");
     }
 
     // Check if any client followups are using this task
-    const existFollowup = await clientFollowupRepo.findOne({
+    const existFollowup = await followupRepo.findOne({
       where: {
         project_task: { id: id },
         deleted: false,
       }
     });
+    
     if (existFollowup) {
       throw new AppError(400, "This task is in use by client followups cannot delete.");
     }
 
-    const task = await taskRepo.findOne({ where: { id, deleted: false } });
+    const task = await repo.findOne({ where: { id, deleted: false } });
     if (!task) throw new AppError(404, "Task not found");
 
     task.deleted = true;
     task.deleted_at = new Date();
 
-    return await taskRepo.save(task);
+    return await repo.save(task);
+  };
+
+  const deleteTaskWithCascade = async (id: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const commentRepo = queryRunner ? queryRunner.manager.getRepository(TaskComment) : taskCommentRepo;
+    const followupRepo = queryRunner ? queryRunner.manager.getRepository(ClientFollowup) : clientFollowupRepo;
+    
+    // Check if any task comments are using this task
+    const existComment = await commentRepo.findOne({
+      where: {
+        task: { id: id },
+        deleted: false,
+      }
+    });
+
+    // Check if any client followups are using this task
+    const existFollowup = await followupRepo.findOne({
+      where: {
+        project_task: { id: id },
+        deleted: false,
+      }
+    });
+
+    // If comments exist, delete all comments associated with this task first
+    if (existComment) {
+      const comments = await commentRepo.find({
+        where: {
+          task: { id: id },
+          deleted: false,
+        }
+      });
+      
+      for (const comment of comments) {
+        comment.deleted = true;
+        comment.deleted_at = new Date();
+        await commentRepo.save(comment);
+      }
+    }
+    
+    // If followups exist, delete all followups associated with this task first
+    if (existFollowup) {
+      const followups = await followupRepo.find({
+        where: {
+          project_task: { id: id },
+          deleted: false,
+        }
+      });
+      
+      for (const followup of followups) {
+        followup.deleted = true;
+        followup.deleted_at = new Date();
+        await followupRepo.save(followup);
+      }
+    }
+
+    const task = await repo.findOne({ where: { id, deleted: false } });
+    if (!task) throw new AppError(404, "Task not found");
+
+    task.deleted = true;
+    task.deleted_at = new Date();
+
+    return await repo.save(task);
   };
 
   return {
@@ -112,5 +180,6 @@ export const ProjectTaskService = () => {
     getTaskById,
     updateTask,
     deleteTask,
+    deleteTaskWithCascade,
   };
 };
