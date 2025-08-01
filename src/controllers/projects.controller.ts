@@ -138,7 +138,7 @@ export const ProjectController = () => {
         // Delete milestones that are no longer in the list
         const milestonesToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
         for (const milestoneId of milestonesToDelete) {
-          await milestoneService.deleteMilestone(milestoneId, queryRunner);
+          await milestoneService.deleteMilestoneWithCascade(milestoneId, queryRunner); // Use cascade delete
         }
         
         for (const milestone of milestones) {

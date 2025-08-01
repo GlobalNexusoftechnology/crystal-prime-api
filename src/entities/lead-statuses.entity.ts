@@ -5,7 +5,7 @@ import { LeadStatusHistory } from "./lead-status-history.entity";
 
 @Entity("lead_statuses")
 export class LeadStatuses extends Model {
-  @Column({ unique: true })
+  @Column()
   name: string;
 
   @OneToMany(() => Leads, (lead) => lead.status)

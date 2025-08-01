@@ -1,11 +1,13 @@
 import { AppDataSource } from "../utils/data-source";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { Project } from "../entities/projects.entity";
+import { ProjectTasks } from "../entities/project-task.entity";
 import AppError from "../utils/appError";
 import { mergeDateWithCurrentTime } from "../utils";
 
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const projectRepo = AppDataSource.getRepository(Project);
+const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 interface MilestoneInput {
   name: string;
@@ -99,6 +101,57 @@ export const MilestoneService = () => {
 
   const deleteMilestone = async (id: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const taskRepository = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    
+    // Check if any tasks are using this milestone
+    const exist = await taskRepository.findOne({
+      where: {
+        milestone: { id: id },
+        deleted: false,
+      }
+    });
+    
+    if (exist) {
+      throw new AppError(400, "This milestone is in use by tasks cannot delete.");
+    }
+
+    const milestone = await repo.findOne({ where: { id, deleted: false } });
+    if (!milestone) throw new AppError(404, "Milestone not found");
+
+    milestone.deleted = true;
+    milestone.deleted_at = new Date();
+
+    return await repo.save(milestone);
+  };
+
+  const deleteMilestoneWithCascade = async (id: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const taskRepository = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    
+    // Check if any tasks are using this milestone
+    const exist = await taskRepository.findOne({
+      where: {
+        milestone: { id: id },
+        deleted: false,
+      }
+    });
+
+    // If tasks exist, delete all tasks associated with this milestone first
+    if (exist) {
+      const tasks = await taskRepository.find({
+        where: {
+          milestone: { id: id },
+          deleted: false,
+        }
+      });
+      
+      for (const task of tasks) {
+        task.deleted = true;
+        task.deleted_at = new Date();
+        await taskRepository.save(task);
+      }
+    }
+
     const milestone = await repo.findOne({ where: { id, deleted: false } });
     if (!milestone) throw new AppError(404, "Milestone not found");
 
@@ -115,5 +168,6 @@ export const MilestoneService = () => {
     getMilestonesByProjectId,
     updateMilestone,
     deleteMilestone,
+    deleteMilestoneWithCascade,
   };
 };

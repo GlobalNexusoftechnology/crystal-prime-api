@@ -2,9 +2,13 @@ import { AppDataSource } from "../utils/data-source";
 import AppError from "../utils/appError";
 import { ProjectTaskMaster } from "../entities/task-master.entity";
 import { ProjectMilestoneMaster } from "../entities/milestone-master.entity";
+import { TaskComment } from "../entities/task-comment.entity";
+import { ClientFollowup } from "../entities/clients-followups.entity";
 
 const repo = AppDataSource.getRepository(ProjectTaskMaster);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestoneMaster);
+const taskCommentRepo = AppDataSource.getRepository(TaskComment);
+const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
 
 export const ProjectTaskMasterService = () => {
     const createTaskService = async (data: any) => {
@@ -59,6 +63,28 @@ export const ProjectTaskMasterService = () => {
     };
 
     const deleteTaskService = async (id: string) => {
+        // Check if any task comments are using this task
+        const existComment = await taskCommentRepo.findOne({
+            where: {
+                task: { id: id },
+                deleted: false,
+            }
+        });
+        if (existComment) {
+            throw new AppError(400, "This task is in use by task comments cannot delete.");
+        }
+
+        // Check if any client followups are using this task
+        const existFollowup = await clientFollowupRepo.findOne({
+            where: {
+                project_task: { id: id },
+                deleted: false,
+            }
+        });
+        if (existFollowup) {
+            throw new AppError(400, "This task is in use by client followups cannot delete.");
+        }
+
         const task = await repo.findOne({ where: { id, deleted: false } });
         if (!task) throw new AppError(404, 'Task not found');
 

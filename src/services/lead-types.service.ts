@@ -2,6 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { LeadTypes } from "../entities/lead-type.entity";
 import AppError from "../utils/appError";
 import { Not } from "typeorm";
+import { Leads } from "../entities/leads.entity";
 
 interface LeadTypeInput {
   name: string;
@@ -16,6 +17,7 @@ interface GetLeadTypesQuery {
 }
 
 const leadTypeRepo = AppDataSource.getRepository(LeadTypes);
+const leadRepo = AppDataSource.getRepository(Leads);
 
 export const LeadTypeService = () => {
   // Create Lead Type
@@ -23,10 +25,10 @@ export const LeadTypeService = () => {
     const { name } = data;
 
     const existingLeadType = await leadTypeRepo.findOne({
-      where: { name },
+      where: { name, deleted: false },
     });
     if (existingLeadType)
-      throw new AppError(400, `${existingLeadType.name} source already exists`);
+      throw new AppError(409, `${existingLeadType.name} source already exists`);
 
     const leadType = leadTypeRepo.create({ name });
     return await leadTypeRepo.save(leadType);
@@ -38,7 +40,8 @@ export const LeadTypeService = () => {
     const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
     const skip = (page - 1) * limit;
 
-    const query = leadTypeRepo.createQueryBuilder("leadType")
+    const query = leadTypeRepo
+      .createQueryBuilder("leadType")
       .where("leadType.deleted = false")
       .orderBy("leadType.created_at", "DESC");
 
@@ -67,10 +70,7 @@ export const LeadTypeService = () => {
   };
 
   // Update Lead Type
-  const updateLeadType = async (
-    id: string,
-    data: Partial<LeadTypeInput>
-  ) => {
+  const updateLeadType = async (id: string, data: Partial<LeadTypeInput>) => {
     const leadType = await leadTypeRepo.findOne({
       where: { id, deleted: false },
     });
@@ -79,7 +79,7 @@ export const LeadTypeService = () => {
     const existingLeadType = await leadTypeRepo.findOne({
       where: { name: data.name, id: Not(id) },
     });
-    
+
     if (existingLeadType)
       throw new AppError(400, `${existingLeadType.name} source already exists`);
 
@@ -92,6 +92,17 @@ export const LeadTypeService = () => {
 
   // Soft Delete Lead Type
   const softDeleteLeadType = async (id: string) => {
+    const exist = await leadRepo.findOne({
+      where: {
+        type: { id: id },
+        deleted: false,
+      },
+    });
+
+    if (exist) {
+      throw new AppError(400, "This lead type is in use cannot delete.");
+    }
+
     const leadType = await leadTypeRepo.findOne({
       where: { id, deleted: false },
     });
