@@ -1173,9 +1173,14 @@ async function getMonthlyLeadsChart(whereConditions: any): Promise<MonthlyLeadsD
   monthlyStats.forEach(stat => {
     const monthIndex = parseInt(stat.month) - 1; // Convert to 0-based index
     if (monthIndex >= 0 && monthIndex < 12) {
-      leads[monthIndex] = parseInt(stat.leads);
+      // Handle null values from database
+      const leadCount = stat.leads ? parseInt(stat.leads) : 0;
+      leads[monthIndex] = leadCount;
     }
   });
+
+  console.log('Monthly stats from database:', monthlyStats);
+  console.log('Processed leads array:', leads);
 
   return {
     labels: monthNames,
@@ -1621,6 +1626,10 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
     .orderBy('month', 'ASC')
     .getRawMany();
 
+  // Debug: Check total projects count
+  const totalProjectsCount = await projectRepo.count({ where: { deleted: false } });
+  console.log('Total projects in database:', totalProjectsCount);
+
   // Get lead trends for the whole year (Jan-Dec)
   const leadTrends = await leadRepo
     .createQueryBuilder('lead')
@@ -1632,6 +1641,10 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
     .groupBy('EXTRACT(MONTH FROM lead.created_at)')
     .orderBy('month', 'ASC')
     .getRawMany();
+
+  // Debug: Check total leads count
+  const totalLeadsCount = await leadRepo.count({ where: { deleted: false } });
+  console.log('Total leads in database:', totalLeadsCount);
 
   // Get revenue trends from EILog for the whole year (Jan-Dec)
   const revenueTrends = await eilogRepo
@@ -1673,8 +1686,10 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
   projectTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      started[monthIndex] = parseInt(trend.started);
-      completed[monthIndex] = parseInt(trend.completed);
+      // Handle null values from database and case sensitivity
+      started[monthIndex] = (trend.started || trend.started) ? parseInt(trend.started || trend.started) : 0;
+      completed[monthIndex] = (trend.completed || trend.completed) ? parseInt(trend.completed || trend.completed) : 0;
+      console.log(`Setting project month ${trend.month} (index ${monthIndex}): started=${started[monthIndex]}, completed=${completed[monthIndex]}`);
     }
   });
 
@@ -1682,17 +1697,28 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
   leadTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      newLeads[monthIndex] = parseInt(trend.newLeads);
+      // Handle null values from database and case sensitivity
+      const leadCount = trend.newLeads || trend.newleads ? parseInt(trend.newLeads || trend.newleads) : 0;
+      newLeads[monthIndex] = leadCount;
+      console.log(`Setting month ${trend.month} (index ${monthIndex}) to ${leadCount} leads`);
     }
   });
+
+  console.log('Project trends from database:', projectTrends);
+  console.log('Lead trends from database:', leadTrends);
+  console.log('Processed newLeads array:', newLeads);
 
   // Populate revenue data from EILog
   revenueTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      const income = parseFloat(trend.totalIncome || '0');
-      const expense = parseFloat(trend.totalExpense || '0');
-      revenue[monthIndex] += income - expense; // Net revenue (income - expenses)
+      // Handle null values from database and case sensitivity
+      const income = (trend.totalIncome || trend.totalincome) ? parseFloat(trend.totalIncome || trend.totalincome) : 0;
+      const expense = (trend.totalExpense || trend.totalexpense) ? parseFloat(trend.totalExpense || trend.totalexpense) : 0;
+      const netRevenue = income - expense; // Net revenue (income - expenses)
+      revenue[monthIndex] += netRevenue;
+      
+      console.log(`Month ${trend.month}: income=${income}, expense=${expense}, net=${netRevenue}`);
     }
   });
 
@@ -1700,12 +1726,20 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
   projectRevenueTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      const budget = parseFloat(trend.totalBudget || '0');
-      const actualCost = parseFloat(trend.totalActualCost || '0');
+      // Handle null values from database and case sensitivity
+      const budget = (trend.totalBudget || trend.totalbudget) ? parseFloat(trend.totalBudget || trend.totalbudget) : 0;
+      const actualCost = (trend.totalActualCost || trend.totalactualcost) ? parseFloat(trend.totalActualCost || trend.totalactualcost) : 0;
+      const projectNetRevenue = budget - actualCost;
       // Add budget as potential revenue and subtract actual costs
-      revenue[monthIndex] += budget - actualCost;
+      revenue[monthIndex] += projectNetRevenue;
+      
+      console.log(`Project Month ${trend.month}: budget=${budget}, actualCost=${actualCost}, net=${projectNetRevenue}`);
     }
   });
+
+  console.log('Revenue trends from database:', revenueTrends);
+  console.log('Project revenue trends from database:', projectRevenueTrends);
+  console.log('Final processed arrays:', { started, completed, newLeads, revenue });
 
   return {
     labels,
