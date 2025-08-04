@@ -1076,7 +1076,7 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
       const totalLeads = parseInt(staff.totalLeads || staff.totalleads || '0');
       const convertedLeads = parseInt(staff.convertedLeads || staff.convertedleads || '0');
       
-      const staffName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+      const staffName = `${firstName} ${lastName}`.trim() || '-';
       
       console.log('Processing staff:', { 
         staffId, 
@@ -1587,7 +1587,7 @@ async function getTeamStaffPerformance(whereConditions: any): Promise<TeamStaffP
     .getRawOne();
 
   const topPerformerName = topPerformer 
-    ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || 'Unknown User'
+    ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || '-'
     : 'No Staff Available';
 
   // Calculate task completion rate
