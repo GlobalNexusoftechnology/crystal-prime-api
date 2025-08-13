@@ -247,108 +247,90 @@ export const LeadService = () => {
     return lead;
   };
 
-  const getLeadStats = async (userId: string, role: string) => {
-    // Get today's start and end timestamps in UTC
-    const now = new Date();
-    const today = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate(),
-        0,
-        0,
-        0,
-        0
-      )
-    );
-    const tomorrow = new Date(
-      Date.UTC(
-        now.getUTCFullYear(),
-        now.getUTCMonth(),
-        now.getUTCDate() + 1,
-        0,
-        0,
-        0,
-        0
-      )
-    );
+const getLeadStats = async (userId: string, role: string) => {
+  // Get today's start and end timestamps in UTC
+  const now = new Date();
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
+  );
 
-    const isAdmin = role === "admin" || role === "Admin";
-    const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
-    const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
+  const isAdmin = role === "admin" || role === "Admin";
+  const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
+  const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
 
-    const [
-      totalLeads,
-      assignedToMe,
-      profileSent,
-      convertedLeads,
-      lostLeads,
-      todayFollowups,
-    ] = await Promise.all([
-      leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
+  const [
+    totalLeads,
+    assignedToMe,
+    profileSent,
+    convertedLeads,
+    lostLeads,
+    todayFollowups,
+  ] = await Promise.all([
+    // Total leads
+    leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
 
-      // For admin, assignedToMe is all leads; for user, only their own
-      isAdmin
-        ? leadRepo.count({ where: { deleted: false } })
-        : leadRepo.count({
-            where: { deleted: false, assigned_to: { id: userId } },
-            relations: ["assigned_to"],
-          }),
+    // Assigned to me
+    isAdmin
+      ? leadRepo.count({ where: { deleted: false } })
+      : leadRepo.count({
+          where: { deleted: false, assigned_to: { id: userId } },
+          relations: ["assigned_to"],
+        }),
 
-      leadRepo.count({
-        where: {
-          deleted: false,
-          status: { name: "Profile Sent" },
-          ...assignedToFilter,
-        },
-        relations: ["status"],
-      }),
+    // Profile sent
+    leadRepo.count({
+      where: {
+        deleted: false,
+        status: { name: "Profile Sent" },
+        ...assignedToFilter,
+      },
+      relations: ["status"],
+    }),
 
-      // Converted leads: status.name === 'completed'
-      leadRepo
-        .createQueryBuilder("lead")
-        .leftJoinAndSelect("lead.status", "status")
-        .where("lead.deleted = :deleted", { deleted: false })
-        .andWhere(`LOWER(status.name) IN (:...statuses)`, {
-          statuses: ["business done"], //add if required.
-        })
-        .andWhere(assignedToFilter) // assuming it's a query fragment or conditions
-        .getCount(),
+    // Converted leads
+    leadRepo
+      .createQueryBuilder("lead")
+      .leftJoin("lead.status", "status")
+      .where("lead.deleted = :deleted", { deleted: false })
+      .andWhere("LOWER(status.name) IN (:...statuses)", {
+        statuses: ["business done"], // Add more if needed
+      })
+      .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
+      .getCount(),
 
-      // Lost leads: status.name === 'no-interested'
-      leadRepo.count({
-        where: {
-          deleted: false,
-          status: { name: "no-interested" },
-          ...assignedToFilter,
-        },
-        relations: ["status"],
-      }),
+    // Lost leads (no-interested variations)
+    leadRepo
+      .createQueryBuilder("lead")
+      .leftJoin("lead.status", "status")
+      .where("lead.deleted = :deleted", { deleted: false })
+      .andWhere("LOWER(status.name) IN (:...statuses)", {
+        statuses: ["no-interested", "no interested", "not interested", "no-Interested"],
+      })
+      .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
+      .getCount(),
 
-      // Get today's followups count
-      leadFollowupRepo.count({
-        where: {
-          deleted: false,
-          ...followupUserFilter,
-          due_date: today,
-          status: Not(FollowupStatus.COMPLETED),
-        },
-        relations: ["user"],
-      }),
-    ]);
+    // Today's followups
+    leadFollowupRepo.count({
+      where: {
+        deleted: false,
+        ...followupUserFilter,
+        due_date: today,
+        status: Not(FollowupStatus.COMPLETED),
+      },
+      relations: ["user"],
+    }),
+  ]);
 
-    return {
-      totalLeads,
-      assignedToMe,
-      profileSent,
-      convertedLeads,
-      lostLeads,
-      todayFollowups,
-      // Keep these for backward compatibility, but use the new ones in dashboard
-      // convertedLeads: businessDone, 
-      // lostLeads: notInterested     
-    };
+  return {
+    totalLeads,
+    assignedToMe,
+    profileSent,
+    convertedLeads,
+    lostLeads,
+    todayFollowups,
   };
+};
+
 
   // Update Lead
   const updateLead = async (id: string, data: any, userData: any) => {

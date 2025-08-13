@@ -19,6 +19,7 @@ import ExcelJS from "exceljs";
 import { AppError } from "../utils";
 import { Project } from "../entities/projects.entity";
 import { Clients } from "../entities/clients.entity";
+import { EILog } from "../entities/eilog.entity";
 import { LeadReportsParams, LeadReportsData, LeadFunnelChart, LeadKPIMetrics, StaffConversionPerformance, SourceWiseConversionRate, LeadFunnelStage, MonthlyLeadsData } from '../types/report';
 import { Leads } from '../entities/leads.entity';
 import { BusinessAnalysisParams, BusinessAnalysisReport, LeadFunnelMetrics, ProjectDeliveryMetrics, FinancialSummary, TeamStaffPerformance, MonthlyTrendData } from '../types/report';
@@ -923,38 +924,185 @@ async function getKPIMetrics(whereConditions: any, dateFilter: any): Promise<Lea
 }
 
 async function getStaffConversionPerformance(whereConditions: any): Promise<StaffConversionPerformance[]> {
-  const staffStats = await leadRepo
-    .createQueryBuilder('lead')
-    .leftJoin('lead.assigned_to', 'user')
-    .leftJoin('lead.status', 'status')
-    .select([
-      'user.id as staffId',
-      'user.first_name as firstName',
-      'user.last_name as lastName',
-      'COUNT(*) as totalLeads',
-      'SUM(CASE WHEN status.name = :completedStatus THEN 1 ELSE 0 END) as convertedLeads'
-    ])
-    .where('lead.deleted = false')
-    .andWhere('user.id IS NOT NULL')
-    .setParameter('completedStatus', 'Completed')
-    .groupBy('user.id, user.first_name, user.last_name')
-    .orderBy('convertedLeads', 'DESC')
-    .limit(5)
-    .getRawMany();
-
-  return staffStats.map(staff => {
-    const firstName = staff.firstName || '';
-    const lastName = staff.lastName || '';
-    const staffName = `${firstName} ${lastName}`.trim() || 'Unknown User';
+  console.log('Starting getStaffConversionPerformance...');
+  
+  try {
+    // First, check if there are any users in the database
+    const totalUsers = await userRepo.count({ where: { deleted: false } });
+    console.log('Total users in database:', totalUsers);
     
-    return {
-      staffId: staff.staffId,
-      staffName,
-      conversionRate: staff.totalLeads > 0 
-        ? Math.round((staff.convertedLeads / staff.totalLeads) * 100)
-        : 0
-    };
-  });
+    if (totalUsers === 0) {
+      console.log('No users found in database');
+      return [];
+    }
+    
+    // Get all users to see what data we have
+    const allUsers = await userRepo.find({
+      where: { deleted: false },
+      select: ['id', 'first_name', 'last_name', 'email'],
+      relations: ['role']
+    });
+    
+    console.log('Users with roles:', allUsers.map(u => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      email: u.email,
+      role: u.role?.role || 'no-role',
+      roleId: u.role?.id
+    })));
+    
+    console.log('All users found:', allUsers.map(u => ({
+      id: u.id,
+      firstName: u.first_name,
+      lastName: u.last_name,
+      email: u.email,
+      role: u.role?.role
+    })));
+    
+    // Try to get staff with lead conversion data
+    let staffStats = await leadRepo
+      .createQueryBuilder('lead')
+      .leftJoin('lead.assigned_to', 'user')
+      .leftJoin('lead.status', 'status')
+      .select([
+        'user.id as staffid',
+        'user.first_name as firstname',
+        'user.last_name as lastname',
+        'COUNT(*) as totalleads',
+        'SUM(CASE WHEN status.name = :completedStatus THEN 1 ELSE 0 END) as convertedleads'
+      ])
+      .where('lead.deleted = false')
+      .andWhere('user.id IS NOT NULL')
+      .andWhere('user.deleted = false')
+      .setParameter('completedStatus', 'Completed')
+      .groupBy('user.id, user.first_name, user.last_name')
+      .orderBy('convertedleads', 'DESC')
+      .limit(10) // Increased limit to get more users
+      .getRawMany();
+
+    console.log('Staff stats with leads:', staffStats);
+
+    // If no staff with leads found, get all non-admin users
+    if (staffStats.length === 0) {
+      console.log('No staff with leads found, getting all non-admin users...');
+      staffStats = await userRepo
+        .createQueryBuilder('user')
+        .leftJoin('user.role', 'role')
+        .select([
+          'user.id as staffid',
+          'user.first_name as firstname',
+          'user.last_name as lastname',
+          '0 as totalleads',
+          '0 as convertedleads'
+        ])
+        .where('user.deleted = false')
+        .andWhere('(role.role IS NULL OR role.role != :adminRole)')
+        .setParameter('adminRole', 'admin')
+        .limit(10) // Increased limit to get more users
+        .getRawMany();
+      
+      console.log('Non-admin users found:', staffStats);
+    }
+
+    // If still no results, get any users and filter in JavaScript
+    if (staffStats.length === 0) {
+      console.log('No non-admin users found, getting any users and filtering...');
+      
+      // Get all users with their roles
+      const allUsersWithRoles = await userRepo.find({
+        where: { deleted: false },
+        relations: ['role']
+      });
+      
+      // Filter out admin users and convert to the expected format
+      const nonAdminUsers = allUsersWithRoles
+        .filter(user => !user.role || user.role.role !== 'admin')
+        .slice(0, 10) // Increased limit to get more users
+        .map(user => ({
+          staffid: user.id,
+          firstname: user.first_name || '',
+          lastname: user.last_name || '',
+          totalleads: '0',
+          convertedleads: '0'
+        }));
+      
+      console.log('Total users found:', allUsersWithRoles.length);
+      console.log('Admin users filtered out:', allUsersWithRoles.filter(user => user.role && user.role.role === 'admin').length);
+      console.log('Non-admin users after filtering:', nonAdminUsers.length);
+      
+      staffStats = nonAdminUsers;
+      console.log('Filtered non-admin users:', staffStats);
+    }
+
+    // If no users found at all, return empty array
+    if (staffStats.length === 0) {
+      console.log('No users found in database');
+      return [];
+    }
+
+    // Ensure we get all available users (up to 10)
+    if (staffStats.length < 4) {
+      console.log(`Only ${staffStats.length} users found, trying to get more...`);
+      
+      // Get all non-admin users directly
+      const allNonAdminUsers = await userRepo.find({
+        where: { deleted: false },
+        relations: ['role']
+      });
+      
+      const additionalUsers = allNonAdminUsers
+        .filter(user => !user.role || user.role.role !== 'admin')
+        .filter(user => !staffStats.some(staff => staff.staffid === user.id))
+        .slice(0, 10 - staffStats.length)
+        .map(user => ({
+          staffid: user.id,
+          firstname: user.first_name || '',
+          lastname: user.last_name || '',
+          totalleads: '0',
+          convertedleads: '0'
+        }));
+      
+      staffStats = [...staffStats, ...additionalUsers];
+      console.log(`Added ${additionalUsers.length} additional users. Total: ${staffStats.length}`);
+    }
+
+    // Process the staff data
+    const processedStaff = staffStats.map(staff => {
+      // Handle both camelCase and lowercase field names from database
+      const firstName = staff.firstName || staff.firstname || '';
+      const lastName = staff.lastName || staff.lastname || '';
+      const staffId = staff.staffId || staff.staffid || '';
+      const totalLeads = parseInt(staff.totalLeads || staff.totalleads || '0');
+      const convertedLeads = parseInt(staff.convertedLeads || staff.convertedleads || '0');
+      
+      const staffName = `${firstName} ${lastName}`.trim() || '-';
+      
+      console.log('Processing staff:', { 
+        staffId, 
+        firstName, 
+        lastName, 
+        staffName, 
+        totalLeads,
+        convertedLeads
+      });
+      
+      return {
+        staffId,
+        staffName,
+        conversionRate: totalLeads > 0 
+          ? Math.round((convertedLeads / totalLeads) * 100)
+          : 0
+      };
+    });
+
+    console.log('Final processed staff data:', processedStaff);
+    return processedStaff;
+
+  } catch (error) {
+    console.error('Error in getStaffConversionPerformance:', error);
+    return [];
+  }
 }
 
 async function getSourceWiseConversionRates(whereConditions: any): Promise<SourceWiseConversionRate[]> {
@@ -1021,27 +1169,18 @@ async function getMonthlyLeadsChart(whereConditions: any): Promise<MonthlyLeadsD
   // Initialize leads array with zeros
   const leads = Array.from({ length: 12 }, () => 0);
   
-  // If we have real data, populate it
-  if (monthlyStats.length > 0) {
-    monthlyStats.forEach(stat => {
-      const monthIndex = parseInt(stat.month) - 1; // Convert to 0-based index
-      if (monthIndex >= 0 && monthIndex < 12) {
-        leads[monthIndex] = parseInt(stat.leads);
-      }
-    });
-  } else {
-    // If no real data, use sample data that matches the chart image
-    // Based on the chart: Jan: ~20, Feb: ~24, Mar: ~10, Apr: ~20, May: ~20, Jun: ~35, Jul: ~38, Aug: ~13, Sep: ~16, Oct: 26, Nov: ~10, Dec: ~42
-    const sampleData = [
-      20, 24, 10, 20, 20, 35,  // Jan-Jun
-      38, 13, 16, 26, 10, 42   // Jul-Dec
-    ];
-    
-    return {
-      labels: monthNames,
-      leads: sampleData
-    };
-  }
+  // Populate leads data
+  monthlyStats.forEach(stat => {
+    const monthIndex = parseInt(stat.month) - 1; // Convert to 0-based index
+    if (monthIndex >= 0 && monthIndex < 12) {
+      // Handle null values from database
+      const leadCount = stat.leads ? parseInt(stat.leads) : 0;
+      leads[monthIndex] = leadCount;
+    }
+  });
+
+  console.log('Monthly stats from database:', monthlyStats);
+  console.log('Processed leads array:', leads);
 
   return {
     labels: monthNames,
@@ -1311,19 +1450,111 @@ async function getProjectDeliveryMetrics(whereConditions: any): Promise<ProjectD
 }
 
 async function getFinancialSummary(whereConditions: any): Promise<FinancialSummary> {
-  // For now, using sample data as financial data might be in a different system
-  const totalIncome = 1250000; // ₹12,50,000
+  const eilogRepo = AppDataSource.getRepository(EILog);
+  const projectRepo = AppDataSource.getRepository(Project);
+  
+  // Build date filter for queries
+  let dateFilter: any = {};
+  if (whereConditions.fromDate && whereConditions.toDate) {
+    dateFilter.created_at = Between(new Date(whereConditions.fromDate), new Date(whereConditions.toDate));
+  } else if (whereConditions.fromDate) {
+    dateFilter.created_at = MoreThanOrEqual(new Date(whereConditions.fromDate));
+  } else if (whereConditions.toDate) {
+    dateFilter.created_at = LessThanOrEqual(new Date(whereConditions.toDate));
+  }
+
+  // Get all EILog entries with date filter
+  const eilogs = await eilogRepo.find({
+    where: dateFilter,
+    relations: ['eilogType', 'eilogHead', 'createdBy']
+  });
+
+  // Get project financial data with date filter
+  let projectDateFilter: any = {};
+  if (whereConditions.fromDate && whereConditions.toDate) {
+    projectDateFilter.created_at = Between(new Date(whereConditions.fromDate), new Date(whereConditions.toDate));
+  } else if (whereConditions.fromDate) {
+    projectDateFilter.created_at = MoreThanOrEqual(new Date(whereConditions.fromDate));
+  } else if (whereConditions.toDate) {
+    projectDateFilter.created_at = LessThanOrEqual(new Date(whereConditions.toDate));
+  }
+
+  const projects = await projectRepo.find({
+    where: projectDateFilter,
+    relations: ['client']
+  });
+
+  // Calculate total income and expenses from EILog
+  let totalIncome = 0;
+  let totalExpense = 0;
+  
+  // Track amounts by payment mode for income
+  const incomeByPaymentMode: { [key: string]: number } = {
+    'Bank Transfer': 0,
+    'UPI': 0,
+    'Cash': 0,
+    'Online': 0,
+    'Cheque': 0,
+    'Others': 0
+  };
+  
+  // Track amounts by payment mode for expenses
+  const expenseByPaymentMode: { [key: string]: number } = {
+    'Bank Transfer': 0,
+    'UPI': 0,
+    'Cash': 0,
+    'Online': 0,
+    'Cheque': 0,
+    'Others': 0
+  };
+
+  // Process each EILog entry
+  eilogs.forEach(eilog => {
+    const income = parseFloat(eilog.income || '0');
+    const expense = parseFloat(eilog.expense || '0');
+    const paymentMode = eilog.paymentMode || 'Others';
+    
+    if (income > 0) {
+      totalIncome += income;
+      incomeByPaymentMode[paymentMode] = (incomeByPaymentMode[paymentMode] || 0) + income;
+    }
+    
+    if (expense > 0) {
+      totalExpense += expense;
+      expenseByPaymentMode[paymentMode] = (expenseByPaymentMode[paymentMode] || 0) + expense;
+    }
+  });
+
+  // Add project-based income (budget as potential income)
+  let projectIncome = 0;
+  projects.forEach(project => {
+    if (project.budget) {
+      projectIncome += parseFloat(project.budget.toString());
+    }
+  });
+
+  // Add project-based expenses (actual costs)
+  let projectExpenses = 0;
+  projects.forEach(project => {
+    if (project.actual_cost) {
+      projectExpenses += parseFloat(project.actual_cost.toString());
+    }
+  });
+
+  // Combine EILog and project financial data
+  const combinedIncome = totalIncome + projectIncome;
+  const combinedExpenses = totalExpense + projectExpenses;
 
   return {
-    totalIncome,
-    amountReceivedInBank: totalIncome,
-    amountReceivedInUPI: totalIncome,
-    amountReceivedInCash: totalIncome,
-    amountReceivedInOnline: totalIncome,
-    amountSpentInBank: totalIncome,
-    amountSpentInUPI: totalIncome,
-    amountSpentInCash: totalIncome,
-    amountSpentInOnline: totalIncome
+    totalIncome: combinedIncome,
+    amountReceivedInBank: incomeByPaymentMode['Bank Transfer'] || 0,
+    amountReceivedInUPI: incomeByPaymentMode['UPI'] || 0,
+    amountReceivedInCash: incomeByPaymentMode['Cash'] || 0,
+    amountReceivedInOnline: incomeByPaymentMode['Online'] || 0,
+    amountSpentInBank: expenseByPaymentMode['Bank Transfer'] || 0,
+    amountSpentInUPI: expenseByPaymentMode['UPI'] || 0,
+    amountSpentInCash: expenseByPaymentMode['Cash'] || 0,
+    amountSpentInOnline: expenseByPaymentMode['Online'] || 0
   };
 }
 
@@ -1356,8 +1587,8 @@ async function getTeamStaffPerformance(whereConditions: any): Promise<TeamStaffP
     .getRawOne();
 
   const topPerformerName = topPerformer 
-    ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || 'Unknown'
-    : 'Meena';
+    ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || '-'
+    : 'No Staff Available';
 
   // Calculate task completion rate
   const [completedTasks, totalTasks] = await Promise.all([
@@ -1379,6 +1610,8 @@ async function getTeamStaffPerformance(whereConditions: any): Promise<TeamStaffP
 }
 
 async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData> {
+  const eilogRepo = AppDataSource.getRepository(EILog);
+  
   // Get project trends for the whole year (Jan-Dec)
   const projectTrends = await projectRepo
     .createQueryBuilder('project')
@@ -1393,6 +1626,10 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
     .orderBy('month', 'ASC')
     .getRawMany();
 
+  // Debug: Check total projects count
+  const totalProjectsCount = await projectRepo.count({ where: { deleted: false } });
+  console.log('Total projects in database:', totalProjectsCount);
+
   // Get lead trends for the whole year (Jan-Dec)
   const leadTrends = await leadRepo
     .createQueryBuilder('lead')
@@ -1402,6 +1639,36 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
     ])
     .where('lead.deleted = false')
     .groupBy('EXTRACT(MONTH FROM lead.created_at)')
+    .orderBy('month', 'ASC')
+    .getRawMany();
+
+  // Debug: Check total leads count
+  const totalLeadsCount = await leadRepo.count({ where: { deleted: false } });
+  console.log('Total leads in database:', totalLeadsCount);
+
+  // Get revenue trends from EILog for the whole year (Jan-Dec)
+  const revenueTrends = await eilogRepo
+    .createQueryBuilder('eilog')
+    .select([
+      'EXTRACT(MONTH FROM eilog.created_at) as month',
+      'SUM(CAST(eilog.income AS DECIMAL)) as totalIncome',
+      'SUM(CAST(eilog.expense AS DECIMAL)) as totalExpense'
+    ])
+    .where('eilog.income IS NOT NULL OR eilog.expense IS NOT NULL')
+    .groupBy('EXTRACT(MONTH FROM eilog.created_at)')
+    .orderBy('month', 'ASC')
+    .getRawMany();
+
+  // Get project revenue trends (budget as potential revenue)
+  const projectRevenueTrends = await projectRepo
+    .createQueryBuilder('project')
+    .select([
+      'EXTRACT(MONTH FROM project.created_at) as month',
+      'SUM(CAST(project.budget AS DECIMAL)) as totalBudget',
+      'SUM(CAST(project.actual_cost AS DECIMAL)) as totalActualCost'
+    ])
+    .where('project.budget IS NOT NULL OR project.actual_cost IS NOT NULL')
+    .groupBy('EXTRACT(MONTH FROM project.created_at)')
     .orderBy('month', 'ASC')
     .getRawMany();
 
@@ -1419,8 +1686,10 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
   projectTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      started[monthIndex] = parseInt(trend.started);
-      completed[monthIndex] = parseInt(trend.completed);
+      // Handle null values from database and case sensitivity
+      started[monthIndex] = (trend.started || trend.started) ? parseInt(trend.started || trend.started) : 0;
+      completed[monthIndex] = (trend.completed || trend.completed) ? parseInt(trend.completed || trend.completed) : 0;
+      console.log(`Setting project month ${trend.month} (index ${monthIndex}): started=${started[monthIndex]}, completed=${completed[monthIndex]}`);
     }
   });
 
@@ -1428,19 +1697,49 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
   leadTrends.forEach(trend => {
     const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
     if (monthIndex >= 0 && monthIndex < 12) {
-      newLeads[monthIndex] = parseInt(trend.newLeads);
+      // Handle null values from database and case sensitivity
+      const leadCount = trend.newLeads || trend.newleads ? parseInt(trend.newLeads || trend.newleads) : 0;
+      newLeads[monthIndex] = leadCount;
+      console.log(`Setting month ${trend.month} (index ${monthIndex}) to ${leadCount} leads`);
     }
   });
 
-  // If no real data, use sample data for Apr, May, Jun
-  if (projectTrends.length === 0) {
-    started[3] = 15; started[4] = 25; started[5] = 20; // Apr, May, Jun
-    completed[3] = 10; completed[4] = 20; completed[5] = 50;
-  }
-  if (leadTrends.length === 0) {
-    newLeads[3] = 20; newLeads[4] = 35; newLeads[5] = 50;
-  }
-  revenue[3] = 1000000; revenue[4] = 1250000; revenue[5] = 1000000;
+  console.log('Project trends from database:', projectTrends);
+  console.log('Lead trends from database:', leadTrends);
+  console.log('Processed newLeads array:', newLeads);
+
+  // Populate revenue data from EILog
+  revenueTrends.forEach(trend => {
+    const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
+    if (monthIndex >= 0 && monthIndex < 12) {
+      // Handle null values from database and case sensitivity
+      const income = (trend.totalIncome || trend.totalincome) ? parseFloat(trend.totalIncome || trend.totalincome) : 0;
+      const expense = (trend.totalExpense || trend.totalexpense) ? parseFloat(trend.totalExpense || trend.totalexpense) : 0;
+      const netRevenue = income - expense; // Net revenue (income - expenses)
+      revenue[monthIndex] += netRevenue;
+      
+      console.log(`Month ${trend.month}: income=${income}, expense=${expense}, net=${netRevenue}`);
+    }
+  });
+
+  // Add project revenue data
+  projectRevenueTrends.forEach(trend => {
+    const monthIndex = parseInt(trend.month) - 1; // 0-based index for Jan-Dec
+    if (monthIndex >= 0 && monthIndex < 12) {
+      // Handle null values from database and case sensitivity
+      const budget = (trend.totalBudget || trend.totalbudget) ? parseFloat(trend.totalBudget || trend.totalbudget) : 0;
+      const actualCost = (trend.totalActualCost || trend.totalactualcost) ? parseFloat(trend.totalActualCost || trend.totalactualcost) : 0;
+      const projectNetRevenue = budget - actualCost;
+      // Add budget as potential revenue and subtract actual costs
+      revenue[monthIndex] += projectNetRevenue;
+      
+      console.log(`Project Month ${trend.month}: budget=${budget}, actualCost=${actualCost}, net=${projectNetRevenue}`);
+    }
+  });
+
+  console.log('Revenue trends from database:', revenueTrends);
+  console.log('Project revenue trends from database:', projectRevenueTrends);
+  console.log('Final processed arrays:', { started, completed, newLeads, revenue });
 
   return {
     labels,
@@ -1452,9 +1751,49 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
 }
 
 async function getBusinessSummary(whereConditions: any): Promise<BusinessAnalysisReport['summary']> {
-  const [totalRevenue, totalProjects, totalLeads, totalStaff] = await Promise.all([
-    // For now, using sample data
-    Promise.resolve(1250000),
+  const eilogRepo = AppDataSource.getRepository(EILog);
+  
+  // Build date filter for queries
+  let dateFilter: any = {};
+  if (whereConditions.fromDate && whereConditions.toDate) {
+    dateFilter.created_at = Between(new Date(whereConditions.fromDate), new Date(whereConditions.toDate));
+  } else if (whereConditions.fromDate) {
+    dateFilter.created_at = MoreThanOrEqual(new Date(whereConditions.fromDate));
+  } else if (whereConditions.toDate) {
+    dateFilter.created_at = LessThanOrEqual(new Date(whereConditions.toDate));
+  }
+
+  // Get EILog financial data
+  const eilogs = await eilogRepo.find({
+    where: dateFilter,
+    relations: ['eilogType', 'eilogHead', 'createdBy']
+  });
+
+  // Calculate total revenue from EILog
+  let totalRevenue = 0;
+  eilogs.forEach(eilog => {
+    const income = parseFloat(eilog.income || '0');
+    const expense = parseFloat(eilog.expense || '0');
+    totalRevenue += income - expense; // Net revenue
+  });
+
+  // Get project financial data
+  const projects = await projectRepo.find({
+    where: { ...dateFilter, deleted: false },
+    relations: ['client']
+  });
+
+  // Add project-based revenue
+  projects.forEach(project => {
+    if (project.budget) {
+      totalRevenue += parseFloat(project.budget.toString());
+    }
+    if (project.actual_cost) {
+      totalRevenue -= parseFloat(project.actual_cost.toString());
+    }
+  });
+
+  const [totalProjects, totalLeads, totalStaff] = await Promise.all([
     projectRepo.count({ where: { deleted: false } }),
     leadRepo.count({ where: { deleted: false } }),
     userRepo.count({ 
@@ -1466,11 +1805,25 @@ async function getBusinessSummary(whereConditions: any): Promise<BusinessAnalysi
     })
   ]);
 
-  // Calculate overall performance (average of key metrics)
-  const overallPerformance = 85; // Default value
+  // Calculate overall performance based on real metrics
+  const completedProjects = projects.filter(p => p.status === ProjectStatus.COMPLETED).length;
+  const projectCompletionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
+  
+  // Calculate lead conversion rate
+  const convertedLeads = await leadRepo.count({ 
+    where: { 
+      deleted: false,
+      status: { name: ILike('%converted%') }
+    },
+    relations: ['status']
+  });
+  const leadConversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+  
+  // Calculate overall performance as average of key metrics
+  const overallPerformance = Math.round((projectCompletionRate + leadConversionRate) / 2);
 
   return {
-    totalRevenue,
+    totalRevenue: Math.round(totalRevenue),
     totalProjects,
     totalLeads,
     totalStaff,
@@ -1612,7 +1965,7 @@ export async function getPublicDashboardReport(params: PublicDashboardParams): P
     .orderBy('completedTasks', 'DESC')
     .limit(1)
     .getRawOne();
-  const topPerformerName = topPerformer ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || 'Unknown' : 'Priya Shah';
+  const topPerformerName = topPerformer ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || '-' : 'Priya Shah';
   // On-time delivery rate (dummy value)
   const onTimeDeliveryRate = 91;
   // Avg task completion rate (dummy value)
