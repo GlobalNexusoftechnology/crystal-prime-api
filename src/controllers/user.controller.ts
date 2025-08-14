@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber, changePassword } from "../services/user.service";
+import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber, changePassword, createClientCredentials } from "../services/user.service";
 import { changePasswordSchema, createUserSchema, updateUserSchema } from "../schemas/user.schema";
 
 // create user
@@ -262,5 +262,24 @@ export const changePasswordController = async (
   }
 };
 
+export const createClientCredentialsHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    
+    const response = await createClientCredentials(req.body);
+    // Send success response
+    res.status(200).json({
+      status: "success",
+      message: "Client credentials created successfully.",
+      data: response,
+    });
+    
+  } catch (error) {
+    next(error);
+  }
+};
 
 

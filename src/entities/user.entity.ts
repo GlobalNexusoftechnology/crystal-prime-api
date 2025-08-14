@@ -1,4 +1,4 @@
-import { Entity, Column, Index, BeforeInsert, OneToMany, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, Column, Index, BeforeInsert, OneToMany, ManyToOne, JoinColumn, OneToOne } from "typeorm";
 import bcrypt from "bcryptjs";
 import Model from "./model.entity";
 import { Leads } from "./leads.entity";
@@ -8,6 +8,7 @@ import { Task } from "./task-management.entity";
 import { Role } from "./roles.entity";
 import { projectAttachments } from "./project-attachments.entity";
 import { EILog } from "./eilog.entity";
+import { Clients } from "./clients.entity";
 
 @Entity("users")
 export class User extends Model {
@@ -59,6 +60,9 @@ export class User extends Model {
 
   @OneToMany(() => EILog, (eilog: EILog) => eilog.createdBy)
   eilogs: EILog[];
+
+  @OneToOne(() => Clients, (client) => client.user, { nullable: true })
+  client: Clients;
 
   @BeforeInsert()
   async hashPassword() {

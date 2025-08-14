@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany, OneToOne } from 'typeorm';
 import Model from './model.entity';
 import { Leads } from './leads.entity';
 import { ClientDetails } from './clients-details.entity';
+import { User } from './user.entity';
 
 @Entity('clients')
 export class Clients extends Model {
@@ -35,4 +36,8 @@ export class Clients extends Model {
 
   @OneToMany(() => ClientDetails, (detail) => detail.client)
   client_details: ClientDetails[];
+
+  @OneToOne(() => User, (user) => user.client, { nullable: true })
+  @JoinColumn({ name: 'user_id' }) 
+  user: User;
 }

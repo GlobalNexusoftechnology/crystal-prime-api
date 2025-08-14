@@ -9,7 +9,10 @@ import {
   updateProfileController,
   exportUsersExcelController,
   changePasswordController,
+  createClientCredentialsHandler,
 } from "../controllers";
+import { validate } from "../middleware";
+import { createClientCredentialsSchema } from "../schemas";
 
 const router = express.Router();
 
@@ -23,5 +26,10 @@ router.get("/", getAllUsersHandler);
 router.delete("/:id", softDeleteUserHandler);
 router.put("/:id", updateProfileController);
 router.post("/change-password", changePasswordController);
+router.post(
+  "/client/credentials",
+  validate(createClientCredentialsSchema),
+  createClientCredentialsHandler
+);
 
 export default router;

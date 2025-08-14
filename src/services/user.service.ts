@@ -6,11 +6,15 @@ import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { Role } from "../entities/roles.entity";
-import { ChangePasswordInput } from "../schemas/user.schema";
+import { ChangePasswordInput, CreateClientCredentialsInput } from "../schemas/user.schema";
 import bcrypt from "bcryptjs";
+import { Clients } from "../entities/clients.entity";
+import { email } from "envalid";
 
 const userRepository = AppDataSource.getRepository(User);
 const roleRepository = AppDataSource.getRepository(Role);
+const clientRepository = AppDataSource.getRepository(Clients);
+
 
 // Create user
 export const createUser = async (input: Partial<User> & { role_id?: string }) => {
@@ -254,3 +258,43 @@ export const changePassword = async (
 };
 
 
+//change password service
+export const createClientCredentials = async (
+  data: CreateClientCredentialsInput
+) => {
+  let client_role = await roleRepository.findOne({
+    where: { role: "client", deleted: false },
+  });
+
+  if(!client_role){
+    const response = roleRepository.create({
+      role: "client",
+      permissions: []
+    });
+    client_role = await roleRepository.save(response);
+  }
+  
+  const client = await clientRepository.findOne({
+    where: {
+      id: data.clientId,
+      deleted: false,
+    }
+  });
+
+  console.log("\n\n\n\n",data.clientId,"\n\n\n\n");
+
+  if(!client){
+    throw new AppError(404, "Client not found.");
+  }
+
+  const user = userRepository.create({
+    email: data.email,
+    password: data.password,
+    role: client_role,
+    client: client,
+  });
+  const savedUser = await userRepository.save(user);
+
+  const { password, ...isolated} = savedUser;
+  return isolated;
+};
