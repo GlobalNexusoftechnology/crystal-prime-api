@@ -150,6 +150,25 @@ export const ProjectService = () => {
       });
     }
 
+    // If client role, return only projects for that client
+    if (userRole && userRole.toLowerCase() === 'client') {
+      return await ProjectRepo.find({
+        where: { 
+          client: { user: { id: userId } },
+          deleted: false 
+        },
+        order: { created_at: "DESC" },
+        relations: [
+          "client",
+          "milestones",
+          "milestones.tasks",
+          "attachments",
+          "attachments.uploaded_by",
+          "project_type"
+        ],
+      });
+    }
+
     // Otherwise, return only projects where user is assigned to a milestone or task
     // Use QueryBuilder for complex joins
     const qb = ProjectRepo.createQueryBuilder("project")
@@ -167,6 +186,8 @@ export const ProjectService = () => {
 
     return await qb.getMany();
   };
+
+
 
   // Get Project by ID
   const getProjectById = async (id: string) => {
@@ -296,7 +317,14 @@ export const ProjectService = () => {
     const qb = ProjectRepo.createQueryBuilder("project")
       .select(["project.status AS status", "COUNT(DISTINCT project.id)::int AS count"])
       .where("project.deleted = false");
-    if (role !== "admin" && role !== "Admin" && userId) {
+    
+    if (role && role.toLowerCase() === 'client' && userId) {
+      // For client role, filter by client's projects
+      qb.leftJoin("project.client", "client")
+        .leftJoin("client.user", "user")
+        .andWhere("user.id = :userId", { userId });
+    } else if (role !== "admin" && role !== "Admin" && userId) {
+      // For other non-admin roles, filter by assignments
       qb.leftJoin("project.milestones", "milestones")
         .leftJoin("milestones.tasks", "tasks")
         .andWhere(
@@ -313,6 +341,25 @@ export const ProjectService = () => {
     if (userRole && userRole.toLowerCase() === 'admin') {
       return await ProjectRepo.find({
         where: { deleted: false },
+        order: { created_at: "DESC" },
+        relations: [
+          "client",
+          "milestones",
+          "milestones.tasks",
+          "attachments",
+          "attachments.uploaded_by",
+          "project_type"
+        ],
+      });
+    }
+
+    // If client role, return only projects for that client
+    if (userRole && userRole.toLowerCase() === 'client') {
+      return await ProjectRepo.find({
+        where: { 
+          client: { user: { id: userId } },
+          deleted: false 
+        },
         order: { created_at: "DESC" },
         relations: [
           "client",
