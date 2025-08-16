@@ -37,12 +37,47 @@ export const TicketService = () => {
     return await repo.save(ticket);
   };
 
-  const getAllTickets = async () => {
-    const data = await ticketRepo.find({
-      where: { deleted: false },
-      relations: ["project"],
-    });
-    return { data, total: data.length };
+  const getAllTickets = async (filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const { searchText, status, priority } = filters;
+
+    let query = ticketRepo.createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.project", "project")
+      .where("ticket.deleted = false");
+
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(ticket.remark) LIKE :search OR LOWER(project.name) LIKE :search`,
+        { search }
+      );
+    }
+
+    if (status && status.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
+    }
+
+    if (priority && priority.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
+    }
+
+    query = query.orderBy("ticket.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [tickets, total] = await query.getManyAndCount();
+
+    return {
+      data: tickets,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   };
 
   const getTicketById = async (id: string) => {
@@ -54,15 +89,48 @@ export const TicketService = () => {
     return ticket;
   };
 
-  const getTicketsByProject = async (projectId: string) => {
-    const data = await ticketRepo.find({
-      where: { 
-        project: { id: projectId },
-        deleted: false 
+  const getTicketsByProject = async (projectId: string, filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
+
+    const { searchText, status, priority } = filters;
+
+    let query = ticketRepo.createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.project", "project")
+      .where("ticket.deleted = false")
+      .andWhere("project.id = :projectId", { projectId });
+
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(ticket.remark) LIKE :search`,
+        { search }
+      );
+    }
+
+    if (status && status.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
+    }
+
+    if (priority && priority.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
+    }
+
+    query = query.orderBy("ticket.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [tickets, total] = await query.getManyAndCount();
+
+    return {
+      data: tickets,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      relations: ["project"],
-    });
-    return { data, total: data.length };
+    };
   };
 
   const updateTicket = async (id: string, data: Partial<TicketInput>, queryRunner?: any) => {
