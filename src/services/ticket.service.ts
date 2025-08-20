@@ -246,6 +246,24 @@ export const TicketService = () => {
       .getOne();
   };
 
+  const updateTicketStatus = async (id: string, status: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
+
+    const ticket = await repo.findOne({ where: { id, deleted: false } });
+    if (!ticket) throw new AppError(404, "Ticket not found");
+
+    ticket.status = status;
+
+    const saved = await repo.save(ticket);
+
+    return await repo.createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.project", "project")
+      .leftJoinAndSelect("ticket.task", "task")
+      .leftJoinAndSelect("task.milestone", "milestone")
+      .where("ticket.id = :id", { id: saved.id })
+      .getOne();
+  };
+
   const deleteTicket = async (id: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     
@@ -265,6 +283,7 @@ export const TicketService = () => {
     getTicketsByProject,
     getTicketsByTask,
     updateTicket,
+    updateTicketStatus,
     deleteTicket,
   };
 };
