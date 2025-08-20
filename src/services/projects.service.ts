@@ -166,7 +166,7 @@ export const ProjectService = () => {
   };
 
   // Get All Projects
-  const getAllProject = async (user: User, userId?: string, userRole?: string) => {
+  const getAllProject = async (userId?: string, userRole?: string, user?: User) => {
     // If admin, return all projects
     if (userRole && userRole.toLowerCase() === 'admin') {
       return await ProjectRepo.find({

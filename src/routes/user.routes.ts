@@ -10,6 +10,7 @@ import {
   exportUsersExcelController,
   changePasswordController,
   createClientCredentialsHandler,
+  changeClientPasswordController,
 } from "../controllers";
 import { validate } from "../middleware";
 import { createClientCredentialsSchema } from "../schemas";
@@ -26,7 +27,8 @@ router.get("/", getAllUsersHandler);
 router.delete("/:id", softDeleteUserHandler);
 router.put("/:id", updateProfileController);
 router.post("/change-password", changePasswordController);
-router.post(
+router.post("/client/change-password", changeClientPasswordController);
+router.post(  
   "/client/credentials",
   validate(createClientCredentialsSchema),
   createClientCredentialsHandler

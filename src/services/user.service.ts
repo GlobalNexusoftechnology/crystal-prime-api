@@ -257,6 +257,24 @@ export const changePassword = async (
   return "Password changed successfully!";
 };
 
+//change password service
+export const changeClientPassword = async (
+  data: any
+) => {
+  const Fetcheduser = await userRepository.findOne({ where: { id: data.userId } });
+  if (!Fetcheduser) {
+    throw new AppError(404, "User not found");
+  }
+
+  //hash the new password
+  const hashedPassword = await bcrypt.hash(data.password, 12);
+
+  //update the user's password in the database
+  Fetcheduser.password = hashedPassword;
+  await User.save(Fetcheduser);
+
+  return "Password changed successfully!";
+};
 
 //change password service
 export const createClientCredentials = async (
