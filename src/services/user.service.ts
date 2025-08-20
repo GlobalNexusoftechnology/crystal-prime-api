@@ -299,8 +299,6 @@ export const createClientCredentials = async (
     }
   });
 
-  console.log("\n\n\n\n",data.clientId,"\n\n\n\n");
-
   if(!client){
     throw new AppError(404, "Client not found.");
   }
@@ -312,6 +310,10 @@ export const createClientCredentials = async (
     client: client,
   });
   const savedUser = await userRepository.save(user);
+
+  // Set isCredential to true when credentials are created
+  client.isCredential = true;
+  await clientRepository.save(client);
 
   const { password, ...isolated} = savedUser;
   return isolated;

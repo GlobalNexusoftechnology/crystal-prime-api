@@ -41,6 +41,9 @@ export class Clients extends Model {
   @Column({ type: "varchar", length: 20, nullable: true })
   gst_number: string;
 
+  @Column({ type: "boolean", default: false })
+  isCredential: boolean;
+
   @OneToMany(() => ClientDetails, (detail) => detail.client)
   client_details: ClientDetails[];
 
