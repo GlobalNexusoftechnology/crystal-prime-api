@@ -6,6 +6,7 @@ import { LeadTypeService } from "./lead-types.service";
 import { mergeDateWithCurrentTime } from "../utils";
 import { MilestoneService } from "./project-milestone.service";
 import { ProjectTaskService } from "./project-task.service";
+import { User } from "entities";
 
 interface ProjectInput {
   client_id?: string;
@@ -165,7 +166,7 @@ export const ProjectService = () => {
   };
 
   // Get All Projects
-  const getAllProject = async (userId?: string, userRole?: string) => {
+  const getAllProject = async (user: User, userId?: string, userRole?: string) => {
     // If admin, return all projects
     if (userRole && userRole.toLowerCase() === 'admin') {
       return await ProjectRepo.find({
@@ -184,9 +185,12 @@ export const ProjectService = () => {
 
     // If client role, return only projects for that client
     if (userRole && userRole.toLowerCase() === 'client') {
+      const currentClient = await clientRepo.findOne({
+        where: { user: { id: user?.id }, deleted: false}
+      })      
       return await ProjectRepo.find({
         where: { 
-          client: { user: { id: userId } },
+          client: { id: currentClient?.id},
           deleted: false 
         },
         order: { created_at: "DESC" },
