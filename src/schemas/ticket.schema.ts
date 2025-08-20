@@ -21,3 +21,7 @@ export const updateTicketSchema = z.object({
   image_url: z.string().optional(),
   remark: z.string().optional(),
 });
+
+export const updateTicketStatusSchema = z.object({
+  status: z.string().min(1, "Status is required"),
+});

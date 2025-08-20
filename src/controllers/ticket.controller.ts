@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { TicketService } from "../services/ticket.service";
-import { createTicketSchema, updateTicketSchema } from "../schemas/ticket.schema";
+import { createTicketSchema, updateTicketSchema, updateTicketStatusSchema } from "../schemas/ticket.schema";
 
 const service = TicketService();
 
@@ -119,6 +119,17 @@ export const ticketController = () => {
     }
   };
 
+  const updateTicketStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateTicketStatusSchema.parse(req.body);
+      const result = await service.updateTicketStatus(id, parsed.status);
+      res.status(200).json({ status: "success", message: "Ticket status updated", data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   const deleteTicket = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -136,6 +147,7 @@ export const ticketController = () => {
     getTicketsByProject,
     getTicketsByTask,
     updateTicket,
+    updateTicketStatus,
     deleteTicket,
   };
 };

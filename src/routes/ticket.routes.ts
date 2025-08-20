@@ -22,6 +22,9 @@ router.get("/:id", controller.getTicketById);
 // Update ticket
 router.put("/:id", controller.updateTicket);
 
+// Update ticket status (support workflow)
+router.put("/:id/status", controller.updateTicketStatus);
+
 // Delete ticket
 router.delete("/:id", controller.deleteTicket);
 
