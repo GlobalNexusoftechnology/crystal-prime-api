@@ -6,6 +6,7 @@ export const createTicketSchema = z.object({
   status: z.string().optional(),
   priority: z.string().optional(),
   project_id: z.string().uuid("Invalid project ID"),
+  task_id: z.string().uuid("Invalid task ID").optional(),
   image_url: z.string().optional(),
   remark: z.string().optional(),
 });
@@ -16,6 +17,7 @@ export const updateTicketSchema = z.object({
   status: z.string().optional(),
   priority: z.string().optional(),
   project_id: z.string().uuid().optional(),
+  task_id: z.string().uuid().optional(),
   image_url: z.string().optional(),
   remark: z.string().optional(),
 });

@@ -7,6 +7,7 @@ http://localhost:3000/api/tickets
 
 ## 1. Create Ticket
 ```bash
+# Create ticket without task assignment
 curl -X POST http://localhost:3000/api/tickets \
   -H "Content-Type: application/json" \
   -d '{
@@ -16,6 +17,19 @@ curl -X POST http://localhost:3000/api/tickets \
     "priority": "High",
     "project_id": "your-project-uuid-here",
     "remark": "Urgent fix needed"
+  }'
+
+# Create ticket with task assignment (for support milestone)
+curl -X POST http://localhost:3000/api/tickets \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Bug Report",
+    "description": "User needs help with feature X",
+    "status": "Open",
+    "priority": "Medium",
+    "project_id": "your-project-uuid-here",
+    "task_id": "your-support-task-uuid-here",
+    "remark": "Ticket for ongoing maintenance"
   }'
 ```
 
@@ -61,12 +75,33 @@ curl -X GET "http://localhost:3000/api/tickets/project/your-project-uuid-here?st
 curl -X GET http://localhost:3000/api/tickets/project/your-project-uuid-here
 ```
 
-## 4. Get Ticket by ID
+## 4. Get Tickets by Task (Support Milestone)
+```bash
+# Get tickets by task with pagination
+curl -X GET "http://localhost:3000/api/tickets/task/your-task-uuid-here?page=1&limit=10"
+
+# Get tickets by task with search
+curl -X GET "http://localhost:3000/api/tickets/task/your-task-uuid-here?searchText=bug&page=1&limit=10"
+
+# Get tickets by task filtered by status
+curl -X GET "http://localhost:3000/api/tickets/task/your-task-uuid-here?status=open&page=1&limit=10"
+
+# Get tickets by task filtered by priority
+curl -X GET "http://localhost:3000/api/tickets/task/your-task-uuid-here?priority=high&page=1&limit=10"
+
+# Get tickets by task with multiple filters
+curl -X GET "http://localhost:3000/api/tickets/task/your-task-uuid-here?status=in_progress&priority=medium&page=1&limit=10"
+
+# Get tickets by task (default pagination)
+curl -X GET http://localhost:3000/api/tickets/task/your-task-uuid-here
+```
+
+## 5. Get Ticket by ID
 ```bash
 curl -X GET http://localhost:3000/api/tickets/your-ticket-uuid-here
 ```
 
-## 5. Update Ticket
+## 6. Update Ticket
 ```bash
 curl -X PUT http://localhost:3000/api/tickets/your-ticket-uuid-here \
   -H "Content-Type: application/json" \
@@ -78,7 +113,7 @@ curl -X PUT http://localhost:3000/api/tickets/your-ticket-uuid-here \
   }'
 ```
 
-## 6. Delete Ticket
+## 7. Delete Ticket
 ```bash
 curl -X DELETE http://localhost:3000/api/tickets/your-ticket-uuid-here
 ```
@@ -190,8 +225,12 @@ GET /api/tickets/project/your-project-uuid?status=resolved&priority=low&page=2&l
 ## Notes
 - Replace `your-project-uuid-here` with an actual project UUID from your database
 - Replace `your-ticket-uuid-here` with an actual ticket UUID after creating a ticket
+- Replace `your-task-uuid-here` with an actual task UUID (support task UUID for support tickets)
 - All UUIDs should be valid UUID format
 - The `image_url` field is optional and can be a URL to an uploaded image
 - The `image_file` field mentioned in the requirements is handled through file upload middleware (not implemented in this basic version)
 - Search is case-insensitive and searches across multiple fields
-- Pagination is applied to both "Get All Tickets" and "Get Tickets by Project" endpoints
+- Pagination is applied to all ticket listing endpoints
+- **Automatic Support Milestone**: When a new project is created, a "Support" milestone with a "Tickets" task is automatically created
+- **Task Assignment**: Tickets can be optionally assigned to specific tasks (useful for support tickets)
+- **Support Tickets**: Use the support task UUID to create tickets that will appear in the support milestone

@@ -4,6 +4,8 @@ import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { LeadTypeService } from "./lead-types.service";
 import { mergeDateWithCurrentTime } from "../utils";
+import { MilestoneService } from "./project-milestone.service";
+import { ProjectTaskService } from "./project-task.service";
 
 interface ProjectInput {
   client_id?: string;
@@ -29,6 +31,8 @@ interface ProjectInput {
 const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
 const leadTypeService = LeadTypeService();
+const milestoneService = MilestoneService();
+const taskService = ProjectTaskService();
 
 export const ProjectService = () => {
   const getQueryRunner = () => {
@@ -129,7 +133,35 @@ export const ProjectService = () => {
       client,
     });
 
-    return await repo.save(project);
+    const savedProject = await repo.save(project);
+
+    // Automatically create Support Milestone and Support Task
+    try {
+      // Create Support Milestone
+      const supportMilestone = await milestoneService.createMilestone({
+        name: "Support",
+        description: "Support and maintenance milestone for ongoing project support",
+        status: "Open",
+        project_id: savedProject.id,
+        start_date: new Date(),
+        end_date: savedProject.end_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
+      }, queryRunner);
+
+      // Create Support Task within the milestone
+      await taskService.createTask({
+        milestone_id: supportMilestone.id,
+        title: "Tickets",
+        description: "Handle tickets and maintenance requests",
+        status: "Open",
+        assigned_to: "Support Team",
+      }, queryRunner);
+
+    } catch (error) {
+      console.error("Error creating support milestone/task:", error);
+      // Don't fail the project creation if milestone/task creation fails
+    }
+
+    return savedProject;
   };
 
   // Get All Projects

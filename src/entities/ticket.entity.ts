@@ -1,6 +1,7 @@
-import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Project } from "./projects.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 @Entity("tickets")
 export class Ticket extends Model {
@@ -25,4 +26,8 @@ export class Ticket extends Model {
 
   @Column({ type: "text", nullable: true })
   remark: string;
+
+  @ManyToOne(() => ProjectTasks, (task) => task.tickets, { nullable: true })
+  @JoinColumn({ name: "task_id" })
+  task: ProjectTasks;
 }
