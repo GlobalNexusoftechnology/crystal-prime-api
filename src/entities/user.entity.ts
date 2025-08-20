@@ -1,4 +1,13 @@
-import { Entity, Column, Index, BeforeInsert, OneToMany, ManyToOne, JoinColumn, OneToOne } from "typeorm";
+import {
+  Entity,
+  Column,
+  Index,
+  BeforeInsert,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
+} from "typeorm";
 import bcrypt from "bcryptjs";
 import Model from "./model.entity";
 import { Leads } from "./leads.entity";
@@ -12,7 +21,7 @@ import { Clients } from "./clients.entity";
 
 @Entity("users")
 export class User extends Model {
-  @Column({ nullable: true, })
+  @Column({ nullable: true })
   email: string;
 
   @Column({ nullable: true })
@@ -25,7 +34,7 @@ export class User extends Model {
   phone_number: string;
 
   @ManyToOne(() => Role, (role) => role.users)
-  @JoinColumn({ name: 'role_id' })
+  @JoinColumn({ name: "role_id" })
   role: Role;
 
   @Column({ type: "timestamp", nullable: true })
@@ -61,14 +70,14 @@ export class User extends Model {
   @OneToMany(() => EILog, (eilog: EILog) => eilog.createdBy)
   eilogs: EILog[];
 
-  @OneToOne(() => Clients, (client) => client.user, { nullable: true })
+  @OneToOne(() => Clients, (client) => client.user)
   client: Clients;
 
   @BeforeInsert()
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 12);
   }
-  
+
   static async comparePasswords(
     candidatePassword: string,
     hashedPassword: string

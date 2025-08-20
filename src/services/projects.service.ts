@@ -184,26 +184,33 @@ export const ProjectService = () => {
     }
 
     // If client role, return only projects for that client
-    if (userRole && userRole.toLowerCase() === 'client') {
-      const currentClient = await clientRepo.findOne({
-        where: { user: { id: user?.id }, deleted: false}
-      })      
-      return await ProjectRepo.find({
-        where: { 
-          client: { id: currentClient?.id},
-          deleted: false 
-        },
-        order: { created_at: "DESC" },
-        relations: [
-          "client",
-          "milestones",
-          "milestones.tasks",
-          "attachments",
-          "attachments.uploaded_by",
-          "project_type"
-        ],
-      });
-    }
+  if (userRole && userRole.toLowerCase() === 'client') {
+    console.log(user)
+  const currentClient = await clientRepo.findOne({
+    where: { user: { id: user?.id }, deleted: false },
+  });
+
+  if (!currentClient) {
+    throw new AppError(404, "Client not found for this user.");
+  }
+
+  return await ProjectRepo.find({
+    where: { 
+      client: { id: currentClient.id },
+      deleted: false 
+    },
+    order: { created_at: "DESC" },
+    relations: [
+      "client",
+      "milestones",
+      "milestones.tasks",
+      "attachments",
+      "attachments.uploaded_by",
+      "project_type"
+    ],
+  });
+}
+
 
     // Otherwise, return only projects where user is assigned to a milestone or task
     // Use QueryBuilder for complex joins
