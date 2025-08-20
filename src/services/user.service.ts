@@ -15,7 +15,7 @@ const roleRepository = AppDataSource.getRepository(Role);
 // Create user
 export const createUser = async (input: Partial<User> & { role_id?: string }) => {
   const role = await roleRepository.findOne({
-    where: { id: input.role_id },
+    where: { id: input.role_id, deleted: false },
   });
 
   if (!role) {
@@ -32,7 +32,7 @@ export const createUser = async (input: Partial<User> & { role_id?: string }) =>
 // Find user by email
 export const findUserByEmail = async ({ email }: { email: string }) => {
   return await userRepository.findOne({
-    where: { email },
+    where: { email, deleted: false },
     relations: ["role"]
   });
 };
@@ -52,7 +52,7 @@ export const findUserById = async (userId: string) => {
 };
 
 export const findUserByPhoneNumber = async ({ phone_number }: { phone_number: string }) => {
-  return AppDataSource.getRepository(User).findOne({ where: { phone_number } });
+  return AppDataSource.getRepository(User).findOne({ where: { phone_number, deleted: false } });
 };
 
 // Find All user 
