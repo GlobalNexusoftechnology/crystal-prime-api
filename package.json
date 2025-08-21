@@ -15,7 +15,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "deploy": "npm install && npm run build && npm run pm2:start"
+    "deploy": "npm install && npm run build && npm run pm2:start",
+    "push:token": "ts-node-dev src/scripts/pageTokenInit.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",
