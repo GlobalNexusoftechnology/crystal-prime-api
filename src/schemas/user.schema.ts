@@ -62,6 +62,22 @@ export const loginUserSchema = object({
   }),
 });
 
+export const createClientCredentialsSchema = object({
+  body: object({
+    email: string({
+      required_error: "Email address is required",
+    }).email("Invalid email address"),
+
+    clientId: string({
+      required_error: "Client ID is required",
+    }).uuid(),
+
+    password: string({
+      required_error: "Password is required",
+    }).min(8, "Invalid email or password"),
+  }),
+});
+
 /**
  * @schema change password
  * @description Validation schema for change password.
@@ -75,6 +91,14 @@ export const changePasswordSchema = z.object({
   }).min(6, 'Password must be at least 6 characters long'),
 });
 
+export const changeClientPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: z.string({
+    required_error: 'Password is required',
+  }).min(6, 'Password must be at least 6 characters long'),
+});
+
 export type CreateUserInput = TypeOf<typeof createUserSchema>["body"];
 export type LoginUserInput = TypeOf<typeof loginUserSchema>["body"];
+export type CreateClientCredentialsInput = TypeOf<typeof createClientCredentialsSchema>["body"];
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;

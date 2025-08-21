@@ -6,3 +6,4 @@ export * from './daily-task.controller';
 export * from './eilog-type.controller';
 export * from './eilog-head.controller';
 export * from './eilog.controller';
+export * from './ticket.controller';

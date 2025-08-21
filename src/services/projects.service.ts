@@ -4,6 +4,9 @@ import { Clients } from "../entities/clients.entity";
 import AppError from "../utils/appError";
 import { LeadTypeService } from "./lead-types.service";
 import { mergeDateWithCurrentTime } from "../utils";
+import { MilestoneService } from "./project-milestone.service";
+import { ProjectTaskService } from "./project-task.service";
+import { User } from "entities";
 
 interface ProjectInput {
   client_id?: string;
@@ -29,6 +32,8 @@ interface ProjectInput {
 const ProjectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
 const leadTypeService = LeadTypeService();
+const milestoneService = MilestoneService();
+const taskService = ProjectTaskService();
 
 export const ProjectService = () => {
   const getQueryRunner = () => {
@@ -129,11 +134,39 @@ export const ProjectService = () => {
       client,
     });
 
-    return await repo.save(project);
+    const savedProject = await repo.save(project);
+
+    // Automatically create Support Milestone and Support Task
+    try {
+      // Create Support Milestone
+      const supportMilestone = await milestoneService.createMilestone({
+        name: "Support",
+        description: "Support and maintenance milestone for ongoing project support",
+        status: "Open",
+        project_id: savedProject.id,
+        start_date: new Date(),
+        end_date: savedProject.end_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
+      }, queryRunner);
+
+      // Create Support Task within the milestone
+      await taskService.createTask({
+        milestone_id: supportMilestone.id,
+        title: "Tickets",
+        description: "Handle tickets and maintenance requests",
+        status: "Open",
+        assigned_to: "Support Team",
+      }, queryRunner);
+
+    } catch (error) {
+      console.error("Error creating support milestone/task:", error);
+      // Don't fail the project creation if milestone/task creation fails
+    }
+
+    return savedProject;
   };
 
   // Get All Projects
-  const getAllProject = async (userId?: string, userRole?: string) => {
+  const getAllProject = async (userId?: string, userRole?: string, user?: User) => {
     // If admin, return all projects
     if (userRole && userRole.toLowerCase() === 'admin') {
       return await ProjectRepo.find({
@@ -149,6 +182,35 @@ export const ProjectService = () => {
         ],
       });
     }
+
+    // If client role, return only projects for that client
+  if (userRole && userRole.toLowerCase() === 'client') {
+    console.log(user)
+  const currentClient = await clientRepo.findOne({
+    where: { user: { id: user?.id }, deleted: false },
+  });
+
+  if (!currentClient) {
+    throw new AppError(404, "Client not found for this user.");
+  }
+
+  return await ProjectRepo.find({
+    where: { 
+      client: { id: currentClient.id },
+      deleted: false 
+    },
+    order: { created_at: "DESC" },
+    relations: [
+      "client",
+      "milestones",
+      "milestones.tasks",
+      "attachments",
+      "attachments.uploaded_by",
+      "project_type"
+    ],
+  });
+}
+
 
     // Otherwise, return only projects where user is assigned to a milestone or task
     // Use QueryBuilder for complex joins
@@ -167,6 +229,8 @@ export const ProjectService = () => {
 
     return await qb.getMany();
   };
+
+
 
   // Get Project by ID
   const getProjectById = async (id: string) => {
@@ -296,7 +360,14 @@ export const ProjectService = () => {
     const qb = ProjectRepo.createQueryBuilder("project")
       .select(["project.status AS status", "COUNT(DISTINCT project.id)::int AS count"])
       .where("project.deleted = false");
-    if (role !== "admin" && role !== "Admin" && userId) {
+    
+    if (role && role.toLowerCase() === 'client' && userId) {
+      // For client role, filter by client's projects
+      qb.leftJoin("project.client", "client")
+        .leftJoin("client.user", "user")
+        .andWhere("user.id = :userId", { userId });
+    } else if (role !== "admin" && role !== "Admin" && userId) {
+      // For other non-admin roles, filter by assignments
       qb.leftJoin("project.milestones", "milestones")
         .leftJoin("milestones.tasks", "tasks")
         .andWhere(
@@ -313,6 +384,25 @@ export const ProjectService = () => {
     if (userRole && userRole.toLowerCase() === 'admin') {
       return await ProjectRepo.find({
         where: { deleted: false },
+        order: { created_at: "DESC" },
+        relations: [
+          "client",
+          "milestones",
+          "milestones.tasks",
+          "attachments",
+          "attachments.uploaded_by",
+          "project_type"
+        ],
+      });
+    }
+
+    // If client role, return only projects for that client
+    if (userRole && userRole.toLowerCase() === 'client') {
+      return await ProjectRepo.find({
+        where: { 
+          client: { user: { id: userId } },
+          deleted: false 
+        },
         order: { created_at: "DESC" },
         relations: [
           "client",

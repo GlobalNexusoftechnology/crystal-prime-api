@@ -7,6 +7,7 @@ import { ProjectTasks } from "./project-task.entity";
 import { ProjectTemplates } from "./project-templates.entity";
 import { User } from "./user.entity";
 import { LeadTypes } from "./lead-type.entity";
+import { Ticket } from "./ticket.entity";
 
 export enum ProjectRenewalType {
   NONE = "NONE",
@@ -100,4 +101,7 @@ export class Project extends Model {
 
   @OneToMany(() => ProjectMilestones, (milestone) => milestone.project)
   milestones: ProjectMilestones[];
+
+  @OneToMany(() => Ticket, (ticket) => ticket.project)
+  tickets: Ticket[];
 }

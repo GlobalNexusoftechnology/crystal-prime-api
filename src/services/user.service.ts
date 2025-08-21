@@ -6,11 +6,15 @@ import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { Role } from "../entities/roles.entity";
-import { ChangePasswordInput } from "../schemas/user.schema";
+import { ChangePasswordInput, CreateClientCredentialsInput } from "../schemas/user.schema";
 import bcrypt from "bcryptjs";
+import { Clients } from "../entities/clients.entity";
+import { email } from "envalid";
 
 const userRepository = AppDataSource.getRepository(User);
 const roleRepository = AppDataSource.getRepository(Role);
+const clientRepository = AppDataSource.getRepository(Clients);
+
 
 // Create user
 export const createUser = async (input: Partial<User> & { role_id?: string }) => {
@@ -253,4 +257,64 @@ export const changePassword = async (
   return "Password changed successfully!";
 };
 
+//change password service
+export const changeClientPassword = async (
+  data: any
+) => {
+  const Fetcheduser = await userRepository.findOne({ where: { id: data.userId } });
+  if (!Fetcheduser) {
+    throw new AppError(404, "User not found");
+  }
 
+  //hash the new password
+  const hashedPassword = await bcrypt.hash(data.password, 12);
+
+  //update the user's password in the database
+  Fetcheduser.password = hashedPassword;
+  await User.save(Fetcheduser);
+
+  return "Password changed successfully!";
+};
+
+//change password service
+export const createClientCredentials = async (
+  data: CreateClientCredentialsInput
+) => {
+  let client_role = await roleRepository.findOne({
+    where: { role: "client", deleted: false },
+  });
+
+  if(!client_role){
+    const response = roleRepository.create({
+      role: "client",
+      permissions: []
+    });
+    client_role = await roleRepository.save(response);
+  }
+  
+  const client = await clientRepository.findOne({
+    where: {
+      id: data.clientId,
+      deleted: false,
+    }
+  });
+
+  if(!client){
+    throw new AppError(404, "Client not found.");
+  }
+
+  const user = userRepository.create({
+    email: data.email,
+    password: data.password,
+    role: client_role,
+    client: client,
+  });
+  const savedUser = await userRepository.save(user);
+
+  // Set isCredential to true when credentials are created
+  client.isCredential = true;
+  await clientRepository.save(client);
+
+  const { password, ...isolated} = savedUser;
+  return isolated;
+};

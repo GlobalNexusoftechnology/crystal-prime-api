@@ -7,4 +7,5 @@ export * from "./daily-task.service";
 export * from './eilog-type.service';
 export * from './eilog-head.service';
 export * from './eilog.service';
+export * from './ticket.service';
 
