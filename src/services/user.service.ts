@@ -19,7 +19,7 @@ const clientRepository = AppDataSource.getRepository(Clients);
 // Create user
 export const createUser = async (input: Partial<User> & { role_id?: string }) => {
   const role = await roleRepository.findOne({
-    where: { id: input.role_id },
+    where: { id: input.role_id, deleted: false },
   });
 
   if (!role) {
@@ -36,7 +36,7 @@ export const createUser = async (input: Partial<User> & { role_id?: string }) =>
 // Find user by email
 export const findUserByEmail = async ({ email }: { email: string }) => {
   return await userRepository.findOne({
-    where: { email },
+    where: { email, deleted: false },
     relations: ["role"]
   });
 };
@@ -44,7 +44,7 @@ export const findUserByEmail = async ({ email }: { email: string }) => {
 // Find user by ID
 export const findUserById = async (userId: string) => {
   const user = await userRepository.findOne({
-    where: { id: userId },
+    where: { id: userId, deleted: false },
     relations: ["role"]
   });
 
@@ -56,7 +56,7 @@ export const findUserById = async (userId: string) => {
 };
 
 export const findUserByPhoneNumber = async ({ phone_number }: { phone_number: string }) => {
-  return AppDataSource.getRepository(User).findOne({ where: { phone_number } });
+  return AppDataSource.getRepository(User).findOne({ where: { phone_number, deleted: false } });
 };
 
 // Find All user 
@@ -135,7 +135,7 @@ export const updateUser = async (
   // If payload includes a roleId, fetch and assign the role
   if (payload.role_id) {
     const role = await roleRepository.findOne({
-      where: { id: payload.role_id },
+      where: { id: payload.role_id, deleted: false },
     });
 
     if (!role) {
@@ -147,7 +147,7 @@ export const updateUser = async (
 
   // Check for unique email before updating
   if (payload.email && payload.email !== user.email) {
-    const existing = await userRepository.findOne({ where: { email: payload.email } });
+    const existing = await userRepository.findOne({ where: { email: payload.email, deleted: false } });
     if (existing && existing.id !== user.id) {
       throw new AppError(400, "Email already in use.");
     }
@@ -291,6 +291,14 @@ export const createClientCredentials = async (
     });
     client_role = await roleRepository.save(response);
   }
+
+  const existingEmail = await userRepository.findOne({
+    where: { email: data.email, deleted: false },
+  });
+
+  if(existingEmail){
+    throw new AppError(409, "User with this email already exist.");
+  }
   
   const client = await clientRepository.findOne({
     where: {
@@ -303,11 +311,28 @@ export const createClientCredentials = async (
     throw new AppError(404, "Client not found.");
   }
 
+  if(client?.isCredential){
+    throw new AppError(400, "Credentials for this client already created.")
+  }
+  const name = client?.name;
+  let first_name = "";
+  let last_name = "";
+
+  if (name) {
+    const temp = name?.trim()?.split(" ");
+    if (Array.isArray(temp)) {
+      first_name = temp[0];
+      last_name = temp[1];
+    }
+  }
+
   const user = userRepository.create({
     email: data.email,
     password: data.password,
     role: client_role,
     client: client,
+    first_name,
+    last_name,
   });
   const savedUser = await userRepository.save(user);
 
