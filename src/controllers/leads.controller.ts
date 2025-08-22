@@ -265,12 +265,10 @@ const metaLeadWebhook = async (
   next: NextFunction
 ) => {
   try {
-    
-    verifyMetaSignature(req); //verify its meta.
     const body = req.body;
 
     if (
-      body.object === "page" &&
+      (body.object === "page" || body.object === "instagram") &&
       body.entry &&
       body.entry[0]?.changes &&
       body.entry[0].changes[0]?.field === "leadgen"
@@ -280,15 +278,18 @@ const metaLeadWebhook = async (
 
       let channel = ChannelType.FACEBOOK;
 
-      if (body.object === 'instagram') {
+      if (body.object === "instagram") {
         channel = ChannelType.INSTAGRAM;
       }
       await service.handleMetaLead(leadId, channel);
       res.status(200).json({ status: "success", message: "Lead processed" });
     } else {
-      res.status(400).json({ status: "error", message: "Invalid webhook payload" });
+      res
+        .status(400)
+        .json({ status: "error", message: "Invalid webhook payload" });
     }
   } catch (error) {
+    console.log("error we got", error);
     next(error);
   }
 };

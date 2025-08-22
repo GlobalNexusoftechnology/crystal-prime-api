@@ -16,6 +16,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "deploy": "npm install && npm run build && npm run pm2:start",
+    "push:token": "ts-node-dev src/scripts/pageTokenInit.ts",
     "migrate:support": "node scripts/migrate-support-milestones.js"
   },
   "dependencies": {
