@@ -85,6 +85,7 @@ export const ClientService = () => {
     let query = clientRepo.createQueryBuilder("client")
       .leftJoinAndSelect("client.lead", "lead")
       .leftJoinAndSelect("client.client_details", "client_details")
+      .leftJoinAndSelect("client.user", "user")
       .where("client.deleted = false");
 
     if (searchText && searchText.trim() !== "") {
@@ -115,7 +116,7 @@ export const ClientService = () => {
   const getClientById = async (id: string) => {
     const client = await clientRepo.findOne({
       where: { id, deleted: false },
-      relations: ["lead","client_details"],
+      relations: ["lead","client_details","user"],
     });
 
     if (!client) throw new AppError(404, "Client not found");

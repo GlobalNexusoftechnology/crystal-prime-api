@@ -79,7 +79,7 @@ export const ProjectController = () => {
       const userRole = userData.role.role;
 
       console.log(userRole, "userRole", userId, "userId$$$$$")
-      const result = await service.getAllProject(userId, userRole);
+      const result = await service.getAllProject(userId, userRole, userData);
       const projectsWithTemplateId = result.map(project => ({
         ...project
       }));

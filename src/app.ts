@@ -32,6 +32,7 @@ import taskMasterRouter from './routes/task-master.routes';
 import clientFollowupRoutes from "./routes/clients-followups.routes";
 import taskCommentRoutes from "./routes/task-comment.routes";
 import taskStatusRoutes from "./routes/task-status.routes";
+import ticketRoutes from "./routes/ticket.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
@@ -107,6 +108,7 @@ AppDataSource.initialize()
     app.use('/api/clients-details', clientsDetailsRouter);
     app.use('/api/task-comments', taskCommentRoutes);
     app.use('/api/task-status', taskStatusRoutes);
+    app.use('/api/tickets', ticketRoutes);
     
     app.use("/api/daily-task", dailyTaskEntryRoutes);
     app.use("/api/dashboard", dashboardRoutes);
