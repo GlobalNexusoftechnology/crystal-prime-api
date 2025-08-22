@@ -990,8 +990,20 @@ export const LeadService = () => {
 
   // Step 3: Find Source in DB (optional)
   let source: LeadSources | null = null;
-  if (campaignName) {
-    source = await leadSourceRepo.findOne({ where: { name: campaignName } });
+  
+  try {
+    if (campaignName) {
+      source = await leadSourceRepo.findOne({ where: { name: campaignName } });
+
+      if (!source) {
+        const createdSource = leadSourceRepo.create({
+          name: campaignName,
+        });
+        source = await leadSourceRepo.save(createdSource);
+      }
+    }
+  } catch (e) {
+    console.log("Error while creating the source", e);
   }
   
   // Step 4: Save lead
