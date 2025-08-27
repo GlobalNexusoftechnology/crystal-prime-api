@@ -14,6 +14,8 @@ import {
   Not,
   ILike,
   In,
+  Brackets,
+  LessThan,
 } from "typeorm";
 import ExcelJS from "exceljs";
 import { AppError } from "../utils";
@@ -25,6 +27,8 @@ import { Leads } from '../entities/leads.entity';
 import { BusinessAnalysisParams, BusinessAnalysisReport, LeadFunnelMetrics, ProjectDeliveryMetrics, FinancialSummary, TeamStaffPerformance, MonthlyTrendData } from '../types/report';
 import { ProjectStatus } from '../entities/projects.entity';
 import { PublicDashboardParams, PublicDashboardReport, PublicBusinessOverview, PublicLeadClientInterest, PublicTrendChart, PublicMonthlyLeadsChart, PublicTeamPerformance } from '../types/report';
+import { any } from "zod";
+import { ClientFollowup } from "../entities/clients-followups.entity";
 
 interface StaffPerformanceReportParams {
   startDate?: string;
@@ -39,6 +43,9 @@ const attachmentRepo = AppDataSource.getRepository(projectAttachments);
 const followupRepo = AppDataSource.getRepository(LeadFollowup);
 const projectRepo = AppDataSource.getRepository(Project);
 const clientRepo = AppDataSource.getRepository(Clients);
+const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
+const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
+
 
 const leadRepo = AppDataSource.getRepository(Leads);
 
@@ -924,12 +931,12 @@ async function getKPIMetrics(whereConditions: any, dateFilter: any): Promise<Lea
 }
 
 async function getStaffConversionPerformance(whereConditions: any): Promise<StaffConversionPerformance[]> {
-  console.log('Starting getStaffConversionPerformance...');
+  // console.log('Starting getStaffConversionPerformance...');
   
   try {
     // First, check if there are any users in the database
     const totalUsers = await userRepo.count({ where: { deleted: false } });
-    console.log('Total users in database:', totalUsers);
+    // console.log('Total users in database:', totalUsers);
     
     if (totalUsers === 0) {
       console.log('No users found in database');
@@ -943,22 +950,22 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
       relations: ['role']
     });
     
-    console.log('Users with roles:', allUsers.map(u => ({
-      id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
-      email: u.email,
-      role: u.role?.role || 'no-role',
-      roleId: u.role?.id
-    })));
+    // console.log('Users with roles:', allUsers.map(u => ({
+    //   id: u.id,
+    //   firstName: u.first_name,
+    //   lastName: u.last_name,
+    //   email: u.email,
+    //   role: u.role?.role || 'no-role',
+    //   roleId: u.role?.id
+    // })));
     
-    console.log('All users found:', allUsers.map(u => ({
-      id: u.id,
-      firstName: u.first_name,
-      lastName: u.last_name,
-      email: u.email,
-      role: u.role?.role
-    })));
+    // console.log('All users found:', allUsers.map(u => ({
+    //   id: u.id,
+    //   firstName: u.first_name,
+    //   lastName: u.last_name,
+    //   email: u.email,
+    //   role: u.role?.role
+    // })));
     
     // Try to get staff with lead conversion data
     let staffStats = await leadRepo
@@ -981,7 +988,7 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
       .limit(10) // Increased limit to get more users
       .getRawMany();
 
-    console.log('Staff stats with leads:', staffStats);
+    // console.log('Staff stats with leads:', staffStats);
 
     // If no staff with leads found, get all non-admin users
     if (staffStats.length === 0) {
@@ -1002,12 +1009,12 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
         .limit(10) // Increased limit to get more users
         .getRawMany();
       
-      console.log('Non-admin users found:', staffStats);
+      // console.log('Non-admin users found:', staffStats);
     }
 
     // If still no results, get any users and filter in JavaScript
     if (staffStats.length === 0) {
-      console.log('No non-admin users found, getting any users and filtering...');
+      // console.log('No non-admin users found, getting any users and filtering...');
       
       // Get all users with their roles
       const allUsersWithRoles = await userRepo.find({
@@ -1027,9 +1034,9 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
           convertedleads: '0'
         }));
       
-      console.log('Total users found:', allUsersWithRoles.length);
-      console.log('Admin users filtered out:', allUsersWithRoles.filter(user => user.role && user.role.role === 'admin').length);
-      console.log('Non-admin users after filtering:', nonAdminUsers.length);
+      // console.log('Total users found:', allUsersWithRoles.length);
+      // console.log('Admin users filtered out:', allUsersWithRoles.filter(user => user.role && user.role.role === 'admin').length);
+      // console.log('Non-admin users after filtering:', nonAdminUsers.length);
       
       staffStats = nonAdminUsers;
       console.log('Filtered non-admin users:', staffStats);
@@ -1037,13 +1044,13 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
 
     // If no users found at all, return empty array
     if (staffStats.length === 0) {
-      console.log('No users found in database');
+      // console.log('No users found in database');
       return [];
     }
 
     // Ensure we get all available users (up to 10)
     if (staffStats.length < 4) {
-      console.log(`Only ${staffStats.length} users found, trying to get more...`);
+      // console.log(`Only ${staffStats.length} users found, trying to get more...`);
       
       // Get all non-admin users directly
       const allNonAdminUsers = await userRepo.find({
@@ -1064,7 +1071,7 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
         }));
       
       staffStats = [...staffStats, ...additionalUsers];
-      console.log(`Added ${additionalUsers.length} additional users. Total: ${staffStats.length}`);
+      // console.log(`Added ${additionalUsers.length} additional users. Total: ${staffStats.length}`);
     }
 
     // Process the staff data
@@ -1078,14 +1085,14 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
       
       const staffName = `${firstName} ${lastName}`.trim() || '-';
       
-      console.log('Processing staff:', { 
-        staffId, 
-        firstName, 
-        lastName, 
-        staffName, 
-        totalLeads,
-        convertedLeads
-      });
+      // console.log('Processing staff:', { 
+      //   staffId, 
+      //   firstName, 
+      //   lastName, 
+      //   staffName, 
+      //   totalLeads,
+      //   convertedLeads
+      // });
       
       return {
         staffId,
@@ -1096,7 +1103,7 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
       };
     });
 
-    console.log('Final processed staff data:', processedStaff);
+    // console.log('Final processed staff data:', processedStaff);
     return processedStaff;
 
   } catch (error) {
@@ -1179,8 +1186,8 @@ async function getMonthlyLeadsChart(whereConditions: any): Promise<MonthlyLeadsD
     }
   });
 
-  console.log('Monthly stats from database:', monthlyStats);
-  console.log('Processed leads array:', leads);
+  // console.log('Monthly stats from database:', monthlyStats);
+  // console.log('Processed leads array:', leads);
 
   return {
     labels: monthNames,
@@ -1250,23 +1257,39 @@ export async function getBusinessAnalysisReport(params: BusinessAnalysisParams):
     baseWhereConditions.created_at = Between(dateFilter.from, dateFilter.to);
   }
 
-  // 1. Lead Funnel Metrics
-  const leadFunnelMetrics = await getLeadFunnelMetrics(baseWhereConditions);
+  // // 1. Lead Funnel Metrics
+  // const leadFunnelMetrics = await getLeadFunnelMetrics(baseWhereConditions);
 
-  // 2. Project Delivery Metrics
-  const projectDeliveryMetrics = await getProjectDeliveryMetrics(baseWhereConditions);
+  // // 2. Project Delivery Metrics
+  // const projectDeliveryMetrics = await getProjectDeliveryMetrics(dateFilter);
 
-  // 3. Financial Summary
-  const financialSummary = await getFinancialSummary(baseWhereConditions);
+  // // 3. Financial Summary
+  // const financialSummary = await getFinancialSummary(baseWhereConditions);
 
-  // 4. Team & Staff Performance
-  const teamStaffPerformance = await getTeamStaffPerformance(baseWhereConditions);
+  // // 4. Team & Staff Performance
+  // const teamStaffPerformance = await getTeamStaffPerformance(baseWhereConditions);
 
-  // 5. Monthly Trends
-  const monthlyTrends = await getMonthlyTrends(baseWhereConditions);
+  // // 5. Monthly Trends
+  // const monthlyTrends = await getMonthlyTrends(baseWhereConditions);
 
-  // 6. Summary
-  const summary = await getBusinessSummary(baseWhereConditions);
+  // // 6. Summary
+  // const summary = await getBusinessSummary(baseWhereConditions);
+
+  const [
+    leadFunnelMetrics,
+    projectDeliveryMetrics,
+    financialSummary,
+    teamStaffPerformance,
+    monthlyTrends,
+    summary,
+  ] = await Promise.all([
+    getLeadFunnelMetrics(dateFilter),
+    getProjectDeliveryMetrics(dateFilter),
+    getFinancialSummary(baseWhereConditions),
+    getTeamStaffPerformance(dateFilter),
+    getMonthlyTrends(baseWhereConditions),
+    getBusinessSummary(baseWhereConditions),
+  ]);
 
   return {
     leadFunnelMetrics,
@@ -1355,97 +1378,421 @@ export async function exportBusinessAnalysisReportToExcel(params: any): Promise<
   return { workbook, name };
 }
 
-async function getLeadFunnelMetrics(whereConditions: any): Promise<LeadFunnelMetrics> {
+async function getLeadFunnelMetrics(
+  dateFilter: any,
+  baseWhereConditions: any = { deleted: false },
+  convertedStatusNames: string[] = ["completed", "business done"]
+): Promise<LeadFunnelMetrics> {
+  // ensure both are present (your caller already guarantees this)
+  const rangeWhere = (dateFilter.from && dateFilter.to)
+    ? { created_at: Between(dateFilter.from, dateFilter.to) }
+    : {};
+
+  const baseWhere = { ...baseWhereConditions, ...rangeWhere };
+
+  // counts
   const [totalLeads, qualifiedLeads, convertedLeads] = await Promise.all([
-    leadRepo.count({ where: whereConditions }),
-    leadRepo.count({ 
-      where: { ...whereConditions, status: { name: 'qualified' } },
-      relations: ['status']
+    // total
+    leadRepo.count({ where: baseWhere }),
+
+    // qualified (case-insensitive)
+    leadRepo.count({
+      where: { ...baseWhere, status: { name: ILike("qualified") } },
+      relations: ["status"],
     }),
-    leadRepo.count({ 
-      where: { ...whereConditions, status: { name: 'Completed' } },
-      relations: ['status']
-    })
+
+    // converted (case-insensitive, any of the provided names)
+    // use OR array with ILike to avoid query builder here
+    leadRepo.count({
+      where: convertedStatusNames.map((s) => ({
+        ...baseWhere,
+        status: { name: ILike(s) },
+      })),
+      relations: ["status"],
+    }),
   ]);
 
-  // Get best lead source
-  const sourceStats = await leadRepo
-    .createQueryBuilder('lead')
-    .leftJoin('lead.source', 'source')
-    .leftJoin('lead.status', 'status')
+  // best lead source (also range-filtered)
+  const convLower = convertedStatusNames.map((s) => s.toLowerCase());
+
+  const sourceQb = leadRepo
+    .createQueryBuilder("lead")
+    .leftJoin("lead.source", "source")
+    .leftJoin("lead.status", "status")
     .select([
-      'source.name as source',
-      'COUNT(*) as total',
-      'SUM(CASE WHEN status.name = :completedStatus THEN 1 ELSE 0 END) as converted'
+      "source.name as source",
+      "COUNT(*)::int as total",
+      // count as converted when status is in converted list (case-insensitive)
+      "SUM(CASE WHEN LOWER(status.name) IN (:...convLower) THEN 1 ELSE 0 END)::int as converted",
     ])
-    .where('lead.deleted = false')
-    .andWhere('source.name IS NOT NULL')
-    .setParameter('completedStatus', 'Completed')
-    .groupBy('source.name')
-    .getRawMany();
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("source.name IS NOT NULL")
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .setParameter("convLower", convLower)
+    .groupBy("source.name");
 
-  const bestLeadSource = sourceStats.length > 0 
-    ? sourceStats.reduce((top, current) => {
-        const currentRate = current.total > 0 ? (current.converted / current.total) * 100 : 0;
-        const topRate = top.total > 0 ? (top.converted / top.total) * 100 : 0;
-        return currentRate > topRate ? current : top;
-      }).source
-    : 'Referral';
+  const sourceStats: Array<{ source: string; total: number; converted: number }> =
+    await sourceQb.getRawMany();
 
-  // Calculate metrics
-  const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
-  const avgTimeToConvert = 54; // Default value
-  const avgFollowups = 3.1; // Default value
+  const bestLeadSource =
+    sourceStats.length > 0
+      ? sourceStats.reduce((top, current) => {
+          const cRate =
+            current.total > 0 ? (current.converted / current.total) * 100 : 0;
+          const tRate =
+            top.total > 0 ? (top.converted / top.total) * 100 : 0;
+          return cRate > tRate ? current : top;
+        }).source
+      : "-";
+
+  // metrics
+  const conversionRate =
+    totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+    
+     // average lead age (in days)
+  const ageQb = leadRepo
+    .createQueryBuilder("lead")
+    .select(
+      `AVG(EXTRACT(EPOCH FROM (NOW() - lead.created_at)) / 86400)`,
+      "avgAge"
+    )
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+
+  const ageResult = await ageQb.getRawOne<{ avgAge: string | null }>();
+  const avgLeadAge = ageResult?.avgAge
+    ? Math.round(parseFloat(ageResult.avgAge))
+    : 0;
+
+// Calculate average time to convert (in days) for converted leads
+const avgTimeToConvertQuery = leadRepo
+  .createQueryBuilder("lead")
+  .innerJoin("lead.status_histories", "history")
+  .innerJoin("history.status", "status")
+  .select("AVG(EXTRACT(EPOCH FROM (history.created_at - lead.created_at)) / 86400)", "avgDays")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("LOWER(status.name) IN (:...convertedStatusNames)", {
+    convertedStatusNames: convertedStatusNames.map(s => s.toLowerCase())
+  });
+
+const avgTimeResult = await avgTimeToConvertQuery.getRawOne<{ avgDays: string | null }>();
+console.log("Time to convert query result:", avgTimeResult);
+
+// If no converted leads found, try a different approach
+let avgTimeToConvert = 0;
+if (!avgTimeResult?.avgDays) {
+  const altTimeQuery = leadRepo
+    .createQueryBuilder("lead")
+    .innerJoin("lead.status", "status")
+    .select("AVG(EXTRACT(EPOCH FROM (NOW() - lead.created_at)) / 86400)", "avgDays")
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .andWhere("LOWER(status.name) IN (:...convertedStatusNames)", {
+      convertedStatusNames: convertedStatusNames.map(s => s.toLowerCase())
+    });
+  
+  const altTimeResult = await altTimeQuery.getRawOne<{ avgDays: string | null }>();
+  console.log("Alternative time query result:", altTimeResult);
+  avgTimeToConvert = altTimeResult?.avgDays ? Math.round(parseFloat(altTimeResult.avgDays)) : 0;
+} else {
+  avgTimeToConvert = Math.round(parseFloat(avgTimeResult.avgDays));
+}
+
+// Calculate average followups per lead - more efficient query
+
+// Calculate average time between followups (in days)
+const avgFollowupTimeQuery = leadRepo
+  .createQueryBuilder("lead")
+  .innerJoin("lead.followups", "followup")
+  .select("lead.id", "leadId")
+  .addSelect("COUNT(followup.id)", "followupCount")
+  .addSelect("MIN(EXTRACT(EPOCH FROM (followup.due_date - lead.created_at)) / 86400)", "firstFollowupTime")
+  .addSelect("MAX(EXTRACT(EPOCH FROM (followup.due_date - lead.created_at)) / 86400)", "lastFollowupTime")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("followup.due_date IS NOT NULL")
+  .groupBy("lead.id")
+  .having("COUNT(followup.id) > 0");
+
+const followupTimeResults = await avgFollowupTimeQuery.getRawMany();
+
+let totalFollowupTime = 0;
+let totalFollowupIntervals = 0;
+
+followupTimeResults.forEach(result => {
+  const followupCount = parseInt(result.followupCount);
+  const firstFollowupTime = parseFloat(result.firstFollowupTime);
+  const lastFollowupTime = parseFloat(result.lastFollowupTime);
+  
+  if (followupCount > 1) {
+    // Calculate average time between followups for this lead
+    const avgTimeForLead = (lastFollowupTime - firstFollowupTime) / (followupCount - 1);
+    totalFollowupTime += avgTimeForLead;
+    totalFollowupIntervals += 1;
+  } else if (followupCount === 1) {
+    // For single followup, use the time from lead creation to followup
+    totalFollowupTime += firstFollowupTime;
+    totalFollowupIntervals += 1;
+  }
+});
+
+const avgFollowupTime = totalFollowupIntervals > 0 
+  ? Math.round(totalFollowupTime / totalFollowupIntervals) 
+  : 0;
+
+  // Calculate average response time (time to first followup) in days
+const avgResponseTimeQuery = leadRepo
+  .createQueryBuilder("lead")
+  .innerJoin("lead.followups", "followup")
+  .select("AVG(EXTRACT(EPOCH FROM (followup.due_date - lead.created_at)) / 86400)", "avgResponseTime")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("followup.due_date IS NOT NULL");
+
+const avgResponseTimeResult = await avgResponseTimeQuery.getRawOne<{ avgResponseTime: string | null }>();
+const avgResponseTime = avgResponseTimeResult?.avgResponseTime 
+  ? (Number((Number(parseFloat(avgResponseTimeResult.avgResponseTime)) * 24).toFixed(2))) 
+  : 0;
+
+  // Count pending followups (followups with status not COMPLETED)
+const pendingFollowupsQuery = leadRepo
+  .createQueryBuilder("lead")
+  .innerJoin("lead.followups", "followup")
+  .select("COUNT(followup.id)", "pendingCount")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("followup.status != :completedStatus", { 
+    completedStatus: FollowupStatus.COMPLETED 
+  });
+
+const pendingFollowupsResult = await pendingFollowupsQuery.getRawOne<{ pendingCount: string }>();
+const pendingFollowupsCount = parseInt(pendingFollowupsResult?.pendingCount || "0");
+
+// Count hot leads based on recent followup activity
+// Count hot leads based on high possibility of conversion
+const hotLeadsQuery = leadRepo
+  .createQueryBuilder("lead")
+  .leftJoin("lead.status", "status")
+  .select("COUNT(lead.id)", "hotLeadsCount")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("lead.possibility_of_conversion >= :minPossibility", { 
+    minPossibility: 70 // 70% or higher possibility
+  })
+  .andWhere("LOWER(status.name) NOT IN (:...convertedStatusNames)", {
+    convertedStatusNames: convertedStatusNames.map(s => s.toLowerCase())
+  });
+
+const hotLeadsResult = await hotLeadsQuery.getRawOne<{ hotLeadsCount: string }>();
+const hotLeadsCount = parseInt(hotLeadsResult?.hotLeadsCount || "0");
 
   return {
     totalLeads,
     qualifiedLeads,
     convertedLeads,
-    dropOfStage: 'Personal Sent',
+    dropOfStage: "Personal Sent",
     conversionRate: Math.round(conversionRate * 10) / 10,
-    avgTimeToConvert,
-    avgFollowups,
-    bestLeadSource
+    avgTimeToConvert: avgTimeToConvert,
+    avgFollowups: avgFollowupTime,
+    bestLeadSource,
+    avgLeadAge,
+    averageResponseTime: avgResponseTime,
+    pendingFollowups: pendingFollowupsCount,
+    hotLeadsCount,
   };
 }
 
-async function getProjectDeliveryMetrics(whereConditions: any): Promise<ProjectDeliveryMetrics> {
+async function getProjectDeliveryMetrics(
+  dateFilter: any
+): Promise<ProjectDeliveryMetrics> {
+  // Total & completed
   const [totalProjects, completedProjects] = await Promise.all([
-    projectRepo.count({ where: { deleted: false } }),
-    projectRepo.count({ 
-      where: { deleted: false, status: ProjectStatus.COMPLETED }
-    })
+    projectRepo.count({
+      where: {
+        deleted: false,
+        ...(dateFilter.from && dateFilter.to
+          ? { created_at: Between(dateFilter.from, dateFilter.to) }
+          : {}),
+      },
+    }),
+    projectRepo.count({
+      where: {
+        deleted: false,
+        status: ProjectStatus.COMPLETED,
+        ...(dateFilter.from && dateFilter.to
+          ? { created_at: Between(dateFilter.from, dateFilter.to) }
+          : {}),
+      },
+    }),
   ]);
 
-  // For now, using a default value for budget overrun projects
-  const budgetOverrunProjects = 3;
+  // Avg duration
+  const qb = projectRepo
+    .createQueryBuilder("project")
+    .select(
+      `AVG(EXTRACT(EPOCH FROM (project.actual_end_date - project.actual_start_date))/86400)`,
+      "avgDuration"
+    )
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("project.status = :status", { status: ProjectStatus.COMPLETED })
+    .andWhere("project.actual_end_date IS NOT NULL")
+    .andWhere("project.actual_start_date IS NOT NULL");
 
-  // Calculate on-time delivery rate (simplified for now)
-  // For now, using a default value as the date comparison is complex
-  const onTimeDeliveryRate = 82; // Default value from the dashboard
+  if (dateFilter.from && dateFilter.to) {
+    qb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
 
-  // Get average project duration
-  const projectDurations = await projectRepo
-    .createQueryBuilder('project')
-    .select([
-      'AVG(EXTRACT(EPOCH FROM (project.actual_end_date - project.start_date))/86400) as avgDuration'
-    ])
-    .where('project.deleted = false')
-    .andWhere('project.status = :status', { status: ProjectStatus.COMPLETED })
-    .andWhere('project.actual_end_date IS NOT NULL')
-    .getRawOne();
+  const projectDurations = await qb.getRawOne<{ avgDuration: string | null }>();
+  const avgProjectDuration = projectDurations?.avgDuration
+    ? Math.round(parseFloat(projectDurations.avgDuration))
+    : 0;
 
-  const avgProjectDuration = projectDurations?.avgDuration ? Math.round(projectDurations.avgDuration) : 34;
+  // Budget overruns
+  const budgetQb = projectRepo
+    .createQueryBuilder("project")
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("project.budget IS NOT NULL")
+    .andWhere("project.actual_cost > project.budget");
+
+  if (dateFilter.from && dateFilter.to) {
+    budgetQb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
+
+  const budgetOverrunProjects = await budgetQb.getCount();
+
+  // On-time delivery
+  const onTimeQb = projectRepo
+    .createQueryBuilder("project")
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("project.status = :status", { status: ProjectStatus.COMPLETED })
+    .andWhere("project.actual_end_date IS NOT NULL")
+    .andWhere("project.end_date IS NOT NULL")
+    .andWhere("project.actual_end_date <= project.end_date");
+
+  if (dateFilter.from && dateFilter.to) {
+    onTimeQb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
+
+  const [onTimeProjects, completedProjectsCount] = await Promise.all([
+    onTimeQb.getCount(),
+    projectRepo.count({
+      where: {
+        deleted: false,
+        status: ProjectStatus.COMPLETED,
+        ...(dateFilter.from && dateFilter.to
+          ? { created_at: Between(dateFilter.from, dateFilter.to) }
+          : {}),
+      },
+    }),
+  ]);
+
+  const onTimeDeliveryRate =
+    completedProjectsCount > 0
+      ? Math.round((onTimeProjects / completedProjectsCount) * 100)
+      : 0;
+
+  // Profitability
+  const profitabilityQb = projectRepo
+    .createQueryBuilder("project")
+    .select(
+      "AVG( ((project.budget - project.actual_cost) / NULLIF(project.budget,0)) * 100 )",
+      "avgProfitability"
+    )
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("project.budget IS NOT NULL")
+    .andWhere("project.actual_cost IS NOT NULL");
+
+  if (dateFilter.from && dateFilter.to) {
+    profitabilityQb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
+
+  const profitabilityResult =
+    await profitabilityQb.getRawOne<{ avgProfitability: string | null }>();
+  const avgProjectProfitability = profitabilityResult?.avgProfitability
+    ? Math.round(parseFloat(profitabilityResult.avgProfitability))
+    : 0;
+
+  // Resource utilization
+  const resourceQb = projectRepo
+    .createQueryBuilder("project")
+    .leftJoin("project.milestones", "milestone")
+    .leftJoin("milestone.tasks", "task")
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("task.id IS NOT NULL");
+
+  if (dateFilter.from && dateFilter.to) {
+    resourceQb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
+
+  const [projectsWithTasks, totalProjectsCount] = await Promise.all([
+    resourceQb.getCount(),
+    projectRepo.count({
+      where: {
+        deleted: false,
+        ...(dateFilter.from && dateFilter.to
+          ? { created_at: Between(dateFilter.from, dateFilter.to) }
+          : {}),
+      },
+    }),
+  ]);
+
+  const resourceUtilization =
+    totalProjectsCount > 0
+      ? Math.round((projectsWithTasks / totalProjectsCount) * 100)
+      : 0;
+
+  // Client satisfaction (placeholder)
+  const clientSatisfactionIndex = 4.3;
 
   return {
     totalProjects,
     completedProjects,
-    onTimeDeliveryRate: Math.round(onTimeDeliveryRate),
-    budgetOverrunProjects,
-    avgProjectProfitability: 28, // Default value
     avgProjectDuration,
-    resourceUtilization: 78, // Default value
-    clientSatisfactionIndex: 4.3 // Default value
+    budgetOverrunProjects,
+    onTimeDeliveryRate,
+    avgProjectProfitability,
+    resourceUtilization,
+    clientSatisfactionIndex,
   };
 }
 
@@ -1558,8 +1905,18 @@ async function getFinancialSummary(whereConditions: any): Promise<FinancialSumma
   };
 }
 
-async function getTeamStaffPerformance(whereConditions: any): Promise<TeamStaffPerformance> {
-  // Get active staff count
+async function getTeamStaffPerformance(
+  dateFilter: any,
+  baseWhereConditions: any = { deleted: false }
+): Promise<TeamStaffPerformance> {
+  // Apply date filter to task-related queries
+  const rangeWhere = (dateFilter.from && dateFilter.to)
+    ? { created_at: Between(dateFilter.from, dateFilter.to) }
+    : {};
+
+  const baseWhere = { ...baseWhereConditions, ...rangeWhere };
+
+  // Get active staff count (no date filter needed for staff count)
   const activeStaffMembers = await userRepo.count({
     where: { 
       deleted: false,
@@ -1568,44 +1925,170 @@ async function getTeamStaffPerformance(whereConditions: any): Promise<TeamStaffP
     relations: ['role']
   });
 
-  // Get top performer
+  // Get top performer with date filter for tasks
   const topPerformer = await userRepo
-    .createQueryBuilder('user')
-    .leftJoin('user.assignedTasks', 'task')
-    .leftJoin('user.role', 'role')
-    .select([
-      'user.first_name as firstName',
-      'user.last_name as lastName',
-      'COUNT(CASE WHEN task.status = :completedStatus THEN 1 END) as completedTasks',
-      'COUNT(task.id) as totalTasks'
-    ])
-    .where('user.deleted = false AND role.role != :adminRole', { adminRole: 'admin' })
-    .setParameter('completedStatus', 'Completed')
-    .groupBy('user.id, user.first_name, user.last_name')
-    .orderBy('completedTasks', 'DESC')
-    .limit(1)
-    .getRawOne();
+  .createQueryBuilder('user')
+  .leftJoin(
+    'user.assignedTasks',
+    'task',
+    'task.created_at BETWEEN :from AND :to', // Date filter in JOIN
+    { from: dateFilter.from, to: dateFilter.to }
+  )
+  .leftJoin('user.role', 'role')
+  .select([
+    'user.first_name as firstName',
+    'user.last_name as lastName',
+    'COUNT(CASE WHEN task.status = :completedStatus THEN 1 END) as completedTasks',
+    'COUNT(task.id) as totalTasks'
+  ])
+  .where('user.deleted = false AND role.role != :adminRole', { adminRole: 'admin' })
+  .setParameter('completedStatus', 'Completed')
+  .groupBy('user.id, user.first_name, user.last_name')
+  .orderBy('completedTasks', 'DESC')
+  .limit(1)
+  .getRawOne();
 
   const topPerformerName = topPerformer 
-    ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || '-'
+    ? `${topPerformer.firstname || ''} ${topPerformer.lastname || ''}`.trim()
     : 'No Staff Available';
 
-  // Calculate task completion rate
-  const [completedTasks, totalTasks] = await Promise.all([
-    taskRepo.count({ where: { status: 'Completed', deleted: false } }),
-    taskRepo.count({ where: { deleted: false } })
-  ]);
+  // Calculate task completion rate and delayed tasks with date filter
+const [completedTasks, totalTasks, delayedTasksCount] = await Promise.all([
+    taskRepo.count({ 
+        where: { 
+            deleted: false, 
+            status: 'Completed',
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    }),
+    taskRepo.count({ 
+        where: { 
+            deleted: false,
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    }),
+    taskRepo.count({ 
+        where: { 
+            deleted: false,
+            status: Not('Completed'), // Not completed
+            due_date: LessThan(new Date()), // Past due date
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    })
+]);
 
   const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-  const delayedTasks = 100 - taskCompletionRate;
+
+  
+  // Get staff followup statistics 
+const followupStats = await Promise.all([
+    // Lead followups by staff
+    leadFollowupRepo
+        .createQueryBuilder("followup")
+        .select("followup.user_id", "staffId")
+        .addSelect("COUNT(followup.id)", "followupCount")
+        .where("followup.user_id IS NOT NULL")
+        .andWhere(
+            dateFilter.from && dateFilter.to 
+                ? "followup.created_at BETWEEN :start AND :end" 
+                : "1=1",
+            { start: dateFilter.from, end: dateFilter.to }
+        )
+        .groupBy("followup.user_id")
+        .getRawMany(),
+    
+    // Client followups by staff
+    clientFollowupRepo
+        .createQueryBuilder("followup")
+        .select("followup.user_id", "staffId")
+        .addSelect("COUNT(followup.id)", "followupCount")
+        .where("followup.user_id IS NOT NULL")
+        .andWhere(
+            dateFilter.from && dateFilter.to 
+                ? "followup.created_at BETWEEN :start AND :end" 
+                : "1=1",
+            { start: dateFilter.from, end: dateFilter.to }
+        )
+        .groupBy("followup.user_id")
+        .getRawMany()
+]);
+
+const [leadStats, clientStats] = followupStats;
+
+// Combine and calculate totals
+const staffFollowupMap = new Map();
+
+// Process lead followups
+leadStats.forEach(stat => {
+    const staffId = stat.staffId;
+    const count = parseInt(stat.followupCount);
+    staffFollowupMap.set(staffId, (staffFollowupMap.get(staffId) || 0) + count);
+});
+
+// Process client followups
+clientStats.forEach(stat => {
+    const staffId = stat.staffId;
+    const count = parseInt(stat.followupCount);
+    staffFollowupMap.set(staffId, (staffFollowupMap.get(staffId) || 0) + count);
+});
+
+// Calculate average
+const totalStaff = staffFollowupMap.size;
+const totalFollowups = Array.from(staffFollowupMap.values()).reduce((sum, count) => sum + count, 0);
+const avgFollowupsPerStaff = totalStaff > 0 ? totalFollowups / totalStaff : 0;
+
+//not using for now we are just returning total document uploaded in date range.
+// // Get average documents per staff in a single query
+// const documentStats = await AppDataSource.query(`
+//     SELECT 
+//         COUNT(*) as total_documents,
+//         COUNT(DISTINCT uploaded_by) as total_staff,
+//         CASE 
+//             WHEN COUNT(DISTINCT uploaded_by) > 0 
+//             THEN COUNT(*)::float / COUNT(DISTINCT uploaded_by) 
+//             ELSE 0 
+//         END as avg_documents_per_staff
+//     FROM (
+//         SELECT uploaded_by, created_at 
+//         FROM lead_attachments 
+//         WHERE uploaded_by IS NOT NULL
+//         ${dateFilter.from && dateFilter.to ? `AND created_at BETWEEN $1 AND $2` : ''}
+        
+//         UNION ALL
+        
+//         SELECT uploaded_by, created_at 
+//         FROM project_attachments 
+//         WHERE uploaded_by IS NOT NULL
+//         ${dateFilter.from && dateFilter.to ? `AND created_at BETWEEN $1 AND $2` : ''}
+//     ) AS all_documents
+// `, dateFilter.from && dateFilter.to ? [dateFilter.from, dateFilter.to] : []);
+
+// const { total_documents, total_staff, avg_documents_per_staff } = documentStats[0];
+
+  const documentContributions = await AppDataSource.query(`
+    SELECT (
+        (SELECT COUNT(*) FROM lead_attachments 
+         WHERE ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
+        +
+        (SELECT COUNT(*) FROM project_attachments 
+         WHERE ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
+    ) as total_documents
+`, dateFilter.from && dateFilter.to ? [dateFilter.from, dateFilter.to] : [])
+.then(result => parseInt(result[0].total_documents) || 0);
 
   return {
     activeStaffMembers,
     topPerformer: topPerformerName,
     taskCompletionRate: Math.round(taskCompletionRate),
-    delayedTasks: Math.round(delayedTasks),
-    avgFollowupsPerStaff: 19, // Default value
-    documentContributions: 12 // Default value
+    delayedTasks: Number(delayedTasksCount) ?? 0,
+    avgFollowupsPerStaff: avgFollowupsPerStaff,
+    documentContributions: documentContributions
   };
 }
 
@@ -1628,7 +2111,6 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
 
   // Debug: Check total projects count
   const totalProjectsCount = await projectRepo.count({ where: { deleted: false } });
-  console.log('Total projects in database:', totalProjectsCount);
 
   // Get lead trends for the whole year (Jan-Dec)
   const leadTrends = await leadRepo
@@ -1644,7 +2126,6 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
 
   // Debug: Check total leads count
   const totalLeadsCount = await leadRepo.count({ where: { deleted: false } });
-  console.log('Total leads in database:', totalLeadsCount);
 
   // Get revenue trends from EILog for the whole year (Jan-Dec)
   const revenueTrends = await eilogRepo
@@ -1689,7 +2170,7 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
       // Handle null values from database and case sensitivity
       started[monthIndex] = (trend.started || trend.started) ? parseInt(trend.started || trend.started) : 0;
       completed[monthIndex] = (trend.completed || trend.completed) ? parseInt(trend.completed || trend.completed) : 0;
-      console.log(`Setting project month ${trend.month} (index ${monthIndex}): started=${started[monthIndex]}, completed=${completed[monthIndex]}`);
+      // console.log(`Setting project month ${trend.month} (index ${monthIndex}): started=${started[monthIndex]}, completed=${completed[monthIndex]}`);
     }
   });
 
@@ -1700,13 +2181,13 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
       // Handle null values from database and case sensitivity
       const leadCount = trend.newLeads || trend.newleads ? parseInt(trend.newLeads || trend.newleads) : 0;
       newLeads[monthIndex] = leadCount;
-      console.log(`Setting month ${trend.month} (index ${monthIndex}) to ${leadCount} leads`);
+      // console.log(`Setting month ${trend.month} (index ${monthIndex}) to ${leadCount} leads`);
     }
   });
 
-  console.log('Project trends from database:', projectTrends);
-  console.log('Lead trends from database:', leadTrends);
-  console.log('Processed newLeads array:', newLeads);
+  // console.log('Project trends from database:', projectTrends);
+  // console.log('Lead trends from database:', leadTrends);
+  // console.log('Processed newLeads array:', newLeads);
 
   // Populate revenue data from EILog
   revenueTrends.forEach(trend => {
@@ -1718,7 +2199,7 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
       const netRevenue = income - expense; // Net revenue (income - expenses)
       revenue[monthIndex] += netRevenue;
       
-      console.log(`Month ${trend.month}: income=${income}, expense=${expense}, net=${netRevenue}`);
+      // console.log(`Month ${trend.month}: income=${income}, expense=${expense}, net=${netRevenue}`);
     }
   });
 
@@ -1733,13 +2214,13 @@ async function getMonthlyTrends(whereConditions: any): Promise<MonthlyTrendData>
       // Add budget as potential revenue and subtract actual costs
       revenue[monthIndex] += projectNetRevenue;
       
-      console.log(`Project Month ${trend.month}: budget=${budget}, actualCost=${actualCost}, net=${projectNetRevenue}`);
+      // console.log(`Project Month ${trend.month}: budget=${budget}, actualCost=${actualCost}, net=${projectNetRevenue}`);
     }
   });
 
-  console.log('Revenue trends from database:', revenueTrends);
-  console.log('Project revenue trends from database:', projectRevenueTrends);
-  console.log('Final processed arrays:', { started, completed, newLeads, revenue });
+  // console.log('Revenue trends from database:', revenueTrends);
+  // console.log('Project revenue trends from database:', projectRevenueTrends);
+  // console.log('Final processed arrays:', { started, completed, newLeads, revenue });
 
   return {
     labels,
@@ -1831,36 +2312,68 @@ async function getBusinessSummary(whereConditions: any): Promise<BusinessAnalysi
   };
 }
 
-export async function getPublicDashboardReport(params: PublicDashboardParams): Promise<PublicDashboardReport> {
+export async function getPublicDashboardReport(params: PublicDashboardParams,   convertedStatusNames: string[] = ["completed", "business done"]
+): Promise<PublicDashboardReport> {
+    const convLower = convertedStatusNames.map((s) => s.toLowerCase());
+
   const { fromDate, toDate } = params;
 
-  // Date filter
-  let dateFilter: { from?: Date; to?: Date } = {};
-  if (fromDate && toDate) {
-    dateFilter.from = new Date(fromDate);
-    dateFilter.to = new Date(toDate);
-    dateFilter.to.setHours(23, 59, 59, 999);
-  } else if (fromDate) {
-    dateFilter.from = new Date(fromDate);
-    dateFilter.to = new Date();
-  } else if (toDate) {
-    dateFilter.from = new Date(0);
-    dateFilter.to = new Date(toDate);
-    dateFilter.to.setHours(23, 59, 59, 999);
-  }
+// Date filter
+let dateFilter: { from?: Date; to?: Date } = {};
+if (fromDate && toDate) {
+  dateFilter.from = new Date(fromDate);
+  dateFilter.to = new Date(toDate);
+  dateFilter.to.setHours(23, 59, 59, 999);
+} else if (fromDate) {
+  dateFilter.from = new Date(fromDate);
+  dateFilter.to = new Date();
+} else if (toDate) {
+  dateFilter.from = new Date(0);
+  dateFilter.to = new Date(toDate);
+  dateFilter.to.setHours(23, 59, 59, 999);
+} else {
+  // Default to last 30 days if no dates provided
+  dateFilter.to = new Date();
+  dateFilter.from = new Date();
+  dateFilter.from.setDate(dateFilter.from.getDate() - 30);
+}
 
-  // Build where conditions
-  let baseWhere: any = { deleted: false };
-  if (dateFilter.from && dateFilter.to) {
-    baseWhere.created_at = Between(dateFilter.from, dateFilter.to);
-  }
+// Build where conditions
+let baseWhere: any = { deleted: false };
+if (dateFilter.from && dateFilter.to) {
+  baseWhere.created_at = Between(dateFilter.from, dateFilter.to);
+}
 
   // 1. Business Overview
-  const [totalProjectsDelivered, ongoingProjects, clientsServed] = await Promise.all([
-    projectRepo.count({ where: { ...baseWhere, status: ProjectStatus.COMPLETED } }),
-    projectRepo.count({ where: { ...baseWhere, status: ProjectStatus.IN_PROGRESS } }),
-    clientRepo.count({ where: { deleted: false } })
-  ]);
+const [totalProjectsDelivered, ongoingProjects, clientsServed] = await Promise.all([
+    projectRepo.count({ 
+        where: { 
+            deleted: false, 
+            status: ProjectStatus.COMPLETED,
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    }),
+    projectRepo.count({ 
+        where: { 
+            deleted: false, 
+            status: ProjectStatus.IN_PROGRESS,
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    }),
+    clientRepo.count({ 
+        where: { 
+            deleted: false,
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    })
+]);
+
   const businessOverview: PublicBusinessOverview = {
     totalProjectsDelivered,
     ongoingProjects,
@@ -1868,30 +2381,118 @@ export async function getPublicDashboardReport(params: PublicDashboardParams): P
   };
 
   // 2. Lead & Client Interest
-  // Leads and conversions this month
-  const now = dateFilter.to || new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  const leadsThisMonth = await leadRepo.count({ where: { deleted: false, created_at: Between(monthStart, monthEnd) } });
-  const conversionsThisMonth = await leadRepo.count({ where: { deleted: false, status: { name: 'Completed' }, created_at: Between(monthStart, monthEnd) }, relations: ['status'] });
-  // Average conversion time (dummy value for now)
-  const avgConversionTime = 6.2;
+  const now = new Date();
+  // Use provided dates or default to this month
+const startDate = fromDate ? new Date(fromDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+const endDate = toDate ? new Date(toDate) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+// Set end time to end of day if toDate is provided
+if (toDate) {
+  endDate.setHours(23, 59, 59, 999);
+}
+
+const leadsThisMonth = await leadRepo.count({ 
+  where: { 
+    deleted: false, 
+    created_at: Between(startDate, endDate) 
+  } 
+});
+
+const conversionsThisMonth = await leadRepo
+  .createQueryBuilder('lead')
+  .innerJoinAndSelect('lead.status', 'status')
+  .where('lead.deleted = :deleted', { deleted: false })
+  .andWhere('lead.created_at BETWEEN :start AND :end', { 
+    start: startDate, 
+    end: endDate 
+  })
+  .andWhere('LOWER(status.name) IN (:...statusNames)', { 
+    statusNames: convLower
+  })
+  .getCount();
+
+// Calculate average conversion time using the same logic as getLeadFunnelMetrics
+
+// Calculate average time to convert (in days) for converted leads
+const avgTimeToConvertQuery = leadRepo
+  .createQueryBuilder("lead")
+  .innerJoin("lead.status_histories", "history")
+  .innerJoin("history.status", "status")
+  .select("AVG(EXTRACT(EPOCH FROM (history.created_at - lead.created_at)) / 86400)", "avgDays")
+  .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+  .andWhere("lead.created_at BETWEEN :from AND :to", {
+    from: dateFilter.from,
+    to: dateFilter.to,
+  })
+  .andWhere("LOWER(status.name) IN (:...convertedStatusNames)", {
+    convertedStatusNames: convLower
+  });
+
+const avgTimeResult = await avgTimeToConvertQuery.getRawOne<{ avgDays: string | null }>();
+console.log("Time to convert query result:", avgTimeResult);
+
+// If no converted leads found, try a different approach
+let avgTimeToConvert = 0;
+if (!avgTimeResult?.avgDays) {
+  const altTimeQuery = leadRepo
+    .createQueryBuilder("lead")
+    .innerJoin("lead.status", "status")
+    .select("AVG(EXTRACT(EPOCH FROM (NOW() - lead.created_at)) / 86400)", "avgDays")
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .andWhere("LOWER(status.name) IN (:...convertedStatusNames)", {
+      convertedStatusNames: convLower
+    });
+  
+  const altTimeResult = await altTimeQuery.getRawOne<{ avgDays: string | null }>();
+  console.log("Alternative time query result:", altTimeResult);
+  avgTimeToConvert = altTimeResult?.avgDays ? Math.round(parseFloat(altTimeResult.avgDays)) : 0;
+} else {
+  avgTimeToConvert = Math.round(parseFloat(avgTimeResult.avgDays));
+}
+  
   // Top source of leads
-  const sourceStats = await leadRepo
-    .createQueryBuilder('lead')
-    .leftJoin('lead.source', 'source')
-    .select(['source.name as source', 'COUNT(*) as total'])
-    .where('lead.deleted = false')
-    .andWhere('source.name IS NOT NULL')
-    .groupBy('source.name')
-    .orderBy('total', 'DESC')
-    .getRawMany();
-  const topSourceOfLeads = sourceStats.length > 0 ? sourceStats[0].source : 'Referral';
+  const sourceQb = leadRepo
+    .createQueryBuilder("lead")
+    .leftJoin("lead.source", "source")
+    .leftJoin("lead.status", "status")
+    .select([
+      "source.name as source",
+      "COUNT(*)::int as total",
+      // count as converted when status is in converted list (case-insensitive)
+      "SUM(CASE WHEN LOWER(status.name) IN (:...convLower) THEN 1 ELSE 0 END)::int as converted",
+    ])
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("source.name IS NOT NULL")
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .setParameter("convLower", convLower)
+    .groupBy("source.name");
+
+  const sourceStats: Array<{ source: string; total: number; converted: number }> =
+    await sourceQb.getRawMany();
+
+  const bestLeadSource =
+    sourceStats.length > 0
+      ? sourceStats.reduce((top, current) => {
+          const cRate =
+            current.total > 0 ? (current.converted / current.total) * 100 : 0;
+          const tRate =
+            top.total > 0 ? (top.converted / top.total) * 100 : 0;
+          return cRate > tRate ? current : top;
+        }).source
+      : "-";
+
   const leadClientInterest: PublicLeadClientInterest = {
     leadsThisMonth,
     conversionsThisMonth,
-    avgConversionTime,
-    topSourceOfLeads
+    avgConversionTime: avgTimeToConvert,
+    topSourceOfLeads: bestLeadSource,
   };
 
   // 3. Trend Charts (Expenses Overview)
@@ -1948,32 +2549,95 @@ export async function getPublicDashboardReport(params: PublicDashboardParams): P
   };
 
   // 5. Team & Performance Highlights
-  // Top performer
+// Get top performer with date filter for tasks
   const topPerformer = await userRepo
-    .createQueryBuilder('user')
-    .leftJoin('user.assignedTasks', 'task')
-    .leftJoin('user.role', 'role')
-    .select([
-      'user.first_name as firstName',
-      'user.last_name as lastName',
-      'COUNT(CASE WHEN task.status = :completedStatus THEN 1 END) as completedTasks',
-      'COUNT(task.id) as totalTasks'
-    ])
-    .where('user.deleted = false AND role.role != :adminRole', { adminRole: 'admin' })
-    .setParameter('completedStatus', 'Completed')
-    .groupBy('user.id, user.first_name, user.last_name')
-    .orderBy('completedTasks', 'DESC')
-    .limit(1)
-    .getRawOne();
-  const topPerformerName = topPerformer ? `${topPerformer.firstName || ''} ${topPerformer.lastName || ''}`.trim() || '-' : 'Priya Shah';
-  // On-time delivery rate (dummy value)
-  const onTimeDeliveryRate = 91;
-  // Avg task completion rate (dummy value)
-  const avgTaskCompletionRate = 81;
+  .createQueryBuilder('user')
+  .leftJoin(
+    'user.assignedTasks',
+    'task',
+    'task.created_at BETWEEN :from AND :to', // Date filter in JOIN
+    { from: dateFilter.from, to: dateFilter.to }
+  )
+  .leftJoin('user.role', 'role')
+  .select([
+    'user.first_name as firstName',
+    'user.last_name as lastName',
+    'COUNT(CASE WHEN task.status = :completedStatus THEN 1 END) as completedTasks',
+    'COUNT(task.id) as totalTasks'
+  ])
+  .where('user.deleted = false AND role.role != :adminRole', { adminRole: 'admin' })
+  .setParameter('completedStatus', 'Completed')
+  .groupBy('user.id, user.first_name, user.last_name')
+  .orderBy('completedTasks', 'DESC')
+  .limit(1)
+  .getRawOne();
+
+  const topPerformerName = topPerformer 
+    ? `${topPerformer.firstname || ''} ${topPerformer.lastname || ''}`.trim()
+    : 'No Staff Available';
+
+  // On-time delivery rate
+  const onTimeQb = projectRepo
+    .createQueryBuilder("project")
+    .where("project.deleted = :deleted", { deleted: false })
+    .andWhere("project.status = :status", { status: ProjectStatus.COMPLETED })
+    .andWhere("project.actual_end_date IS NOT NULL")
+    .andWhere("project.end_date IS NOT NULL")
+    .andWhere("project.actual_end_date <= project.end_date");
+
+  if (dateFilter.from && dateFilter.to) {
+    onTimeQb.andWhere("project.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    });
+  }
+
+  const [onTimeProjects, completedProjectsCount] = await Promise.all([
+    onTimeQb.getCount(),
+    projectRepo.count({
+      where: {
+        deleted: false,
+        status: ProjectStatus.COMPLETED,
+        ...(dateFilter.from && dateFilter.to
+          ? { created_at: Between(dateFilter.from, dateFilter.to) }
+          : {}),
+      },
+    }),
+  ]);
+
+  const onTimeDeliveryRate =
+    completedProjectsCount > 0
+      ? Math.round((onTimeProjects / completedProjectsCount) * 100)
+      : 0;
+
+  // Calculate task completion rate with date filter
+const [completedTasks, totalTasks] = await Promise.all([
+    taskRepo.count({ 
+        where: { 
+            deleted: false, 
+            status: 'Completed',
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    }),
+    taskRepo.count({ 
+        where: { 
+            deleted: false,
+            ...(dateFilter.from && dateFilter.to && { 
+                created_at: Between(dateFilter.from, dateFilter.to) 
+            })
+        } 
+    })
+]);
+
+
+  const taskCompletionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
+
   const teamPerformance: PublicTeamPerformance = {
     topPerformer: topPerformerName,
     onTimeDeliveryRate,
-    avgTaskCompletionRate
+    avgTaskCompletionRate: Math.ceil(taskCompletionRate),
   };
 
   return {
