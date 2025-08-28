@@ -53,17 +53,24 @@ export async function getStaffPerformanceReport(params: StaffPerformanceReportPa
     const { startDate, endDate, userId } = params;
 
     // Parse date range
-    let dateFilter: { from?: Date; to?: Date } = {};
-    if (startDate && endDate) {
-        dateFilter.from = new Date(startDate);
-        dateFilter.to = new Date(endDate);
-    } else if (startDate) {
-        dateFilter.from = new Date(startDate);
-        dateFilter.to = new Date();
-    } else if (endDate) {
-        dateFilter.from = new Date(0); // epoch
-        dateFilter.to = new Date(endDate);
-    }
+  let dateFilter: { from?: Date; to?: Date } = {};
+  if (startDate && endDate) {
+    dateFilter.from = new Date(startDate);
+    dateFilter.to = new Date(endDate);
+    dateFilter.to.setHours(23, 59, 59, 999);
+  } else if (startDate) {
+    dateFilter.from = new Date(startDate);
+    dateFilter.to = new Date();
+  } else if (endDate) {
+    dateFilter.from = new Date(0); // epoch
+    dateFilter.to = new Date(endDate);
+    dateFilter.to.setHours(23, 59, 59, 999);
+  } else {
+    // Default to last 30 days if no dates provided
+    dateFilter.to = new Date();
+    dateFilter.from = new Date();
+    dateFilter.from.setDate(dateFilter.from.getDate() - 30);
+  }
 
     // Exclude admin users
     const userWhere: any = userId ? { id: userId } : {};
@@ -119,15 +126,38 @@ export async function getStaffPerformanceReport(params: StaffPerformanceReportPa
     const totalFollowUps = followups.length;
     const completedFollowUps = followups.filter(f => f.status === FollowupStatus.COMPLETED).length;
     const pendingFollowUps = followups.filter(f => f.status.toLocaleLowerCase() === FollowupStatus.PENDING.toLocaleLowerCase() || f.status.toLocaleLowerCase() === FollowupStatus.AWAITING_RESPONSE.toLocaleLowerCase()).length;
-    let avgFollowUpResponseTime = 0;
     const completedFollowupDates = followups.filter(f => f.status === FollowupStatus.COMPLETED && f.due_date && f.completed_date);
     if (completedFollowupDates.length > 0) {
         const totalHours = completedFollowupDates.reduce((sum, f) => {
             return sum + ((f.completed_date!.getTime() - f.due_date!.getTime()) / (1000 * 60 * 60));
         }, 0);
-        avgFollowUpResponseTime = totalHours / completedFollowupDates.length;
     }
     const missedFollowUps = completedFollowupDates.filter(f => f.completed_date! > f.due_date!).length;
+
+        // Separate query for average response time with proper date filtering
+    let avgFollowUpResponseTime = 0;
+    const avgResponseTimeQuery = followupRepo
+        .createQueryBuilder("followup")
+        .select("AVG(EXTRACT(EPOCH FROM (followup.completed_date - followup.due_date)) / 3600)", "avgResponseHours")
+        .andWhere("followup.status = :status", { status: FollowupStatus.COMPLETED })
+        .andWhere("followup.due_date IS NOT NULL")
+        .andWhere("followup.completed_date IS NOT NULL");
+
+    // Apply date filter to the query
+    if (dateFilter.from && dateFilter.to) {
+        avgResponseTimeQuery.andWhere("followup.created_at BETWEEN :from AND :to", {
+            from: dateFilter.from,
+            to: dateFilter.to
+        });
+    } else if (dateFilter.from) {
+        avgResponseTimeQuery.andWhere("followup.created_at >= :from", { from: dateFilter.from });
+    } else if (dateFilter.to) {
+        avgResponseTimeQuery.andWhere("followup.created_at <= :to", { to: dateFilter.to });
+    }
+
+    const avgResponseTimeResult = await avgResponseTimeQuery.getRawOne<{ avgResponseHours: string | null }>();
+
+   const avgResponseTime = avgResponseTimeResult?.avgResponseHours ? (Number(avgResponseTimeResult?.avgResponseHours)).toFixed(1) : "-"
 
     return {
         staffInfo: {
@@ -152,7 +182,7 @@ export async function getStaffPerformanceReport(params: StaffPerformanceReportPa
             completedFollowUps,
             pendingFollowUps,
             missedFollowUps,
-            avgResponseTime: `${avgFollowUpResponseTime.toFixed(1)} Hr`
+            avgResponseTime: `${avgResponseTime} Hr`,
         }
     };
 }
@@ -656,9 +686,9 @@ export async function exportProjectPerformanceReportToExcel(params: any): Promis
 }
 
 export async function getLeadReports(params: LeadReportsParams): Promise<LeadReportsData> {
-  const { fromDate, toDate, userId, sourceId, statusId, typeId } = params;
+  const { fromDate, toDate } = params;
 
-  // Parse date range
+      // Parse date range
   let dateFilter: { from?: Date; to?: Date } = {};
   if (fromDate && toDate) {
     dateFilter.from = new Date(fromDate);
@@ -680,36 +710,52 @@ export async function getLeadReports(params: LeadReportsParams): Promise<LeadRep
 
   // Build base query conditions
   let baseWhereConditions: any = { deleted: false };
-  if (sourceId) baseWhereConditions.source = { id: sourceId };
-  if (statusId) baseWhereConditions.status = { id: statusId };
-  if (typeId) baseWhereConditions.type = { id: typeId };
-  if (userId) baseWhereConditions.assigned_to = { id: userId };
 
   // Date filter
   if (dateFilter.from && dateFilter.to) {
     baseWhereConditions.created_at = Between(dateFilter.from, dateFilter.to);
   }
 
-  // 1. Lead Funnel Chart
-  const leadFunnelChart = await getLeadFunnelChart(baseWhereConditions);
 
-  // 2. KPI Metrics
-  const kpiMetrics = await getKPIMetrics(baseWhereConditions, dateFilter);
+  // // 1. Lead Funnel Chart
+  // const leadFunnelChart = await getLeadFunnelChart(baseWhereConditions);
 
-  // 3. Staff Conversion Performance
-  const staffConversionPerformance = await getStaffConversionPerformance(baseWhereConditions);
+  // // 2. KPI Metrics
+  // const kpiMetrics = await getKPIMetrics(baseWhereConditions, dateFilter);
 
-  // 4. Source-wise Conversion Rates
-  const sourceWiseConversionRates = await getSourceWiseConversionRates(baseWhereConditions);
+  // // 3. Staff Conversion Performance
+  // const staffConversionPerformance = await getStaffConversionPerformance(baseWhereConditions);
 
-  // 5. Lead Funnel Stages
-  const leadFunnelStages = await getLeadFunnelStages(baseWhereConditions);
+  // // 4. Source-wise Conversion Rates
+  // const sourceWiseConversionRates = await getSourceWiseConversionRates(baseWhereConditions);
 
-  // 6. Monthly Leads Chart
-  const monthlyLeadsChart = await getMonthlyLeadsChart(baseWhereConditions);
+  // // 5. Lead Funnel Stages
+  // const leadFunnelStages = await getLeadFunnelStages(baseWhereConditions);
 
-  // 7. Summary
-  const summary = await getSummary(baseWhereConditions);
+  // // 6. Monthly Leads Chart
+  // const monthlyLeadsChart = await getMonthlyLeadsChart(baseWhereConditions);
+
+  // // 7. Summary
+  // const summary = await getSummary(baseWhereConditions);
+
+  const [
+  leadFunnelChart,
+  kpiMetrics,
+  staffConversionPerformance,
+  sourceWiseConversionRates,
+  leadFunnelStages,
+  monthlyLeadsChart,
+  summary
+] = await Promise.all([
+  getLeadFunnelChart(baseWhereConditions, dateFilter),
+  getKPIMetrics(baseWhereConditions, dateFilter),
+  getStaffConversionPerformance(baseWhereConditions),
+  getSourceWiseConversionRates(dateFilter),
+  getLeadFunnelStages(baseWhereConditions),
+  getMonthlyLeadsChart(baseWhereConditions),
+  getSummary(baseWhereConditions)
+]);
+
 
   return {
     leadFunnelChart,
@@ -813,17 +859,26 @@ export async function exportLeadReportToExcel(params: any): Promise<{ workbook: 
   return { workbook, name };
 }
 
-async function getLeadFunnelChart(whereConditions: any): Promise<LeadFunnelChart> {
+async function getLeadFunnelChart(whereConditions: any, dateFilter?: any, convertedStatusNames: string[] = ["completed", "business done"]): Promise<LeadFunnelChart> {
+
+    const rangeWhere = (dateFilter.from && dateFilter.to)
+    ? { created_at: Between(dateFilter.from, dateFilter.to) }
+    : {};
+
   const [totalLeads, lostLeads, convertedLeads] = await Promise.all([
-    leadRepo.count({ where: whereConditions }),
+    leadRepo.count({ where: { deleted: false, ...rangeWhere} }),
     leadRepo.count({ 
-      where: { ...whereConditions, status: { name: 'no-interested' } },
+      where: { deleted: false, ...rangeWhere, status: { name: ILike('no-interested') } },
       relations: ['status']
     }),
-    leadRepo.count({ 
-      where: { ...whereConditions, status: { name: 'Completed' } },
-      relations: ['status']
-    })
+     leadRepo.count({
+      where: convertedStatusNames.map((s) => ({
+        deleted: false,
+        ...rangeWhere,
+        status: { name: ILike(s) },
+      })),
+      relations: ["status"],
+    }),
   ]);
 
   // Get the most common stage for drop-off (excluding completed and no-interested)
@@ -1112,28 +1167,40 @@ async function getStaffConversionPerformance(whereConditions: any): Promise<Staf
   }
 }
 
-async function getSourceWiseConversionRates(whereConditions: any): Promise<SourceWiseConversionRate[]> {
+async function getSourceWiseConversionRates(
+  dateFilter: any, 
+  convertedStatusNames: string[] = ["completed", "business done"]
+): Promise<SourceWiseConversionRate[]> {
+  
+  const convLower = convertedStatusNames.map((s) => s.toLowerCase());
+  
   const sourceStats = await leadRepo
     .createQueryBuilder('lead')
     .leftJoin('lead.source', 'source')
     .leftJoin('lead.status', 'status')
     .select([
       'source.name as source',
-      'COUNT(*) as totalLeads',
-      'SUM(CASE WHEN status.name = :completedStatus THEN 1 ELSE 0 END) as convertedLeads'
+      'COUNT(*)::int as totalLeads',
+      'SUM(CASE WHEN LOWER(status.name) IN (:...convLower) THEN 1 ELSE 0 END)::int as convertedLeads'
     ])
     .where('lead.deleted = false')
     .andWhere('source.name IS NOT NULL')
-    .setParameter('completedStatus', 'Completed')
+    .andWhere('lead.created_at BETWEEN :from AND :to', {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .setParameter('convLower', convLower)
     .groupBy('source.name')
     .getRawMany();
 
-  return sourceStats.map(source => ({
+ const data = sourceStats.map(source => ({
     source: source.source,
-    conversionRate: source.totalLeads > 0 
-      ? Math.round((source.convertedLeads / source.totalLeads) * 100 * 10) / 10
+    conversionRate: source.totalleads > 0 
+      ? Math.round((source.convertedleads / source.totalleads) * 100 * 10) / 10
       : 0
   }));
+
+     return data;
 }
 
 async function getLeadFunnelStages(whereConditions: any): Promise<LeadFunnelStage[]> {
@@ -1611,11 +1678,40 @@ const hotLeadsQuery = leadRepo
 const hotLeadsResult = await hotLeadsQuery.getRawOne<{ hotLeadsCount: string }>();
 const hotLeadsCount = parseInt(hotLeadsResult?.hotLeadsCount || "0");
 
+// Calculate drop-off stage (stage with highest lead loss)
+  const dropOffStageQuery = leadRepo
+    .createQueryBuilder("lead")
+    .leftJoin("lead.status_histories", "history")
+    .leftJoin("history.status", "status")
+    .select([
+      "status.name as stage_name",
+      "COUNT(DISTINCT lead.id) as dropped_leads"
+    ])
+    .where("lead.deleted = :deleted", { deleted: baseWhere.deleted ?? false })
+    .andWhere("lead.created_at BETWEEN :from AND :to", {
+      from: dateFilter.from,
+      to: dateFilter.to,
+    })
+    .andWhere("status.name IS NOT NULL")
+    .andWhere("LOWER(status.name) NOT IN (:...convertedStatusNames)", {
+      convertedStatusNames: convertedStatusNames.map(s => s.toLowerCase())
+    })
+    .groupBy("status.name")
+    .orderBy("dropped_leads", "DESC")
+    .limit(1);
+
+  const dropOffStageResult = await dropOffStageQuery.getRawOne<{ 
+    stage_name: string; 
+    dropped_leads: string 
+  }>();
+
+  const dropOfStage = dropOffStageResult?.stage_name || "No data";
+
   return {
     totalLeads,
     qualifiedLeads,
     convertedLeads,
-    dropOfStage: "Personal Sent",
+    dropOfStage,
     conversionRate: Math.round(conversionRate * 10) / 10,
     avgTimeToConvert: avgTimeToConvert,
     avgFollowups: avgFollowupTime,

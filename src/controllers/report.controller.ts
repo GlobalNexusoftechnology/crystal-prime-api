@@ -78,25 +78,11 @@ export async function getProjectPerformanceReportController(req: Request, res: R
  */
 export async function getLeadReportsController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
-    const { fromDate, toDate, userId, sourceId, statusId, typeId } = req.query;
+    const { fromDate, toDate } = req.query;
     
-    // Get current user info for role-based filtering
-    const currentUser = res?.locals?.user;
-    const currentUserId = currentUser?.id;
-    const currentUserRole = currentUser?.role?.role;
-
-    // For non-admin users, force userId to be their own ID
-    const filteredUserId = (currentUserRole === 'admin' || currentUserRole === 'Admin') 
-      ? (userId as string | undefined) 
-      : currentUserId;
-
     const report = await getLeadReports({
       fromDate: fromDate as string | undefined,
       toDate: toDate as string | undefined,
-      userId: filteredUserId,
-      sourceId: sourceId as string | undefined,
-      statusId: statusId as string | undefined,
-      typeId: typeId as string | undefined,
     });
 
     return res.json({
