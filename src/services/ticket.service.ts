@@ -170,50 +170,7 @@ export const TicketService = () => {
     };
   };
 
-  const getTicketsByMilestone = async (milestoneId: string, filters: any = {}) => {
-    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
-    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
-    const skip = (page - 1) * limit;
 
-    const { searchText, status, priority } = filters;
-
-    let query = ticketRepo.createQueryBuilder("ticket")
-      .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.milestone", "milestone")
-      .where("ticket.deleted = false")
-      .andWhere("milestone.id = :milestoneId", { milestoneId });
-
-    if (searchText && searchText.trim() !== "") {
-      const search = `%${searchText.trim().toLowerCase()}%`;
-      query = query.andWhere(
-        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(ticket.remark) LIKE :search`,
-        { search }
-      );
-    }
-
-    if (status && status.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
-    }
-
-    if (priority && priority.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
-    }
-
-    query = query.orderBy("ticket.created_at", "DESC");
-    query.skip(skip).take(limit);
-
-    const [tickets, total] = await query.getManyAndCount();
-
-    return {
-      data: tickets,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
-  };
 
   const updateTicket = async (id: string, data: Partial<TicketInput>, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
@@ -290,7 +247,6 @@ export const TicketService = () => {
     getAllTickets,
     getTicketById,
     getTicketsByProject,
-    getTicketsByMilestone,
     updateTicket,
     updateTicketStatus,
     deleteTicket,
