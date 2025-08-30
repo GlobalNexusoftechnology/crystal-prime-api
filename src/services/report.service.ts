@@ -28,7 +28,7 @@ import { BusinessAnalysisParams, BusinessAnalysisReport, LeadFunnelMetrics, Proj
 import { ProjectStatus } from '../entities/projects.entity';
 import { PublicDashboardParams, PublicDashboardReport, PublicBusinessOverview, PublicLeadClientInterest, PublicTrendChart, PublicMonthlyLeadsChart, PublicTeamPerformance } from '../types/report';
 import { any } from "zod";
-import { ClientFollowup } from "../entities/clients-followups.entity";
+import { ClientFollowup, ClientFollowupStatus } from "../entities/clients-followups.entity";
 
 interface StaffPerformanceReportParams {
   startDate?: string;
@@ -114,50 +114,222 @@ export async function getStaffPerformanceReport(params: StaffPerformanceReportPa
         }, 0);
         avgDaysToComplete = totalDays / completedTaskDates.length;
     }
-    const delayedTasks = tasks.filter(t => (t as any).updated_at && t.due_date && new Date((t as any).updated_at) > new Date(t.due_date)).length;
 
     // Milestones managed by user (no date filter)
     const milestonesManaged = await milestoneRepo.count({ where: { assigned_to: user.id } });
-    // Files uploaded by user (no date filter)
-    const filesUploaded = await attachmentRepo.count({ where: { uploaded_by: { id: user.id } } });
+    
+    const documentContributions = await AppDataSource.query(`
+    SELECT (
+        (SELECT COUNT(*) FROM lead_attachments 
+         WHERE deleted = false 
+         ${userId ? 'AND uploaded_by = $3' : ''} 
+         ${dateFilter.from && dateFilter.to ? 'AND created_at BETWEEN $1 AND $2' : ''})
+        +
+        (SELECT COUNT(*) FROM project_attachments 
+         WHERE deleted = false 
+         ${userId ? 'AND uploaded_by = $3' : ''} 
+         ${dateFilter.from && dateFilter.to ? 'AND created_at BETWEEN $1 AND $2' : ''})
+    ) as total_documents
+`, 
+dateFilter.from && dateFilter.to 
+    ? (userId ? [dateFilter.from, dateFilter.to, userId] : [dateFilter.from, dateFilter.to])
+    : (userId ? [userId] : [])
+).then(result => parseInt(result[0].total_documents) || 0);
 
-    // Followups by user
-    const followups = await followupRepo.find({ where: followupWhere });
-    const totalFollowUps = followups.length;
-    const completedFollowUps = followups.filter(f => f.status === FollowupStatus.COMPLETED).length;
-    const pendingFollowUps = followups.filter(f => f.status.toLocaleLowerCase() === FollowupStatus.PENDING.toLocaleLowerCase() || f.status.toLocaleLowerCase() === FollowupStatus.AWAITING_RESPONSE.toLocaleLowerCase()).length;
-    const completedFollowupDates = followups.filter(f => f.status === FollowupStatus.COMPLETED && f.due_date && f.completed_date);
-    if (completedFollowupDates.length > 0) {
-        const totalHours = completedFollowupDates.reduce((sum, f) => {
-            return sum + ((f.completed_date!.getTime() - f.due_date!.getTime()) / (1000 * 60 * 60));
-        }, 0);
-    }
-    const missedFollowUps = completedFollowupDates.filter(f => f.completed_date! > f.due_date!).length;
+    // // Followups by user
+    // const followups = await followupRepo.find({ where: followupWhere });
+    // const totalFollowUps = followups.length;
+    // const completedFollowUps = followups.filter(f => f.status === FollowupStatus.COMPLETED).length;
+    // const pendingFollowUps = followups.filter(f => f.status.toLocaleLowerCase() === FollowupStatus.PENDING.toLocaleLowerCase() || f.status.toLocaleLowerCase() === FollowupStatus.AWAITING_RESPONSE.toLocaleLowerCase()).length;
+    // const completedFollowupDates = followups.filter(f => f.status === FollowupStatus.COMPLETED && f.due_date && f.completed_date);
+    // if (completedFollowupDates.length > 0) {
+    //     const totalHours = completedFollowupDates.reduce((sum, f) => {
+    //         return sum + ((f.completed_date!.getTime() - f.due_date!.getTime()) / (1000 * 60 * 60));
+    //     }, 0);
+    // }
+    // const missedFollowUps = completedFollowupDates.filter(f => f.completed_date! > f.due_date!).length;
 
-        // Separate query for average response time with proper date filtering
-    let avgFollowUpResponseTime = 0;
-    const avgResponseTimeQuery = followupRepo
-        .createQueryBuilder("followup")
-        .select("AVG(EXTRACT(EPOCH FROM (followup.completed_date - followup.due_date)) / 3600)", "avgResponseHours")
-        .andWhere("followup.status = :status", { status: FollowupStatus.COMPLETED })
-        .andWhere("followup.due_date IS NOT NULL")
-        .andWhere("followup.completed_date IS NOT NULL");
+let avgFollowUpResponseTime = 0;
 
-    // Apply date filter to the query
+const leadResponseTimeQuery = followupRepo
+    .createQueryBuilder("lead_followup")
+    .select([
+        "AVG(EXTRACT(EPOCH FROM (lead_followup.completed_date - lead_followup.due_date)) / 3600) as avg_hours",
+        "COUNT(*) as count"
+    ])
+    .where("lead_followup.status = :status", { status: FollowupStatus.COMPLETED })
+    .andWhere("lead_followup.due_date IS NOT NULL")
+    .andWhere("lead_followup.completed_date IS NOT NULL");
+
+const clientResponseTimeQuery = clientFollowupRepo
+    .createQueryBuilder("client_followup")
+    .select([
+        "AVG(EXTRACT(EPOCH FROM (client_followup.completed_date - client_followup.due_date)) / 3600) as avg_hours",
+        "COUNT(*) as count"
+    ])
+    .where("client_followup.status = :status", { status: ClientFollowupStatus.COMPLETED })
+    .andWhere("client_followup.due_date IS NOT NULL")
+    .andWhere("client_followup.completed_date IS NOT NULL");
+
+// Add user filter only if userId exists
+if (userId) {
+    leadResponseTimeQuery.andWhere("lead_followup.user_id = :userId", { userId: userId });
+    clientResponseTimeQuery.andWhere("client_followup.user_id = :userId", { userId: userId });
+}
+
+// Apply date filter to both queries
+const applyDateFilter = (query: any) => {
     if (dateFilter.from && dateFilter.to) {
-        avgResponseTimeQuery.andWhere("followup.created_at BETWEEN :from AND :to", {
+        query.andWhere("created_at BETWEEN :from AND :to", {
             from: dateFilter.from,
             to: dateFilter.to
         });
     } else if (dateFilter.from) {
-        avgResponseTimeQuery.andWhere("followup.created_at >= :from", { from: dateFilter.from });
+        query.andWhere("created_at >= :from", { from: dateFilter.from });
     } else if (dateFilter.to) {
-        avgResponseTimeQuery.andWhere("followup.created_at <= :to", { to: dateFilter.to });
+        query.andWhere("created_at <= :to", { to: dateFilter.to });
     }
+    return query;
+};
 
-    const avgResponseTimeResult = await avgResponseTimeQuery.getRawOne<{ avgResponseHours: string | null }>();
+applyDateFilter(leadResponseTimeQuery);
+applyDateFilter(clientResponseTimeQuery);
 
-   const avgResponseTime = avgResponseTimeResult?.avgResponseHours ? (Number(avgResponseTimeResult?.avgResponseHours)).toFixed(1) : "-"
+// Execute both queries
+const [leadResult, clientResult] = await Promise.all([
+    leadResponseTimeQuery.getRawOne<{ avg_hours: string | null; count: string }>(),
+    clientResponseTimeQuery.getRawOne<{ avg_hours: string | null; count: string }>()
+]);
+
+// Calculate weighted average from both followup types
+let totalWeightedHours = 0;
+let totalFollowups = 0;
+
+// Process lead followups
+if (leadResult?.avg_hours && leadResult?.count) {
+    const leadAvgHours = parseFloat(leadResult.avg_hours);
+    const leadCount = parseInt(leadResult.count);
+    
+    if (leadCount > 0) {
+        totalWeightedHours += leadAvgHours * leadCount;
+        totalFollowups += leadCount;
+    }
+}
+
+// Process client followups
+if (clientResult?.avg_hours && clientResult?.count) {
+    const clientAvgHours = parseFloat(clientResult.avg_hours);
+    const clientCount = parseInt(clientResult.count);
+    
+    if (clientCount > 0) {
+        totalWeightedHours += clientAvgHours * clientCount;
+        totalFollowups += clientCount;
+    }
+}
+
+// Calculate final weighted average
+avgFollowUpResponseTime = totalFollowups > 0 
+    ? totalWeightedHours / totalFollowups 
+    : 0;
+
+const delayedTasksCount = await AppDataSource.query(`
+    SELECT COUNT(*) as delayed_tasks_count
+    FROM project_tasks pt
+    WHERE pt.deleted = false
+    AND LOWER(pt.status) != 'completed'
+    AND pt.due_date < CURRENT_DATE
+    ${userId ? 'AND pt.assigned_to = $3' : ''}
+    ${dateFilter.from && dateFilter.to ? 'AND pt.created_at BETWEEN $1 AND $2' : ''}
+`,
+dateFilter.from && dateFilter.to 
+    ? (userId ? [dateFilter.from, dateFilter.to, userId] : [dateFilter.from, dateFilter.to])
+    : (userId ? [userId] : [])
+).then(result => parseInt(result[0].delayed_tasks_count) || 0);
+
+
+const createFollowupCountQuery = (repo: any, statusField: string, statusValues?: string[], isMissed: boolean = false) => {
+    const query = repo
+        .createQueryBuilder("followup")
+        .select("COUNT(*)", "count");
+    
+    if (statusValues && statusValues.length > 0) {
+        if (statusValues.length === 1) {
+            query.where(`followup.${statusField} = :status`, { status: statusValues[0] });
+        } else {
+            query.where(`followup.${statusField} IN (:...statuses)`, { statuses: statusValues });
+        }
+    }
+    
+    query.andWhere("followup.due_date IS NOT NULL");
+    
+    // For missed queries, we need different logic
+    if (isMissed) {
+        query.andWhere("followup.due_date < CURRENT_DATE")
+             .andWhere(`followup.${statusField} NOT IN (:...completedStatuses)`, { 
+                 completedStatuses: [FollowupStatus.COMPLETED, ClientFollowupStatus.COMPLETED] 
+             });
+    }
+    
+    // Add user filter if userId exists
+    if (userId) {
+        query.andWhere("followup.user_id = :userId", { userId: userId });
+    }
+    
+    // Apply date filter
+    if (dateFilter.from && dateFilter.to) {
+        query.andWhere("followup.created_at BETWEEN :from AND :to", {
+            from: dateFilter.from,
+            to: dateFilter.to
+        });
+    } else if (dateFilter.from) {
+        query.andWhere("followup.created_at >= :from", { from: dateFilter.from });
+    } else if (dateFilter.to) {
+        query.andWhere("followup.created_at <= :to", { to: dateFilter.to });
+    }
+    
+    return query;
+};
+
+// Create queries for both lead and client followups
+const leadTotalQuery = createFollowupCountQuery(followupRepo, "status");
+const leadCompletedQuery = createFollowupCountQuery(followupRepo, "status", [FollowupStatus.COMPLETED]);
+const leadPendingQuery = createFollowupCountQuery(followupRepo, "status", [FollowupStatus.PENDING, FollowupStatus.RESCHEDULE]);
+const leadMissedQuery = createFollowupCountQuery(followupRepo, "status", undefined, true);
+
+const clientTotalQuery = createFollowupCountQuery(clientFollowupRepo, "status");
+const clientCompletedQuery = createFollowupCountQuery(clientFollowupRepo, "status", [ClientFollowupStatus.COMPLETED]);
+const clientPendingQuery = createFollowupCountQuery(clientFollowupRepo, "status", [ClientFollowupStatus.PENDING, ClientFollowupStatus.RESCHEDULE]);
+const clientMissedQuery = createFollowupCountQuery(clientFollowupRepo, "status", undefined, true);
+
+// Execute all queries
+const [
+    leadTotalResult,
+    leadCompletedResult,
+    leadPendingResult,
+    leadMissedResult,
+    clientTotalResult,
+    clientCompletedResult,
+    clientPendingResult,
+    clientMissedResult
+] = await Promise.all([
+    leadTotalQuery.getRawOne(),
+    leadCompletedQuery.getRawOne(),
+    leadPendingQuery.getRawOne(),
+    leadMissedQuery.getRawOne(),
+    clientTotalQuery.getRawOne(),
+    clientCompletedQuery.getRawOne(),
+    clientPendingQuery.getRawOne(),
+    clientMissedQuery.getRawOne()
+]);
+
+// Helper function to parse count results
+const parseCount = (result: any) => result ? parseInt(result.count || '0') : 0;
+
+// Calculate totals across both followup types
+const totalFollowUps = parseCount(leadTotalResult) + parseCount(clientTotalResult);
+const completedFollowUps = parseCount(leadCompletedResult) + parseCount(clientCompletedResult);
+const pendingFollowUps = parseCount(leadPendingResult) + parseCount(clientPendingResult);
+const missedFollowUps = parseCount(leadMissedResult) + parseCount(clientMissedResult);
 
     return {
         staffInfo: {
@@ -171,18 +343,18 @@ export async function getStaffPerformanceReport(params: StaffPerformanceReportPa
             completedTasks,
             completionRate: `${completionRate.toFixed(1)}%`,
             avgDaysToComplete: `${avgDaysToComplete.toFixed(1)} Days`,
-            delayedTasks
+            delayedTasks: delayedTasksCount
         },
         milestoneFileActivity: {
             milestonesManaged,
-            filesUploaded
+            filesUploaded: documentContributions,
         },
         followUpPerformance: {
             totalFollowUps,
             completedFollowUps,
             pendingFollowUps,
             missedFollowUps,
-            avgResponseTime: `${avgResponseTime} Hr`,
+            avgResponseTime: `${Math.round(avgFollowUpResponseTime)} Hr`,
         }
     };
 }
@@ -325,16 +497,21 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
     const projectPhase = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.name || "";
     const currentStatus = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.status || project.status;
 
-    // Cost & Budget Analysis (unchanged)
-    const budget = project.budget ? project.budget.toLocaleString() : "-";
-    const estimatedCost = project.estimated_cost ? project.estimated_cost.toLocaleString() : "-";
-    const actualCost = project.actual_cost ? project.actual_cost.toLocaleString() : "-";
-    const budgetUtilization = (project.budget && project.actual_cost)
-        ? `${((Number(project.actual_cost) / Number(project.budget)) * 100).toFixed(0)}%`
-        : "-";
-    const overrun = (project.budget && project.actual_cost)
-        ? (Number(project.actual_cost) - Number(project.budget)).toLocaleString()
-        : "-";
+// Cost & Budget Analysis
+// Cost & Budget Analysis
+const budget = project.budget ? `${project.budget.toLocaleString()}` : "Not set";
+const estimatedCost = project.estimated_cost ? `${project.estimated_cost.toLocaleString()}` : "Not set";
+const actualCost = project.actual_cost ? `${project.actual_cost.toLocaleString()}` : "No costs yet";
+
+// Budget Utilization
+const budgetUtilization = (project.budget && project.actual_cost && project.budget > 0)
+    ? `${Math.min((Number(project.actual_cost) / Number(project.budget)) * 100, 100).toFixed(0)}%`
+    : "Calculate when costs added";
+
+// Overrun
+const overrun = (project.budget && project.actual_cost && project.actual_cost > project.budget)
+    ? `${(Number(project.actual_cost) - Number(project.budget)).toLocaleString()}`
+    : "No overrun";
 
     // Task Metrics (filtered by date)
     const allTasks = (project.milestones || []).flatMap(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) ? (m.tasks || []).filter(t => (!dateFrom && !dateTo) || inRange(t.created_at)) : []);
@@ -437,8 +614,8 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
         basicProjectInfo: {
             projectType,
             projectManager,
-            estimatedStartDate: project.start_date ? new Date(project.start_date).toLocaleString() : null,
-            estimatedEndDate: project.end_date ? new Date(project.end_date).toLocaleString() : null,
+            estimatedStartDate: project.start_date ?? null,
+            estimatedEndDate: project.end_date ?? null,
             actualStartDate: project.actual_start_date ? new Date(project.actual_start_date).toLocaleString() : null,
             actualEndDate: project.actual_end_date ? new Date(project.actual_end_date).toLocaleString() : null,
             assignedTeam: assignedTeam.filter(Boolean),
@@ -2167,13 +2344,15 @@ const avgFollowupsPerStaff = totalStaff > 0 ? totalFollowups / totalStaff : 0;
 
 // const { total_documents, total_staff, avg_documents_per_staff } = documentStats[0];
 
-  const documentContributions = await AppDataSource.query(`
+const documentContributions = await AppDataSource.query(`
     SELECT (
         (SELECT COUNT(*) FROM lead_attachments 
-         WHERE ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
+         WHERE deleted = false 
+         AND ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
         +
         (SELECT COUNT(*) FROM project_attachments 
-         WHERE ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
+         WHERE deleted = false 
+         AND ${dateFilter.from && dateFilter.to ? 'created_at BETWEEN $1 AND $2' : '1=1'})
     ) as total_documents
 `, dateFilter.from && dateFilter.to ? [dateFilter.from, dateFilter.to] : [])
 .then(result => parseInt(result[0].total_documents) || 0);
