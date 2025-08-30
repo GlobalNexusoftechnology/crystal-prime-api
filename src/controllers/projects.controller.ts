@@ -28,22 +28,8 @@ export const ProjectController = () => {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
       const { milestones, attachments, description, ...projectData } = parsedData;
       const project = await service.createProject({ ...projectData, description: description ?? "" }, queryRunner);
-      let createdMilestones = [];
-      if (Array.isArray(milestones)) {
-        for (const milestone of milestones) {
-          const milestoneData = { ...milestone, project_id: project.id, description: milestone.description ?? "" };
-          const createdMilestone = await milestoneService.createMilestone(milestoneData, queryRunner);
-          let createdTasks = [];
-          if (Array.isArray(milestone.tasks)) {
-            for (const task of milestone.tasks) {
-              const taskData = { ...task, milestone_id: createdMilestone.id };
-              const createdTask = await taskService.createTask(taskData, queryRunner);
-              createdTasks.push(createdTask);
-            }
-          }
-          createdMilestones.push({ ...createdMilestone, tasks: createdTasks });
-        }
-      }
+      // Skip creating user-provided milestones. Support milestone is created automatically in service.
+      const createdMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
       let createdAttachments = [];
       if (Array.isArray(attachments)) {
         for (const attachment of attachments) {

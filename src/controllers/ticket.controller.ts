@@ -80,9 +80,9 @@ export const ticketController = () => {
     }
   };
 
-  const getTicketsByTask = async (req: Request, res: Response, next: NextFunction) => {
+  const getTicketsByMilestone = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { taskId } = req.params;
+      const { milestoneId } = req.params;
       const searchText = req.query.searchText as string | undefined;
       const status = req.query.status as string | undefined;
       const priority = req.query.priority as string | undefined;
@@ -97,10 +97,10 @@ export const ticketController = () => {
         limit
       };
 
-      const result = await service.getTicketsByTask(taskId, filters);
+      const result = await service.getTicketsByMilestone(milestoneId, filters);
       res.status(200).json({
         status: "success",
-        message: "Task Tickets fetched",
+        message: "Milestone Tickets fetched",
         data: { list: result.data, pagination: result.pagination },
       });
     } catch (err) {
@@ -145,7 +145,7 @@ export const ticketController = () => {
     getAllTickets,
     getTicketById,
     getTicketsByProject,
-    getTicketsByTask,
+    getTicketsByMilestone,
     updateTicket,
     updateTicketStatus,
     deleteTicket,

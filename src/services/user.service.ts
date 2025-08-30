@@ -69,7 +69,8 @@ export const findAllUsers = async (filters: any = {}) => {
 
   const query = userRepository.createQueryBuilder("user")
     .leftJoinAndSelect("user.role", "role")
-    .where("user.deleted = false");
+    .where("user.deleted = false")
+    .andWhere("LOWER(role.role) != LOWER(:clientRole)", { clientRole: "client" });
 
   if (searchText && searchText.trim() !== "") {
     const search = `%${searchText.trim().toLowerCase()}%`;

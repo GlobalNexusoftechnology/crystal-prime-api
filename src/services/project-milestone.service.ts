@@ -29,6 +29,19 @@ export const MilestoneService = () => {
     const project = await projectRepository.findOne({ where: { id: data.project_id } });
     if (!project) throw new AppError(404, "Project not found");
 
+    // Enforce only a single "Support" milestone per project
+    const requestedName = (data.name || "").trim();
+    if (requestedName.toLowerCase() !== "support") {
+      throw new AppError(400, "Only 'Support' milestone can be created for a project");
+    }
+
+    const existingSupport = await repo.findOne({
+      where: { project: { id: data.project_id }, name: "Support", deleted: false },
+    });
+    if (existingSupport) {
+      throw new AppError(400, "Support milestone already exists for this project");
+    }
+
     const milestone = repo.create({
       name: data.name,
       description: data.description,
@@ -48,7 +61,7 @@ export const MilestoneService = () => {
   const getAllMilestones = async () => {
     const data = await milestoneRepo.find({
       where: { deleted: false },
-      relations: ["project", "tasks"],
+      relations: ["project", "tasks", "tickets"],
     });
     return { data, total: data.length };
   };
@@ -56,7 +69,7 @@ export const MilestoneService = () => {
   const getMilestoneById = async (id: string) => {
     const milestone = await milestoneRepo.findOne({
       where: { id, deleted: false },
-      relations: ["project", "tasks"],
+      relations: ["project", "tasks", "tickets"],
     });
     if (!milestone) throw new AppError(404, "Milestone not found");
     return milestone;
@@ -66,6 +79,7 @@ export const MilestoneService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const milestones = await repo.find({
       where: { project: { id: project_id }, deleted: false },
+      relations: ["tasks", "tickets"],
       order: {created_at: "DESC"}
     });
     return milestones;

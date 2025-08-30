@@ -1,12 +1,12 @@
 import { AppDataSource } from "../utils/data-source";
 import { Ticket } from "../entities/ticket.entity";
 import { Project } from "../entities/projects.entity";
-import { ProjectTasks } from "../entities/project-task.entity";
+import { ProjectMilestones } from "../entities/project-milestone.entity";
 import AppError from "../utils/appError";
 
 const ticketRepo = AppDataSource.getRepository(Ticket);
 const projectRepo = AppDataSource.getRepository(Project);
-const taskRepo = AppDataSource.getRepository(ProjectTasks);
+const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 
 interface TicketInput {
   title: string;
@@ -14,7 +14,8 @@ interface TicketInput {
   status?: string;
   priority?: string;
   project_id: string;
-  task_id?: string;
+  milestone_id?: string;
+  assigned_to?: string;
   image_url?: string;
   remark?: string;
 }
@@ -23,15 +24,28 @@ export const TicketService = () => {
   const createTicket = async (data: TicketInput, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
-    const taskRepository = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     
     const project = await projectRepository.findOne({ where: { id: data.project_id } });
     if (!project) throw new AppError(404, "Project not found");
 
-    let task = null;
-    if (data.task_id) {
-      task = await taskRepository.findOne({ where: { id: data.task_id } });
-      if (!task) throw new AppError(404, "Task not found");
+    let milestone = null;
+    if (data.milestone_id) {
+      milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
+      if (!milestone) throw new AppError(404, "Milestone not found");
+    } else {
+      // Auto-assign to Support milestone
+      milestone = await milestoneRepository.findOne({
+        where: { 
+          project: { id: data.project_id }, 
+          name: "Support", 
+          deleted: false 
+        }
+      });
+
+      if (!milestone) {
+        throw new AppError(400, "Support milestone not found for this project");
+      }
     }
 
     const ticket = repo.create({
@@ -39,8 +53,9 @@ export const TicketService = () => {
       description: data.description,
       status: data.status || "Open",
       priority: data.priority || "Medium",
+      assigned_to: data.assigned_to,
       project,
-      task,
+      milestone,
       image_url: data.image_url,
       remark: data.remark,
     });
@@ -50,8 +65,7 @@ export const TicketService = () => {
     // Return the ticket with relationships loaded using QueryBuilder
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: savedTicket.id })
       .getOne();
   };
@@ -65,8 +79,7 @@ export const TicketService = () => {
 
     let query = ticketRepo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false");
 
     if (searchText && searchText.trim() !== "") {
@@ -104,8 +117,7 @@ export const TicketService = () => {
   const getTicketById = async (id: string) => {
     const ticket = await ticketRepo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id })
       .andWhere("ticket.deleted = false")
       .getOne();
@@ -122,8 +134,7 @@ export const TicketService = () => {
 
     let query = ticketRepo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false")
       .andWhere("project.id = :projectId", { projectId });
 
@@ -159,7 +170,7 @@ export const TicketService = () => {
     };
   };
 
-  const getTicketsByTask = async (taskId: string, filters: any = {}) => {
+  const getTicketsByMilestone = async (milestoneId: string, filters: any = {}) => {
     const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
     const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
     const skip = (page - 1) * limit;
@@ -168,10 +179,9 @@ export const TicketService = () => {
 
     let query = ticketRepo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false")
-      .andWhere("task.id = :taskId", { taskId });
+      .andWhere("milestone.id = :milestoneId", { milestoneId });
 
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
@@ -208,11 +218,11 @@ export const TicketService = () => {
   const updateTicket = async (id: string, data: Partial<TicketInput>, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
-    const taskRepository = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     
     const ticket = await repo.findOne({ 
       where: { id, deleted: false }, 
-      relations: ["project", "task"] 
+      relations: ["project", "milestone"] 
     });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
@@ -222,16 +232,17 @@ export const TicketService = () => {
       ticket.project = project;
     }
 
-    if (data.task_id) {
-      const task = await taskRepository.findOne({ where: { id: data.task_id } });
-      if (!task) throw new AppError(404, "Task not found");
-      ticket.task = task;
+    if (data.milestone_id) {
+      const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
+      if (!milestone) throw new AppError(404, "Milestone not found");
+      ticket.milestone = milestone;
     }
 
     if (data.title !== undefined) ticket.title = data.title;
     if (data.description !== undefined) ticket.description = data.description;
     if (data.status !== undefined) ticket.status = data.status;
     if (data.priority !== undefined) ticket.priority = data.priority;
+    if (data.assigned_to !== undefined) ticket.assigned_to = data.assigned_to;
     if (data.image_url !== undefined) ticket.image_url = data.image_url;
     if (data.remark !== undefined) ticket.remark = data.remark;
 
@@ -240,8 +251,7 @@ export const TicketService = () => {
     // Return the ticket with relationships loaded using QueryBuilder
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: savedTicket.id })
       .getOne();
   };
@@ -258,8 +268,7 @@ export const TicketService = () => {
 
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
-      .leftJoinAndSelect("ticket.task", "task")
-      .leftJoinAndSelect("task.milestone", "milestone")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: saved.id })
       .getOne();
   };
@@ -281,7 +290,7 @@ export const TicketService = () => {
     getAllTickets,
     getTicketById,
     getTicketsByProject,
-    getTicketsByTask,
+    getTicketsByMilestone,
     updateTicket,
     updateTicketStatus,
     deleteTicket,
