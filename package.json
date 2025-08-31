@@ -17,7 +17,8 @@
     "test:coverage": "jest --coverage",
     "deploy": "npm install && npm run build && npm run pm2:start",
     "push:token": "ts-node-dev src/scripts/pageTokenInit.ts",
-    "migrate:support": "node scripts/migrate-support-milestones.js"
+    "migrate:support": "node scripts/migrate-support-milestones.js",
+    "fix:tickets": "node scripts/fix-ticket-milestone-association.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.717.0",

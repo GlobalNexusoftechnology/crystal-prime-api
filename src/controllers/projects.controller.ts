@@ -7,6 +7,7 @@ import {
 import { MilestoneService } from "../services/project-milestone.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { ProjectAttachmentService } from "../services/project-attachments.service";
+import { TicketService } from "../services/ticket.service";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { findUserById } from "../services/user.service";
 
@@ -14,6 +15,7 @@ const service = ProjectService();
 const milestoneService = MilestoneService();
 const taskService = ProjectTaskService();
 const attachmentService = ProjectAttachmentService();
+const ticketService = TicketService();
 
 export const ProjectController = () => {
   // Create Project
@@ -121,8 +123,16 @@ export const ProjectController = () => {
         const existingMilestoneIds = existingMilestones.map((ms: ProjectMilestones) => ms.id);
         const incomingMilestoneIds = milestones.filter(ms => ms.id).map(ms => ms.id);
 
-        // Delete milestones that are no longer in the list
-        const milestonesToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+        // Delete milestones that are no longer in the list, but preserve Support milestones
+        const milestonesToDelete = existingMilestoneIds.filter((id: string) => {
+          // Don't delete Support milestones
+          const milestone = existingMilestones.find((ms: ProjectMilestones) => ms.id === id);
+          if (milestone && milestone.name.toLowerCase() === "support") {
+            return false;
+          }
+          return !incomingMilestoneIds.includes(id);
+        });
+        
         for (const milestoneId of milestonesToDelete) {
           await milestoneService.deleteMilestoneWithCascade(milestoneId, queryRunner); // Use cascade delete
         }
@@ -132,8 +142,24 @@ export const ProjectController = () => {
           if (milestone.id) {
             milestoneResult = await milestoneService.updateMilestone(milestone.id, milestone, queryRunner);
           } else {
-            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+            // Check if this is a Support milestone and if one already exists
+            if (milestone.name && milestone.name.toLowerCase() === "support") {
+              const existingSupport = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
+              const supportMilestone = existingSupport.find((ms: ProjectMilestones) => ms.name.toLowerCase() === "support");
+              
+              if (supportMilestone) {
+                // Update existing Support milestone instead of creating new one
+                milestoneResult = await milestoneService.updateMilestone(supportMilestone.id, milestone, queryRunner);
+              } else {
+                // Create new Support milestone only if none exists
+                milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+              }
+            } else {
+              milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+            }
           }
+          
+          // Handle tasks
           let updatedTasks = [];
           if (Array.isArray(milestone.tasks)) {
             for (const task of milestone.tasks) {
@@ -146,7 +172,16 @@ export const ProjectController = () => {
               updatedTasks.push(taskResult);
             }
           }
-          updatedMilestones.push({ ...milestoneResult, tasks: updatedTasks });
+          
+          // Preserve existing tickets for this milestone
+          const existingTickets = await ticketService.getTicketsByMilestone(milestoneResult.id, {});
+          const updatedTickets = existingTickets.data || [];
+          
+          updatedMilestones.push({ 
+            ...milestoneResult, 
+            tasks: updatedTasks,
+            tickets: updatedTickets
+          });
         }
       }
 

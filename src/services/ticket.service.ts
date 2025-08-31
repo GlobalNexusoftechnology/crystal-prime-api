@@ -40,11 +40,26 @@ export const TicketService = () => {
           project: { id: data.project_id }, 
           name: "Support", 
           deleted: false 
-        }
+        },
+        relations: ["project"]
       });
 
       if (!milestone) {
-        throw new AppError(400, "Support milestone not found for this project");
+        // Try to create Support milestone if it doesn't exist
+        const project = await projectRepository.findOne({ where: { id: data.project_id } });
+        if (!project) throw new AppError(404, "Project not found");
+        
+        // Create Support milestone
+        const supportMilestone = milestoneRepository.create({
+          name: "Support",
+          description: "Support and maintenance milestone for ongoing project support",
+          status: "Open",
+          project: project,
+          start_date: new Date(),
+          end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+        });
+        
+        milestone = await milestoneRepository.save(supportMilestone);
       }
     }
 
@@ -170,7 +185,50 @@ export const TicketService = () => {
     };
   };
 
+  const getTicketsByMilestone = async (milestoneId: string, filters: any = {}) => {
+    const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
+    const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
+    const skip = (page - 1) * limit;
 
+    const { searchText, status, priority } = filters;
+
+    let query = ticketRepo.createQueryBuilder("ticket")
+      .leftJoinAndSelect("ticket.project", "project")
+      .leftJoinAndSelect("ticket.milestone", "milestone")
+      .where("ticket.deleted = false")
+      .andWhere("milestone.id = :milestoneId", { milestoneId });
+
+    if (searchText && searchText.trim() !== "") {
+      const search = `%${searchText.trim().toLowerCase()}%`;
+      query = query.andWhere(
+        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(ticket.remark) LIKE :search`,
+        { search }
+      );
+    }
+
+    if (status && status.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
+    }
+
+    if (priority && priority.trim() !== "") {
+      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
+    }
+
+    query = query.orderBy("ticket.created_at", "DESC");
+    query.skip(skip).take(limit);
+
+    const [tickets, total] = await query.getManyAndCount();
+
+    return {
+      data: tickets,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  };
 
   const updateTicket = async (id: string, data: Partial<TicketInput>, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
@@ -193,7 +251,23 @@ export const TicketService = () => {
       const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
       if (!milestone) throw new AppError(404, "Milestone not found");
       ticket.milestone = milestone;
+    } else if (data.milestone_id === null) {
+      // If milestone_id is explicitly set to null, auto-assign to Support milestone
+      const supportMilestone = await milestoneRepository.findOne({
+        where: { 
+          project: { id: ticket.project.id }, 
+          name: "Support", 
+          deleted: false 
+        }
+      });
+      
+      if (supportMilestone) {
+        ticket.milestone = supportMilestone;
+      } else {
+        throw new AppError(400, "Support milestone not found for this project");
+      }
     }
+    // If milestone_id is not provided in the update, keep the existing milestone
 
     if (data.title !== undefined) ticket.title = data.title;
     if (data.description !== undefined) ticket.description = data.description;
@@ -247,6 +321,7 @@ export const TicketService = () => {
     getAllTickets,
     getTicketById,
     getTicketsByProject,
+    getTicketsByMilestone,
     updateTicket,
     updateTicketStatus,
     deleteTicket,
