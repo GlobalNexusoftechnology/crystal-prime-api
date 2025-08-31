@@ -86,7 +86,11 @@ export const ticketController = () => {
       const { id } = req.params;
       const parsed = updateTicketSchema.parse(req.body);
       const result = await service.updateTicket(id, parsed);
-      res.status(200).json({ status: "success", data: result });
+      res.status(200).json({ 
+        status: "success", 
+        message: "Ticket updated successfully",
+        data: result 
+      });
     } catch (err) {
       next(err);
     }
