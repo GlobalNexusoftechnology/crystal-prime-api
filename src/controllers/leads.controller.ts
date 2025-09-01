@@ -20,20 +20,8 @@ export const leadController = () => {
 
       // Handle email conversion - can be string or array
       if (parsed.email) {
-        if (typeof parsed.email === 'string') {
-          // If it's a comma-separated string, split it
-          const emailList = parsed.email
-            .split(",")
-            .map((e) => e.trim())
-            .filter(Boolean);
-          parsed.email = emailList;
-        } else if (Array.isArray(parsed.email)) {
-          // If it's already an array, keep it as is
-          parsed.email = parsed.email.filter(Boolean);
-        }
-      } else {
-        // If no email provided, set to empty array
-        parsed.email = [];
+        // Ensure email is a string, trim whitespace
+        parsed.email = String(parsed.email).trim();
       }
 
       const result = await service.createLead(parsed, userData);
@@ -123,10 +111,8 @@ export const leadController = () => {
       const parsed = updateLeadSchema.parse(req.body);
 
       if (parsed.email) {
-        parsed.email = String(parsed.email)
-          .split(",")
-          .map((e) => e.trim())
-          .filter(Boolean);
+        // Ensure email is a string, trim whitespace
+        parsed.email = String(parsed.email).trim();
       }
 
       const result = await service.updateLead(id, parsed, userData);
