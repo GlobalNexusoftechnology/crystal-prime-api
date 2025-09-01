@@ -12,6 +12,7 @@ router.post("/", controller.createEntry);
 router.get("/", controller.getAllEntries);
 router.get("/:id", controller.getEntryById);
 router.put("/:id", controller.updateEntry);
+router.put("/:id/status", controller.updateEntryStatus);
 router.delete("/:id", controller.softDeleteEntry);
 
 export default router;

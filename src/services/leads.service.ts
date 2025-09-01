@@ -47,9 +47,9 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
-    // Validate emails
-    if (!email || !Array.isArray(email) || email.length === 0) {
-      throw new AppError(400, "At least one email is required");
+    // Validate emails (optional now)
+    if (email && !Array.isArray(email)) {
+      throw new AppError(400, "Email must be an array");
     }
 
     // Check if any email already exists
@@ -71,9 +71,10 @@ export const LeadService = () => {
       ? [email]
       : [];
     lead.location = location ?? "";
-    lead.budget = budget ?? 0;
+    // Handle numeric fields properly
+    lead.budget = budget && budget !== "" ? Number(budget) : null;
     lead.requirement = requirement ?? "";
-    lead.possibility_of_conversion = possibility_of_conversion ?? null;
+    lead.possibility_of_conversion = possibility_of_conversion && possibility_of_conversion !== "" ? Number(possibility_of_conversion) : null;
     lead.other_contact = other_contact ?? "";
     lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
@@ -1015,7 +1016,7 @@ export const LeadService = () => {
     other_contact: mapped.other_contact ?? null,
     email: mapped.email || [],
     location: mapped.address,
-    budget: mapped.budget ? parseFloat(mapped.budget) : undefined,
+    budget: mapped.budget && mapped.budget !== "" ? parseFloat(mapped.budget) : null,
     requirement: mapped.requirement,
     attachments: mapped.attachments || [],
     channel,
@@ -1050,7 +1051,7 @@ export const LeadService = () => {
         : payload.email
         ? [payload.email]
         : [],
-      budget: parseInt(payload.budget),
+      budget: payload.budget && payload.budget !== "" ? parseInt(payload.budget) : null,
 
       attachments: Array.isArray(payload.attachments)
         ? payload.attachments
@@ -1067,9 +1068,9 @@ export const LeadService = () => {
       company: data.company,
       phone: data.phone,
       other_contact: data.other_contact,
-      email: data.email,
+      email: Array.isArray(data.email) ? data.email : data.email ? [data.email] : [],
       location: data.location,
-      budget: Number(data.budget),
+      budget: data.budget && data.budget !== "" ? Number(data.budget) : null,
       requirement: data.requirement,
       attachments: data.attachments,
       channel: ChannelType.GOOGLE,

@@ -13,9 +13,6 @@ router.get("/", controller.getAllTickets);
 // Get tickets by project
 router.get("/project/:projectId", controller.getTicketsByProject);
 
-// Get tickets by task
-router.get("/task/:taskId", controller.getTicketsByTask);
-
 // Get ticket by ID
 router.get("/:id", controller.getTicketById);
 

@@ -74,6 +74,20 @@ export const DailyTaskEntryService = () => {
         query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
         query = query.addOrderBy("entry.created_at", "DESC");
         const entries = await query.getMany();
+        
+        // Manually load client relationships for each project
+        for (const entry of entries) {
+          if (entry.project) {
+            const projectWithClient = await projectRepo.findOne({
+              where: { id: entry.project.id },
+              relations: ["client"]
+            });
+            if (projectWithClient) {
+              entry.project = projectWithClient;
+            }
+          }
+        }
+        
         let enriched = await addTaskAndMilestoneIds(entries);
         if (filters?.taskId) {
           enriched = enriched.filter(e => e.taskId === filters.taskId);
@@ -87,6 +101,19 @@ export const DailyTaskEntryService = () => {
         relations: ["project"],
         order: { created_at: "DESC" },
       });
+
+      // Manually load client relationships for each project
+      for (const entry of entries) {
+        if (entry.project) {
+          const projectWithClient = await projectRepo.findOne({
+            where: { id: entry.project.id },
+            relations: ["client"]
+          });
+          if (projectWithClient) {
+            entry.project = projectWithClient;
+          }
+        }
+      }
       // Custom sort: High > Medium > Low > others
       const priorityOrder = { High: 1, Medium: 2, Low: 3 };
       entries.sort((a, b) => {
@@ -139,6 +166,18 @@ export const DailyTaskEntryService = () => {
             relations: ["project"],
         });
         if (!entry) throw new AppError(404, "Task entry not found");
+        
+        // Manually load client relationship for the project
+        if (entry.project) {
+            const projectWithClient = await projectRepo.findOne({
+                where: { id: entry.project.id },
+                relations: ["client"]
+            });
+            if (projectWithClient) {
+                entry.project = projectWithClient;
+            }
+        }
+        
         return entry;
     };
 
@@ -158,6 +197,16 @@ export const DailyTaskEntryService = () => {
         return await entryRepo.save(entry);
     };
 
+    // Update Status
+    const updateEntryStatus = async (id: string, status: string) => {
+        const entry = await entryRepo.findOne({ where: { id, deleted: false } });
+        if (!entry) throw new AppError(404, "Task entry not found");
+
+        entry.status = status;
+        
+        return await entryRepo.save(entry);
+    };
+
     // Soft Delete
     const softDeleteEntry = async (id: string) => {
         const entry = await entryRepo.findOne({ where: { id, deleted: false } });
@@ -173,6 +222,7 @@ export const DailyTaskEntryService = () => {
         getAllEntries,
         getEntryById,
         updateEntry,
+        updateEntryStatus,
         softDeleteEntry,
     };
 };

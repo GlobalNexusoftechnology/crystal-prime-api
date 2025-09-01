@@ -136,7 +136,7 @@ export const ProjectService = () => {
 
     const savedProject = await repo.save(project);
 
-    // Automatically create Support Milestone and Support Task
+    // Automatically create Support Milestone only (task will be created when first ticket is generated)
     try {
       // Create Support Milestone
       const supportMilestone = await milestoneService.createMilestone({
@@ -148,17 +148,8 @@ export const ProjectService = () => {
         end_date: savedProject.end_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
       }, queryRunner);
 
-      // Create Support Task within the milestone
-      await taskService.createTask({
-        milestone_id: supportMilestone.id,
-        title: "Tickets",
-        description: "Handle tickets and maintenance requests",
-        status: "Open",
-        assigned_to: "Support Team",
-      }, queryRunner);
-
     } catch (error) {
-      console.error("Error creating support milestone/task:", error);
+      console.error("Error creating support milestone:", error);
       // Don't fail the project creation if milestone/task creation fails
     }
 
@@ -176,6 +167,7 @@ export const ProjectService = () => {
           "client",
           "milestones",
           "milestones.tasks",
+          "milestones.tickets",
           "attachments",
           "attachments.uploaded_by",
           "project_type"
@@ -204,6 +196,7 @@ export const ProjectService = () => {
       "client",
       "milestones",
       "milestones.tasks",
+      "milestones.tickets",
       "attachments",
       "attachments.uploaded_by",
       "project_type"
@@ -218,6 +211,7 @@ export const ProjectService = () => {
       .leftJoinAndSelect("project.client", "client")
       .leftJoinAndSelect("project.milestones", "milestones")
       .leftJoinAndSelect("milestones.tasks", "tasks")
+      .leftJoinAndSelect("milestones.tickets", "tickets")
       .leftJoinAndSelect("project.attachments", "attachments")
       .leftJoinAndSelect("attachments.uploaded_by", "uploaded_by")
       .where("project.deleted = false")
@@ -240,6 +234,7 @@ export const ProjectService = () => {
         "client",
         "milestones",
         "milestones.tasks",
+        "milestones.tickets",
         "attachments",
         "attachments.uploaded_by",
         "project_type"

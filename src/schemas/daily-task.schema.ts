@@ -26,4 +26,9 @@ export const updateDailyTaskEntrySchema = z.object({
     priority: z.string().optional(),
 }).strict();
 
+// Schema for updating status of a Daily Task Entry
+export const updateDailyTaskStatusSchema = z.object({
+    status: z.string({ required_error: "Status is required" }).min(1, "Status cannot be empty"),
+}).strict();
+
 

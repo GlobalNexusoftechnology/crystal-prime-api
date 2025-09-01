@@ -48,7 +48,7 @@ export const migrateSupportMilestones = async () => {
 
         console.log(`Migrating project: ${project.name} (ID: ${project.id})`);
 
-        // Create Support Milestone
+        // Create Support Milestone only (task will be created when first ticket is generated)
         const supportMilestone = await milestoneService.createMilestone({
           name: "Support",
           description: "Support and maintenance milestone for ongoing project support",
@@ -56,15 +56,6 @@ export const migrateSupportMilestones = async () => {
           project_id: project.id,
           start_date: new Date(),
           end_date: project.end_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
-        });
-
-        // Create Tickets Task within the milestone
-        await taskService.createTask({
-          milestone_id: supportMilestone.id,
-          title: "Tickets",
-          description: "Handle tickets and maintenance requests",
-          status: "Open",
-          assigned_to: "Support Team",
         });
 
         migratedCount++;
