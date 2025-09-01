@@ -6,6 +6,7 @@ import AppError from "../utils/appError";
 import { Leads } from "../entities/leads.entity";
 import ExcelJS from "exceljs";
 import { ClientDetailsService } from "./clients-details.service";
+import { User } from "../entities";
 
 interface ClientInput {
   lead_id?: string;
@@ -20,6 +21,7 @@ interface ClientInput {
 }
 
 const clientRepo = AppDataSource.getRepository(Clients);
+const userRepo = AppDataSource.getRepository(User);
 const leadRepo = AppDataSource.getRepository(Leads);
 const projectRepo = AppDataSource.getRepository(Project);
 const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
@@ -85,6 +87,7 @@ export const ClientService = () => {
     let query = clientRepo.createQueryBuilder("client")
       .leftJoinAndSelect("client.lead", "lead")
       .leftJoinAndSelect("client.client_details", "client_details")
+      .leftJoinAndSelect("client.user", "user")
       .where("client.deleted = false");
 
     if (searchText && searchText.trim() !== "") {
@@ -115,7 +118,7 @@ export const ClientService = () => {
   const getClientById = async (id: string) => {
     const client = await clientRepo.findOne({
       where: { id, deleted: false },
-      relations: ["lead","client_details"],
+      relations: ["lead","client_details","user"],
     });
 
     if (!client) throw new AppError(404, "Client not found");
@@ -124,7 +127,7 @@ export const ClientService = () => {
 
   //  Update Client
   const updateClient = async (id: string, data: Partial<ClientInput> & { client_details?: any[] }) => {
-    const client = await clientRepo.findOne({ where: { id, deleted: false } });
+    const client = await clientRepo.findOne({ where: { id, deleted: false }, relations: ["user"] });
     if (!client) throw new AppError(404, "Client not found");
 
     const {
@@ -139,6 +142,26 @@ export const ClientService = () => {
       gst_number,
       client_details,
     } = data;
+
+    if (client?.user) {
+      const savedUser = await userRepo.findOne({
+        where: { id: client?.user?.id },
+      });
+
+      if (savedUser) {
+        if (data?.name) {
+          const temp = data?.name?.split(" ");
+          if (temp) {
+            savedUser.first_name = temp[0];
+            savedUser.last_name = temp[1];
+          }
+        }
+        if (data.email) {
+          savedUser.email = data.email;
+        }
+        await userRepo.save(savedUser);
+      }
+    }
 
     if (lead_id) {
       const lead = await leadRepo.findOne({ where: { id: lead_id } });

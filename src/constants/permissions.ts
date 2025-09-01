@@ -27,7 +27,8 @@ export const MODULES: TOptionItem[] = [
   { key: "LEAD_ANALYTICS_REPORT", label: "Lead Analytics Report", value: "29" },
   { key: "BUSINESS_ANALYSIS_REPORT", label: "Business Analysis Report", value: "30" },
   { key: "PUBLIC_BUSINESS_DASHBOARD", label: "Public Business Dashboard", value: "31" },
-
+  { key: "MY_PROJECTS", label: "My Projects Module", value: "32" },
+  { key: "TICKET_MANAGEMENT", label: "Ticket Management Module", value: "33" },
 ];
 
 export const ACTIONS: TOptionItem[] = [

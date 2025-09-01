@@ -78,8 +78,6 @@ export const clientController = () => {
       next(error);
     }
   };
-
-
   // Update Client
   const updateClient = async (
     req: Request,

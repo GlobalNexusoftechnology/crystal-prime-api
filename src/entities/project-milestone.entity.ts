@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Project } from "./projects.entity";
 import { ProjectTasks } from "./project-task.entity";
+import { Ticket } from "./ticket.entity";
 
 @Entity("project_milestones")
 export class ProjectMilestones extends Model {
@@ -38,5 +39,8 @@ export class ProjectMilestones extends Model {
 
   @OneToMany(() => ProjectTasks, (task) => task.milestone)
   tasks: ProjectTasks[];
+
+  @OneToMany(() => Ticket, (ticket) => ticket.milestone)
+  tickets: Ticket[];
 }
 

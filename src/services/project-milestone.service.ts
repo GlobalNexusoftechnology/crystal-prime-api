@@ -2,12 +2,14 @@ import { AppDataSource } from "../utils/data-source";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { Project } from "../entities/projects.entity";
 import { ProjectTasks } from "../entities/project-task.entity";
+import { Ticket } from "../entities/ticket.entity";
 import AppError from "../utils/appError";
 import { mergeDateWithCurrentTime } from "../utils";
 
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const projectRepo = AppDataSource.getRepository(Project);
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
+const ticketRepo = AppDataSource.getRepository(Ticket);
 
 interface MilestoneInput {
   name: string;
@@ -29,6 +31,17 @@ export const MilestoneService = () => {
     const project = await projectRepository.findOne({ where: { id: data.project_id } });
     if (!project) throw new AppError(404, "Project not found");
 
+    // For Support milestones, enforce only a single "Support" milestone per project
+    const requestedName = (data.name || "").trim();
+    if (requestedName.toLowerCase() === "support") {
+      const existingSupport = await repo.findOne({
+        where: { project: { id: data.project_id }, name: "Support", deleted: false },
+      });
+      if (existingSupport) {
+        throw new AppError(400, "Support milestone already exists for this project");
+      }
+    }
+
     const milestone = repo.create({
       name: data.name,
       description: data.description,
@@ -48,7 +61,7 @@ export const MilestoneService = () => {
   const getAllMilestones = async () => {
     const data = await milestoneRepo.find({
       where: { deleted: false },
-      relations: ["project", "tasks"],
+      relations: ["project", "tasks", "tickets"],
     });
     return { data, total: data.length };
   };
@@ -56,7 +69,7 @@ export const MilestoneService = () => {
   const getMilestoneById = async (id: string) => {
     const milestone = await milestoneRepo.findOne({
       where: { id, deleted: false },
-      relations: ["project", "tasks"],
+      relations: ["project", "tasks", "tickets"],
     });
     if (!milestone) throw new AppError(404, "Milestone not found");
     return milestone;
@@ -66,6 +79,7 @@ export const MilestoneService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const milestones = await repo.find({
       where: { project: { id: project_id }, deleted: false },
+      relations: ["tasks", "tickets"],
       order: {created_at: "DESC"}
     });
     return milestones;
@@ -74,7 +88,7 @@ export const MilestoneService = () => {
   const updateMilestone = async (id: string, data: Partial<MilestoneInput>, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
-    const milestone = await repo.findOne({ where: { id, deleted: false }, relations: ["project"] });
+    const milestone = await repo.findOne({ where: { id, deleted: false }, relations: ["project", "tasks", "tickets"] });
     if (!milestone) throw new AppError(404, "Milestone not found");
 
     if (data.project_id) {
@@ -127,6 +141,7 @@ export const MilestoneService = () => {
   const deleteMilestoneWithCascade = async (id: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const taskRepository = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
+    const ticketRepository = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     
     // Check if any tasks are using this milestone
     const exist = await taskRepository.findOne({
@@ -149,6 +164,41 @@ export const MilestoneService = () => {
         task.deleted = true;
         task.deleted_at = new Date();
         await taskRepository.save(task);
+      }
+    }
+
+    // Check if any tickets are using this milestone
+    const existTickets = await ticketRepository.findOne({
+      where: {
+        milestone: { id: id },
+        deleted: false,
+      }
+    });
+
+    // If tickets exist, reassign them to Support milestone instead of deleting
+    if (existTickets) {
+      const tickets = await ticketRepository.find({
+        where: {
+          milestone: { id: id },
+          deleted: false,
+        },
+        relations: ["project"]
+      });
+      
+      for (const ticket of tickets) {
+        // Find Support milestone for this project
+        const supportMilestone = await repo.findOne({
+          where: { 
+            project: { id: ticket.project.id }, 
+            name: "Support", 
+            deleted: false 
+          }
+        });
+        
+        if (supportMilestone) {
+          ticket.milestone = supportMilestone;
+          await ticketRepository.save(ticket);
+        }
       }
     }
 

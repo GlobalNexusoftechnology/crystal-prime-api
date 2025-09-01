@@ -18,13 +18,23 @@ export const leadController = () => {
       const userData = res?.locals?.user;
       const parsed = createLeadSchema.parse(req.body);
 
-      const emailList = String(parsed.email)
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
-
-      // Replace email field with array version before passing to service
-      parsed.email = emailList;
+      // Handle email conversion - can be string or array
+      if (parsed.email) {
+        if (typeof parsed.email === 'string') {
+          // If it's a comma-separated string, split it
+          const emailList = parsed.email
+            .split(",")
+            .map((e) => e.trim())
+            .filter(Boolean);
+          parsed.email = emailList;
+        } else if (Array.isArray(parsed.email)) {
+          // If it's already an array, keep it as is
+          parsed.email = parsed.email.filter(Boolean);
+        }
+      } else {
+        // If no email provided, set to empty array
+        parsed.email = [];
+      }
 
       const result = await service.createLead(parsed, userData);
 
@@ -265,12 +275,10 @@ const metaLeadWebhook = async (
   next: NextFunction
 ) => {
   try {
-    
-    verifyMetaSignature(req); //verify its meta.
     const body = req.body;
 
     if (
-      body.object === "page" &&
+      (body.object === "page" || body.object === "instagram") &&
       body.entry &&
       body.entry[0]?.changes &&
       body.entry[0].changes[0]?.field === "leadgen"
@@ -280,15 +288,18 @@ const metaLeadWebhook = async (
 
       let channel = ChannelType.FACEBOOK;
 
-      if (body.object === 'instagram') {
+      if (body.object === "instagram") {
         channel = ChannelType.INSTAGRAM;
       }
       await service.handleMetaLead(leadId, channel);
       res.status(200).json({ status: "success", message: "Lead processed" });
     } else {
-      res.status(400).json({ status: "error", message: "Invalid webhook payload" });
+      res
+        .status(400)
+        .json({ status: "error", message: "Invalid webhook payload" });
     }
   } catch (error) {
+    console.log("error we got", error);
     next(error);
   }
 };

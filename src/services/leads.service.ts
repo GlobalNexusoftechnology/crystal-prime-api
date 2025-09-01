@@ -14,7 +14,8 @@ import {
 } from "../entities/lead-followups.entity";
 import { Between, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
-import { createLeadSchema } from "../schemas/leads.schema";
+import { createLeadSchema, createMetaLeadSchema } from "../schemas/leads.schema";
+import { getValidToken } from "./page-token.service";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -46,9 +47,9 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
-    // Validate emails
-    if (!email || !Array.isArray(email) || email.length === 0) {
-      throw new AppError(400, "At least one email is required");
+    // Validate emails (optional now)
+    if (email && !Array.isArray(email)) {
+      throw new AppError(400, "Email must be an array");
     }
 
     // Check if any email already exists
@@ -70,9 +71,10 @@ export const LeadService = () => {
       ? [email]
       : [];
     lead.location = location ?? "";
-    lead.budget = budget ?? 0;
+    // Handle numeric fields properly
+    lead.budget = budget && budget !== "" ? Number(budget) : null;
     lead.requirement = requirement ?? "";
-    lead.possibility_of_conversion = possibility_of_conversion ?? null;
+    lead.possibility_of_conversion = possibility_of_conversion && possibility_of_conversion !== "" ? Number(possibility_of_conversion) : null;
     lead.other_contact = other_contact ?? "";
     lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
@@ -139,22 +141,23 @@ export const LeadService = () => {
       followupFrom,
       followupTo,
       sourceId,
-      assignedToId
+      assignedToId,
     } = filters;
 
-    let query = leadRepo.createQueryBuilder("lead")
+    let query = leadRepo
+      .createQueryBuilder("lead")
       .leftJoinAndSelect("lead.source", "source")
       .leftJoinAndSelect("lead.status", "status")
       .leftJoinAndSelect("lead.assigned_to", "assigned_to")
       .leftJoinAndSelect("lead.type", "type")
       .leftJoinAndSelect("lead.followups", "followup")
       .where("lead.deleted = false");
-  
+
     // Role-based filtering - non-admins can only see their assigned leads
     if (role && role !== "admin" && role !== "Admin") {
       query = query.andWhere("assigned_to.id = :userId", { userId });
     }
-  
+
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
       query = query.andWhere(
@@ -162,29 +165,31 @@ export const LeadService = () => {
         { search }
       );
     }
-  
+
     if (statusId && statusId !== "All Status") {
       query = query.andWhere("status.id = :statusId", { statusId });
     }
-  
+
     if (typeId && typeId !== "All Type") {
       query = query.andWhere("type.id = :typeId", { typeId });
     }
-  
+
     if (sourceId && sourceId !== "All Source") {
       query = query.andWhere("source.id = :sourceId", { sourceId });
     }
-  
+
     if (assignedToId && assignedToId !== "All Assigned") {
-      query = query.andWhere("assigned_to.id = :assignedToId", { assignedToId });
+      query = query.andWhere("assigned_to.id = :assignedToId", {
+        assignedToId,
+      });
     }
-  
+
     const now = referenceDate ? new Date(referenceDate) : new Date();
-  
+
     if (dateRange && dateRange !== "All") {
       let start: Date | undefined = undefined;
       let end: Date | undefined = undefined;
-  
+
       if (dateRange === "Daily") {
         start = new Date(now);
         start.setHours(0, 0, 0, 0);
@@ -199,9 +204,17 @@ export const LeadService = () => {
         end.setHours(23, 59, 59, 999);
       } else if (dateRange === "Monthly") {
         start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        end = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999
+        );
       }
-  
+
       if (start && end) {
         query = query.andWhere("lead.created_at BETWEEN :start AND :end", {
           start,
@@ -209,18 +222,25 @@ export const LeadService = () => {
         });
       }
     }
-  
+
     if (followupFrom && followupTo) {
-      query = query.andWhere("followup.due_date BETWEEN :followupFrom AND :followupTo", {
+      query = query.andWhere(
+        "followup.due_date BETWEEN :followupFrom AND :followupTo",
+        {
+          followupFrom,
+          followupTo,
+        }
+      );
+    } else if (followupFrom) {
+      query = query.andWhere("followup.due_date >= :followupFrom", {
         followupFrom,
+      });
+    } else if (followupTo) {
+      query = query.andWhere("followup.due_date <= :followupTo", {
         followupTo,
       });
-    } else if (followupFrom) {
-      query = query.andWhere("followup.due_date >= :followupFrom", { followupFrom });
-    } else if (followupTo) {
-      query = query.andWhere("followup.due_date <= :followupTo", { followupTo });
     }
-  
+
     query.orderBy("lead.created_at", "DESC");
     query.skip(skip).take(limit);
 
@@ -247,90 +267,102 @@ export const LeadService = () => {
     return lead;
   };
 
-const getLeadStats = async (userId: string, role: string) => {
-  // Get today's start and end timestamps in UTC
-  const now = new Date();
-  const today = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0)
-  );
+  const getLeadStats = async (userId: string, role: string) => {
+    // Get today's start and end timestamps in UTC
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        0,
+        0,
+        0,
+        0
+      )
+    );
 
-  const isAdmin = role === "admin" || role === "Admin";
-  const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
-  const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
+    const isAdmin = role === "admin" || role === "Admin";
+    const assignedToFilter = isAdmin ? {} : { assigned_to: { id: userId } };
+    const followupUserFilter = isAdmin ? {} : { user: { id: userId } };
 
-  const [
-    totalLeads,
-    assignedToMe,
-    profileSent,
-    convertedLeads,
-    lostLeads,
-    todayFollowups,
-  ] = await Promise.all([
-    // Total leads
-    leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
+    const [
+      totalLeads,
+      assignedToMe,
+      profileSent,
+      convertedLeads,
+      lostLeads,
+      todayFollowups,
+    ] = await Promise.all([
+      // Total leads
+      leadRepo.count({ where: { deleted: false, ...assignedToFilter } }),
 
-    // Assigned to me
-    isAdmin
-      ? leadRepo.count({ where: { deleted: false } })
-      : leadRepo.count({
-          where: { deleted: false, assigned_to: { id: userId } },
-          relations: ["assigned_to"],
-        }),
+      // Assigned to me
+      isAdmin
+        ? leadRepo.count({ where: { deleted: false } })
+        : leadRepo.count({
+            where: { deleted: false, assigned_to: { id: userId } },
+            relations: ["assigned_to"],
+          }),
 
-    // Profile sent
-    leadRepo.count({
-      where: {
-        deleted: false,
-        status: { name: "Profile Sent" },
-        ...assignedToFilter,
-      },
-      relations: ["status"],
-    }),
+      // Profile sent
+      leadRepo.count({
+        where: {
+          deleted: false,
+          status: { name: "Profile Sent" },
+          ...assignedToFilter,
+        },
+        relations: ["status"],
+      }),
 
-    // Converted leads
-    leadRepo
-      .createQueryBuilder("lead")
-      .leftJoin("lead.status", "status")
-      .where("lead.deleted = :deleted", { deleted: false })
-      .andWhere("LOWER(status.name) IN (:...statuses)", {
-        statuses: ["business done"], // Add more if needed
-      })
-      .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
-      .getCount(),
+      // Converted leads
+      leadRepo
+        .createQueryBuilder("lead")
+        .leftJoin("lead.status", "status")
+        .where("lead.deleted = :deleted", { deleted: false })
+        .andWhere("LOWER(status.name) IN (:...statuses)", {
+          statuses: ["business done"], // Add more if needed
+        })
+        .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
+        .getCount(),
 
-    // Lost leads (no-interested variations)
-    leadRepo
-      .createQueryBuilder("lead")
-      .leftJoin("lead.status", "status")
-      .where("lead.deleted = :deleted", { deleted: false })
-      .andWhere("LOWER(status.name) IN (:...statuses)", {
-        statuses: ["no-interested", "no interested", "not interested", "no-Interested"],
-      })
-      .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
-      .getCount(),
+      // Lost leads (no-interested variations)
+      leadRepo
+        .createQueryBuilder("lead")
+        .leftJoin("lead.status", "status")
+        .where("lead.deleted = :deleted", { deleted: false })
+        .andWhere("LOWER(status.name) IN (:...statuses)", {
+          statuses: [
+            "no-interested",
+            "no interested",
+            "not interested",
+            "no-Interested",
+          ],
+        })
+        .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
+        .getCount(),
 
-    // Today's followups
-    leadFollowupRepo.count({
-      where: {
-        deleted: false,
-        ...followupUserFilter,
-        due_date: today,
-        status: Not(FollowupStatus.COMPLETED),
-      },
-      relations: ["user"],
-    }),
-  ]);
+      // Today's followups
+      leadFollowupRepo.count({
+        where: {
+          deleted: false,
+          ...followupUserFilter,
+          due_date: today,
+          status: Not(FollowupStatus.COMPLETED),
+        },
+        relations: ["user"],
+      }),
+    ]);
 
-  return {
-    totalLeads,
-    assignedToMe,
-    profileSent,
-    convertedLeads,
-    lostLeads,
-    todayFollowups,
+    return {
+      totalLeads,
+      assignedToMe,
+      profileSent,
+      convertedLeads,
+      lostLeads,
+      todayFollowups,
+    };
   };
-};
-
 
   // Update Lead
   const updateLead = async (id: string, data: any, userData: any) => {
@@ -371,7 +403,6 @@ const getLeadStats = async (userId: string, role: string) => {
       //   throw new AppError(400, "One or more emails already exist in another lead");
       // }
 
-
       lead.email = newEmailArray;
     }
 
@@ -382,7 +413,8 @@ const getLeadStats = async (userId: string, role: string) => {
     lead.location = location ?? lead.location;
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
-    lead.possibility_of_conversion = possibility_of_conversion ?? lead.possibility_of_conversion;
+    lead.possibility_of_conversion =
+      possibility_of_conversion ?? lead.possibility_of_conversion;
     lead.other_contact = other_contact ?? lead.other_contact;
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
 
@@ -394,8 +426,8 @@ const getLeadStats = async (userId: string, role: string) => {
     }
 
     if (status_id) {
-      const status =  await leadStatusRepo.findOne({ where: { id: status_id } });
-      if(status){
+      const status = await leadStatusRepo.findOne({ where: { id: status_id } });
+      if (status) {
         lead.status = status;
 
         //Status is completed add lead into client table.
@@ -432,7 +464,7 @@ const getLeadStats = async (userId: string, role: string) => {
             await clientRepo.save(client); //save lead to client.
           }
         }
-      } 
+      }
     }
 
     if (type_id !== undefined) {
@@ -566,7 +598,7 @@ const getLeadStats = async (userId: string, role: string) => {
       sourceId,
       assignedToId,
       page: 1,
-      limit: 10000 // Large limit to get all leads for export
+      limit: 10000, // Large limit to get all leads for export
     };
 
     const result = await getAllLeads(filters, userId, userRole);
@@ -586,7 +618,11 @@ const getLeadStats = async (userId: string, role: string) => {
       { header: "Location", key: "location", width: 20 },
       { header: "Budget", key: "budget", width: 15 },
       { header: "Requirement", key: "requirement", width: 40 },
-      { header: "Possibility of Conversion (%)", key: "possibility_of_conversion", width: 25 },
+      {
+        header: "Possibility of Conversion (%)",
+        key: "possibility_of_conversion",
+        width: 25,
+      },
       { header: "Source", key: "source", width: 20 },
       { header: "Status", key: "status", width: 20 },
       { header: "type", key: "type", width: 20 },
@@ -632,7 +668,11 @@ const getLeadStats = async (userId: string, role: string) => {
       { header: "location", key: "location", width: 20 },
       { header: "requirement", key: "requirement", width: 20 },
       { header: "budget", key: "budget", width: 15 },
-      { header: "possibility_of_conversion", key: "possibility_of_conversion", width: 25 },
+      {
+        header: "possibility_of_conversion",
+        key: "possibility_of_conversion",
+        width: 25,
+      },
       { header: "source", key: "source", width: 15 },
       { header: "status", key: "status", width: 15 },
       { header: "type", key: "type", width: 15 },
@@ -686,7 +726,9 @@ const getLeadStats = async (userId: string, role: string) => {
           "richText" in (cellValue.text as any) &&
           Array.isArray((cellValue.text as any).richText)
         ) {
-          value = ((cellValue.text as any).richText as any[]).map((rt: any) => rt.text).join("");
+          value = ((cellValue.text as any).richText as any[])
+            .map((rt: any) => rt.text)
+            .join("");
         } else if (
           cellValue &&
           typeof cellValue === "object" &&
@@ -740,7 +782,8 @@ const getLeadStats = async (userId: string, role: string) => {
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
-        possibility_of_conversion: Number(data.possibility_of_conversion) || null,
+        possibility_of_conversion:
+          Number(data.possibility_of_conversion) || null,
         created_by: `${user.first_name} ${user.last_name}` || "",
         updated_by: `${user.first_name} ${user.last_name}` || "",
       });
@@ -810,7 +853,12 @@ const getLeadStats = async (userId: string, role: string) => {
   };
 
   // Group leads by status for a given date range and user
-  const groupLeadsByStatus = async (dateRange: "Weekly" | "Monthly" | "Yearly", userId?: string, role?: string, referenceDate?: Date) => {
+  const groupLeadsByStatus = async (
+    dateRange: "Weekly" | "Monthly" | "Yearly",
+    userId?: string,
+    role?: string,
+    referenceDate?: Date
+  ) => {
     const now = referenceDate ? new Date(referenceDate) : new Date();
     let start: Date | undefined;
     let end: Date | undefined;
@@ -828,7 +876,8 @@ const getLeadStats = async (userId: string, role: string) => {
       start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
       end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     }
-    const qb = leadRepo.createQueryBuilder("lead")
+    const qb = leadRepo
+      .createQueryBuilder("lead")
       .leftJoin("lead.status", "status")
       .select(["status.name AS status", "COUNT(*)::int AS count"])
       .where("lead.deleted = false");
@@ -842,7 +891,12 @@ const getLeadStats = async (userId: string, role: string) => {
   };
 
   // Group leads by type for a given date range and user
-  const groupLeadsByType = async (dateRange: "Weekly" | "Monthly" | "Yearly", userId?: string, role?: string, referenceDate?: Date) => {
+  const groupLeadsByType = async (
+    dateRange: "Weekly" | "Monthly" | "Yearly",
+    userId?: string,
+    role?: string,
+    referenceDate?: Date
+  ) => {
     const now = referenceDate ? new Date(referenceDate) : new Date();
     let start: Date | undefined;
     let end: Date | undefined;
@@ -860,7 +914,8 @@ const getLeadStats = async (userId: string, role: string) => {
       start = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
       end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
     }
-    const qb = leadRepo.createQueryBuilder("lead")
+    const qb = leadRepo
+      .createQueryBuilder("lead")
       .leftJoin("lead.type", "type")
       .select(["type.name AS type", "COUNT(*)::int AS count"])
       .where("lead.deleted = false");
@@ -873,73 +928,112 @@ const getLeadStats = async (userId: string, role: string) => {
     return await qb.groupBy("type.name").getRawMany();
   };
 
- const verifyWebhook = (mode: any, token: any): boolean => {
-  const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
+  const verifyWebhook = (mode: any, token: any): boolean => {
+    const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
 
-  if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    return true;
-  }
-  return false;
-};
+    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+      return true;
+    }
+    return false;
+  };
 
-const handleMetaLead = async (leadId: string, channel: ChannelType) => {
-  const PAGE_ACCESS_TOKEN = process.env.META_PAGE_ACCESS_TOKEN;
-  const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT;
+  const handleMetaLead = async (leadId: string, channel: ChannelType) => {
+  const PAGE_ACCESS_TOKEN = await getValidToken();
+  const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT!;
 
+
+  // Step 1: Fetch the lead details
   const url = `${META_DATA_SOURCE_ENDPOINT}/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`;
-
   const response = await fetch(url);
+
   if (!response.ok) {
     throw new AppError(400, "Failed to fetch lead from Meta");
   }
 
   const data = await response.json();
-
   const fieldData = data.field_data;
 
   const mapped: Record<string, any> = {};
 
-for (const item of fieldData) {
-  const value = item.values?.[0]; 
-
-  switch (item.name) {
-    case "email":
-      mapped.email = [value]; 
-      break;
-
-    case "attachments":
-      mapped.attachments = item.values; 
-      break;
-
-    default:
-      mapped[item.name] = value; 
-      break;
+  for (const item of fieldData) {
+    const value = item.values?.[0];
+    switch (item.name) {
+      case "email":
+        mapped.email = [value];
+        break;
+      case "attachments":
+        mapped.attachments = item.values;
+        break;
+      default:
+        mapped[item.name] = value;
+        break;
+    }
   }
-}
 
+  createMetaLeadSchema.parse(mapped);
 
-    createLeadSchema.parse(mapped); //parse to make sure its form
+  // Step 2: Fetch Campaign Name
+  let campaignName: string | null = null;
+  try {
+    const adId = data.ad_id;
+    if (adId) {
+      const adUrl = `${META_DATA_SOURCE_ENDPOINT}/${adId}?fields=adset{campaign{name}}&access_token=${PAGE_ACCESS_TOKEN}`;
+      const adResp = await fetch(adUrl);
 
-  // Create the lead object to match your DB schema
+      if (adResp.ok) {
+        const adData = await adResp.json();
+        campaignName = adData?.adset?.campaign?.name || null;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch campaign info:", err);
+  }
+
+  // Step 3: Find Source in DB (optional)
+  let source: LeadSources | null = null;
+  
+  try {
+    if (campaignName) {
+      source = await leadSourceRepo.findOne({ where: { name: campaignName } });
+
+      if (!source) {
+        const createdSource = leadSourceRepo.create({
+          name: campaignName,
+        });
+        source = await leadSourceRepo.save(createdSource);
+      }
+    }
+  } catch (e) {
+    console.log("Error while creating the source", e);
+  }
+  
+  // Step 4: Save lead
   const newLead = leadRepo.create({
     first_name: mapped.first_name,
     last_name: mapped.last_name,
     company: mapped.company,
-    phone: mapped.phone,
-    other_contact: mapped.other_contact,
+    phone: mapped.phone_number,
+    other_contact: mapped.other_contact ?? null,
     email: mapped.email || [],
-    location: mapped.location,
-    budget: mapped.budget ? parseFloat(mapped.budget) : undefined,
+    location: mapped.address,
+    budget: mapped.budget && mapped.budget !== "" ? parseFloat(mapped.budget) : null,
     requirement: mapped.requirement,
     attachments: mapped.attachments || [],
     channel,
+    source: source || null,
   });
 
   await leadRepo.save(newLead);
+
+  console.log(
+    "✅ Lead saved with campaign source:",
+    campaignName,
+    "->",
+    source?.name || "null"
+  );
 };
 
-const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
-
+  const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
     const expectedApiKey = process.env.GOOGLE_SECRETE_KEY;
 
     if (!expectedApiKey || receivedApiKey !== expectedApiKey) {
@@ -957,7 +1051,7 @@ const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
         : payload.email
         ? [payload.email]
         : [],
-      budget: parseInt(payload.budget),
+      budget: payload.budget && payload.budget !== "" ? parseInt(payload.budget) : null,
 
       attachments: Array.isArray(payload.attachments)
         ? payload.attachments
@@ -974,16 +1068,16 @@ const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
       company: data.company,
       phone: data.phone,
       other_contact: data.other_contact,
-      email: data.email,
+      email: Array.isArray(data.email) ? data.email : data.email ? [data.email] : [],
       location: data.location,
-      budget: data.budget,
+      budget: data.budget && data.budget !== "" ? Number(data.budget) : null,
       requirement: data.requirement,
       attachments: data.attachments,
       channel: ChannelType.GOOGLE,
     });
 
     await leadRepo.save(newLead);
-};
+  };
 
   return {
     handleGoogleLead,

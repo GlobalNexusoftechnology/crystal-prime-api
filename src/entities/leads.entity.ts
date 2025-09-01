@@ -50,7 +50,7 @@ export class Leads extends Model {
   location: string;
 
   @Column('decimal', { nullable: true })
-  budget: number;
+  budget: number | null;
 
   @Column('text', { nullable: true })
   requirement: string;
