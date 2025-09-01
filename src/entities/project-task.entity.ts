@@ -22,4 +22,7 @@ export class ProjectTasks extends Model {
 
   @Column({ type: "varchar", length: 100, nullable: true })
   assigned_to: string;
+
+  @Column({ type: "varchar", length: 50, default: "Medium" })
+  priority: string;
 }
