@@ -8,10 +8,7 @@ export const createLeadSchema = z.object({
   last_name: z.string().optional(),
   company: z.string().optional(),
   other_contact: z.string().optional(),
-  email: z.union([
-    z.string().email("Invalid email format"),
-    z.array(z.string().email("Invalid email format"))
-  ]).optional(),
+  email: z.string().email("Invalid email format").optional(),
   location: z.string().optional(),
   budget: z.union([z.string(), z.number()]).optional(),
   requirement: z.string().optional(),
@@ -32,10 +29,7 @@ export const updateLeadSchema = z.object({
   company: z.string().optional(),
   phone: z.string().optional(),
   other_contact: z.string().optional(),
-  email: z.union([
-    z.string().email("Invalid email format"),
-    z.array(z.string().email("Invalid email format"))
-  ]).optional(),
+  email: z.string().email("Invalid email format").optional(),
   location: z.string().optional(),
   budget: z.number().optional(),
   requirement: z.string().optional(),
@@ -55,10 +49,7 @@ export const excelLeadSchema = z.object({
   phone: z.string().min(1, "Phone number is required"),
   last_name: z.string().optional(),
   company: z.string().optional(),
-  email: z.union([
-    z.string().email("Invalid email format"),
-    z.array(z.string().email("Invalid email format"))
-  ]).optional(),
+  email: z.string().email("Invalid email format").optional(),
   location: z.string().optional(),
   budget: z.coerce.number().optional(),
   requirement: z.string().optional(),
@@ -74,7 +65,7 @@ export const createMetaLeadSchema = z.object({
   phone_number: z.string().min(1, "Phone number is required"),
   last_name: z.string().optional(),
   company: z.string().optional(),
-  email: z.array(z.string()).optional(),
+  email: z.string().email("Invalid email format").optional(),
   address: z.string().optional(),
   budget: z.union([z.string(), z.number()]).optional(),
   requirement: z.string().optional(),

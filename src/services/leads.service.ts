@@ -47,9 +47,9 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
-    // Validate emails (optional now)
-    if (email && !Array.isArray(email)) {
-      throw new AppError(400, "Email must be an array");
+    // Validate email (optional now)
+    if (email && typeof email !== "string") {
+      throw new AppError(400, "Email must be a string");
     }
 
     // Check if any email already exists
@@ -65,11 +65,7 @@ export const LeadService = () => {
     lead.last_name = last_name;
     lead.company = company ?? "";
     lead.phone = phone ?? "";
-    lead.email = Array.isArray(email)
-      ? email
-      : typeof email === "string"
-      ? [email]
-      : [];
+    lead.email = email || "";
     lead.location = location ?? "";
     // Handle numeric fields properly
     lead.budget = budget && budget !== "" ? Number(budget) : null;
@@ -387,23 +383,7 @@ export const LeadService = () => {
     if (!lead) throw new AppError(400, "Lead not found");
 
     if (email) {
-      const newEmailArray = Array.isArray(email)
-        ? email
-        : typeof email === "string"
-        ? [email]
-        : [];
-
-      // Optionally check for duplicate emails in the array
-      // const existing = await leadRepo
-      //   .createQueryBuilder("lead")
-      //   .where("lead.id != :id", { id })
-      //   .andWhere(":emailList && lead.email", { emailList: newEmailArray })
-      //   .getOne();
-      // if (existing) {
-      //   throw new AppError(400, "One or more emails already exist in another lead");
-      // }
-
-      lead.email = newEmailArray;
+      lead.email = email || "";
     }
 
     lead.first_name = first_name ?? lead.first_name;
@@ -442,10 +422,7 @@ export const LeadService = () => {
           if (!existingLead) {
             const name = (lead.first_name ?? "") + (lead.last_name ?? "");
 
-            let email = "";
-            if (Array.isArray(lead?.email) && lead.email.length > 0) {
-              email = lead.email[0];
-            }
+            let email = lead?.email || "";
 
             const contact_number = lead?.phone ?? "";
             const address = lead?.location ?? "";
@@ -638,7 +615,7 @@ export const LeadService = () => {
         company: lead.company ?? "",
         phone: lead.phone ?? "",
         other_contact: lead.other_contact ?? "",
-        email: lead.email?.join(", ") ?? "",
+        email: lead.email ?? "",
         location: lead.location ?? "",
         budget: lead.budget ?? 0,
         requirement: lead.requirement ?? "",
@@ -696,7 +673,7 @@ export const LeadService = () => {
     });
 
     // Define required fields
-    const requiredFields = ["first_name", "last_name", "email"];
+    const requiredFields = ["first_name", "last_name"];
     const missingFields = requiredFields.filter(
       (field) => !headers.includes(field)
     );
@@ -751,24 +728,32 @@ export const LeadService = () => {
     for (const data of leadsToInsert) {
       const rowNumber = data._rowNumber;
 
-      // Check if email already exists
+      // Check if email already exists (only if email is provided and valid)
       const email = data.email || "";
-      const emailList = String(email)
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
+      const emailString = String(email).trim();
 
-      const existingEmail = await leadRepo
-        .createQueryBuilder("lead")
-        .where("lead.deleted = false")
-        .andWhere(":emailList && lead.email", { emailList })
-        .getOne();
+      if (emailString && emailString.length > 0) {
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailString)) {
+          throw new AppError(
+            400,
+            `Invalid email format at row ${rowNumber}: ${emailString}`
+          );
+        }
 
-      if (existingEmail) {
-        throw new AppError(
-          400,
-          `Email already exists at row ${rowNumber}: ${email}`
-        );
+        const existingEmail = await leadRepo
+          .createQueryBuilder("lead")
+          .where("lead.deleted = false")
+          .andWhere("lead.email = :email", { email: emailString })
+          .getOne();
+
+        if (existingEmail) {
+          throw new AppError(
+            400,
+            `Email already exists at row ${rowNumber}: ${emailString}`
+          );
+        }
       }
 
       // Create lead object
@@ -778,7 +763,7 @@ export const LeadService = () => {
         company: data.company || "",
         phone: data.phone || "",
         other_contact: data.other_contact || "",
-        email: emailList,
+        email: emailString,
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
@@ -838,11 +823,11 @@ export const LeadService = () => {
     return { total: savedLeads.length, leads: savedLeads };
   };
 
-  const findLeadByEmail = async ({ emailList }: { emailList: string[] }) => {
+  const findLeadByEmail = async ({ email }: { email: string }) => {
     return await leadRepo
       .createQueryBuilder("lead")
       .where("lead.deleted = false")
-      .andWhere(":emailList && lead.email", { emailList })
+      .andWhere("lead.email = :email", { email })
       .getOne();
   };
 
@@ -959,7 +944,7 @@ export const LeadService = () => {
     const value = item.values?.[0];
     switch (item.name) {
       case "email":
-        mapped.email = [value];
+        mapped.email = value;
         break;
       case "attachments":
         mapped.attachments = item.values;
@@ -1014,7 +999,7 @@ export const LeadService = () => {
     company: mapped.company,
     phone: mapped.phone_number,
     other_contact: mapped.other_contact ?? null,
-    email: mapped.email || [],
+    email: mapped.email || "",
     location: mapped.address,
     budget: mapped.budget && mapped.budget !== "" ? parseFloat(mapped.budget) : null,
     requirement: mapped.requirement,
@@ -1046,11 +1031,7 @@ export const LeadService = () => {
 
     const prepData = {
       ...payload,
-      email: Array.isArray(payload.email)
-        ? payload.email
-        : payload.email
-        ? [payload.email]
-        : [],
+      email: payload.email || "",
       budget: payload.budget && payload.budget !== "" ? parseInt(payload.budget) : null,
 
       attachments: Array.isArray(payload.attachments)
@@ -1068,7 +1049,7 @@ export const LeadService = () => {
       company: data.company,
       phone: data.phone,
       other_contact: data.other_contact,
-      email: Array.isArray(data.email) ? data.email : data.email ? [data.email] : [],
+      email: data.email || "",
       location: data.location,
       budget: data.budget && data.budget !== "" ? Number(data.budget) : null,
       requirement: data.requirement,
