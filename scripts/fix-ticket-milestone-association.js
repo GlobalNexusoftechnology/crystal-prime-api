@@ -1,18 +1,16 @@
-// Override NODE_ENV temporarily but then change the ssl configuration
-const originalNodeEnv = process.env.NODE_ENV;
-
-// First set to production so entities are found in build directory
-process.env.NODE_ENV = "production";
-
+// For PM2 deployment, we'll use the compiled build files
+// since npm run build will be executed first
 const { DataSource } = require("typeorm");
 const config = require("config");
+
+// Import entities from build directory (compiled JavaScript files)
 const { Ticket } = require("../build/entities/ticket.entity");
 const { ProjectMilestones } = require("../build/entities/project-milestone.entity");
 
 // Get postgres config
 const postgresConfig = config.get("postgresConfig");
 
-// Create a custom DataSource with SSL disabled for this script
+// Create a custom DataSource for the script
 const AppDataSource = new DataSource({
   ...postgresConfig,
   type: "postgres",
@@ -21,7 +19,7 @@ const AppDataSource = new DataSource({
   entities: ["build/entities/**/*.entity.js"],
   migrations: ["build/migrations/**/*.js"],
   subscribers: ["build/subscribers/**/*.js"],
-  ssl: false // Disable SSL for local development
+  ssl: false // Disable SSL for script execution
 });
 
 const fixTicketMilestoneAssociation = async () => {
@@ -94,9 +92,6 @@ const fixTicketMilestoneAssociation = async () => {
       await AppDataSource.destroy();
       console.log("Database connection closed.");
     }
-    
-    // Restore original NODE_ENV
-    process.env.NODE_ENV = originalNodeEnv;
   }
 };
 
