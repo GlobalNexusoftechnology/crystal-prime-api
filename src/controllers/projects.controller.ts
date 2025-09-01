@@ -30,9 +30,43 @@ export const ProjectController = () => {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
       const { milestones, attachments, description, ...projectData } = parsedData;
       const project = await service.createProject({ ...projectData, description: description ?? "" }, queryRunner);
-      // Skip creating user-provided milestones. Support milestone is created automatically in service.
-      const createdMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
-      let createdAttachments = [];
+      // Create user-provided milestones (Support is auto-created in service; update it if provided)
+      let createdMilestones: any[] = [];
+      if (Array.isArray(milestones)) {
+        // Fetch existing milestones (will include auto-created Support)
+        const existingMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
+        const existingSupport = existingMilestones.find((ms: ProjectMilestones) => (ms.name || "").toLowerCase() === "support");
+
+        for (const milestone of milestones) {
+          let milestoneResult: any;
+          const isSupport = milestone.name && milestone.name.toLowerCase() === "support";
+          if (isSupport) {
+            if (existingSupport) {
+              milestoneResult = await milestoneService.updateMilestone(existingSupport.id, { ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+            } else {
+              milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+            }
+          } else {
+            milestoneResult = await milestoneService.createMilestone({ ...milestone, project_id: project.id, description: milestone.description ?? "" }, queryRunner);
+          }
+
+          // Create tasks under this milestone if provided
+          let createdTasks: any[] = [];
+          if (Array.isArray(milestone.tasks)) {
+            for (const task of milestone.tasks) {
+              const taskResult = await taskService.createTask({ ...task, milestone_id: milestoneResult.id }, queryRunner);
+              createdTasks.push(taskResult);
+            }
+          }
+
+          createdMilestones.push({ ...milestoneResult, tasks: createdTasks });
+        }
+      } else {
+        // If no milestones provided, return existing milestones (includes Support)
+        createdMilestones = await milestoneService.getMilestonesByProjectId(project.id, queryRunner);
+      }
+
+      let createdAttachments: any[] = [];
       if (Array.isArray(attachments)) {
         for (const attachment of attachments) {
           const attachmentData = { ...attachment, Project_id: project.id };
