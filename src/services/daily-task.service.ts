@@ -197,6 +197,16 @@ export const DailyTaskEntryService = () => {
         return await entryRepo.save(entry);
     };
 
+    // Update Status
+    const updateEntryStatus = async (id: string, status: string) => {
+        const entry = await entryRepo.findOne({ where: { id, deleted: false } });
+        if (!entry) throw new AppError(404, "Task entry not found");
+
+        entry.status = status;
+        
+        return await entryRepo.save(entry);
+    };
+
     // Soft Delete
     const softDeleteEntry = async (id: string) => {
         const entry = await entryRepo.findOne({ where: { id, deleted: false } });
@@ -212,6 +222,7 @@ export const DailyTaskEntryService = () => {
         getAllEntries,
         getEntryById,
         updateEntry,
+        updateEntryStatus,
         softDeleteEntry,
     };
 };
