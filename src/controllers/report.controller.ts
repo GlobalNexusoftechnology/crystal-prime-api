@@ -57,10 +57,12 @@ export async function exportStaffPerformanceExcel(req: Request, res: Response, n
  */
 export async function getProjectPerformanceReportController(req: Request, res: Response, next: NextFunction): Promise<Response | void> {
   try {
-    const { projectId, clientId } = req.query;
+    const { projectId, clientId, fromDate, toDate } = req.query;
     const report: ProjectPerformanceReport = await getProjectPerformanceReport({
       projectId: projectId as string | undefined,
       clientId: clientId as string | undefined,
+      fromDate: fromDate as string | undefined,
+      toDate: toDate as string | undefined,
     });
     return res.json({
       status: 'success',
