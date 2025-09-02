@@ -40,6 +40,7 @@ export const createProjectSchema = z.object({
           due_date: z.coerce.date().optional(),
           status: z.string().optional(),
           assigned_to: z.string().optional(),
+          priority: z.enum(["Low", "Medium", "High", "Critical"]).optional(),
         })
       ).optional(),
     })

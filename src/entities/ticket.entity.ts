@@ -1,7 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Project } from "./projects.entity";
-import { ProjectTasks } from "./project-task.entity";
+import { ProjectMilestones } from "./project-milestone.entity";
 
 @Entity("tickets")
 export class Ticket extends Model {
@@ -17,6 +17,9 @@ export class Ticket extends Model {
   @Column({ type: "varchar", length: 50, default: "Medium" })
   priority: string;
 
+  @Column({ type: "varchar", length: 100, nullable: true })
+  assigned_to: string;
+
   @ManyToOne(() => Project, (project) => project.tickets)
   @JoinColumn({ name: "project_id" })
   project: Project;
@@ -27,7 +30,7 @@ export class Ticket extends Model {
   @Column({ type: "text", nullable: true })
   remark: string;
 
-  @ManyToOne(() => ProjectTasks, (task) => task.tickets, { nullable: true })
-  @JoinColumn({ name: "task_id" })
-  task: ProjectTasks;
+  @ManyToOne(() => ProjectMilestones, (milestone) => milestone.tickets, { nullable: true })
+  @JoinColumn({ name: "milestone_id" })
+  milestone: ProjectMilestones;
 }

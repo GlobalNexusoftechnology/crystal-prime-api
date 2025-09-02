@@ -18,13 +18,11 @@ export const leadController = () => {
       const userData = res?.locals?.user;
       const parsed = createLeadSchema.parse(req.body);
 
-      const emailList = String(parsed.email)
-        .split(",")
-        .map((e) => e.trim())
-        .filter(Boolean);
-
-      // Replace email field with array version before passing to service
-      parsed.email = emailList;
+      // Handle email conversion - can be string or array
+      if (parsed.email) {
+        // Ensure email is a string, trim whitespace
+        parsed.email = String(parsed.email).trim();
+      }
 
       const result = await service.createLead(parsed, userData);
 
@@ -113,10 +111,8 @@ export const leadController = () => {
       const parsed = updateLeadSchema.parse(req.body);
 
       if (parsed.email) {
-        parsed.email = String(parsed.email)
-          .split(",")
-          .map((e) => e.trim())
-          .filter(Boolean);
+        // Ensure email is a string, trim whitespace
+        parsed.email = String(parsed.email).trim();
       }
 
       const result = await service.updateLead(id, parsed, userData);

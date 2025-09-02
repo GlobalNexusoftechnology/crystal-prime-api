@@ -3,6 +3,7 @@ import { DailyTaskEntryService } from "../services/daily-task.service";
 import {
   createDailyTaskEntrySchema,
   updateDailyTaskEntrySchema,
+  updateDailyTaskStatusSchema,
 } from "../schemas/daily-task.schema";
 
 const service = DailyTaskEntryService();
@@ -76,6 +77,21 @@ export const dailyTaskEntryController = () => {
     }
   };
 
+  const updateEntryStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const parsed = updateDailyTaskStatusSchema.parse(req.body);
+      const result = await service.updateEntryStatus(id, parsed.status);
+      res.status(200).json({
+        status: "success",
+        message: "Daily task status updated successfully",
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   const softDeleteEntry = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
@@ -95,6 +111,7 @@ export const dailyTaskEntryController = () => {
     getAllEntries,
     getEntryById,
     updateEntry,
+    updateEntryStatus,
     softDeleteEntry,
   };
 };
