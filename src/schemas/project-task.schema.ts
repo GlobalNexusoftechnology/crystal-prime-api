@@ -7,6 +7,7 @@ export const createTaskSchema = z.object({
   due_date: z.coerce.date().optional(),
   status: z.string().optional(),
   assigned_to: z.string().optional(),
+  priority: z.enum(["Low", "Medium", "High", "Critical"]).optional().default("Medium"),
 });
 
 export const updateTaskSchema = z.object({
@@ -16,4 +17,5 @@ export const updateTaskSchema = z.object({
   due_date: z.coerce.date().optional(),
   status: z.string().optional(),
   assigned_to: z.string().optional(),
+  priority: z.enum(["Low", "Medium", "High", "Critical"]).optional(),
 });

@@ -18,6 +18,7 @@ interface TaskInput {
   due_date?: Date;
   status?: string;
   assigned_to?: string;
+  priority?: string;
 }
 
 export const ProjectTaskService = () => {
@@ -34,6 +35,7 @@ export const ProjectTaskService = () => {
       due_date: mergeDateWithCurrentTime(data.due_date),
       status: data.status,
       assigned_to: data.assigned_to,
+      priority: data.priority,
     });
 
     return await repo.save(task);
@@ -43,6 +45,7 @@ export const ProjectTaskService = () => {
     const data = await taskRepo.find({
       where: { deleted: false },
       relations: ["milestone"],
+      order: {created_at: "DESC"}
     });
     return { data, total: data.length };
   };
@@ -70,6 +73,7 @@ export const ProjectTaskService = () => {
     if (data.due_date !== undefined) task.due_date = mergeDateWithCurrentTime(data.due_date);
     if (data.status !== undefined) task.status = data.status;
     if (data.assigned_to !== undefined) task.assigned_to = data.assigned_to;
+    if (data.priority !== undefined) task.priority = data.priority;
 
     return await repo.save(task);
   };
