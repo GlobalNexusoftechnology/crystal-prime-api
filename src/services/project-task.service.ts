@@ -45,6 +45,7 @@ export const ProjectTaskService = () => {
     const data = await taskRepo.find({
       where: { deleted: false },
       relations: ["milestone"],
+      order: {created_at: "DESC"}
     });
     return { data, total: data.length };
   };
