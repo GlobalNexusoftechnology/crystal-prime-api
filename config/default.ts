@@ -4,7 +4,7 @@ export default {
   refreshTokenExpiresIn: 1440,
   emailFrom: "developmentbyjuned@gmail.com",
   port: 5000,
-  wsPort: 5019,
+  wsPort: 5024,
   postgresConfig: {
     host: "localhost",
     port: 5432,
