@@ -217,7 +217,7 @@ export const dashboardController = () => {
      const taskStat = {
         totalTasks: taskData.total,
         completedTasks: taskData.completed,
-        pendigTasks: taskData.pending,
+        openTasks: taskData.pending,
         inprogressTasks: taskData.inProgress
       }
 
