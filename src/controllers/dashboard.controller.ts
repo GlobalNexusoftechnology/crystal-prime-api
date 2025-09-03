@@ -6,6 +6,7 @@ import { getEILogChartData } from "../services/eilog.service";
 
 const leadService = LeadService();
 const projectService = ProjectService();
+const projectTaskService = ProjectTaskService();
 
 
 export const dashboardController = () => {
@@ -193,23 +194,32 @@ export const dashboardController = () => {
         leadService.getLeadStats(userId, role),
         // Get all tasks assigned to this user (from project_tasks)
         (async () => {
-          const { data } = await require("../services/project-task.service").ProjectTaskService().getAllTasks();
+          const { data } = await projectTaskService.getAllTasks();
           return data.filter((t: any) => t.assigned_to === userId);
         })(),
         // Get all projects where user is assigned to a milestone or task
         projectService.getAllProject(userId, role)
       ]);
 
+      const taskData = await projectTaskService.getUserTaskCounts(userId);
+
       // My Task: count of open and in process tasks
       const myTaskCount = allTasks.filter((t: any) => t.status === "Open" || t.status === "In Progress").length;
       // Performance Ratio: completed / total assigned
       const completedTaskCount = allTasks.filter((t: any) => t.status === "Completed").length;
       const totalAssignedTaskCount = allTasks.length;
-      const performanceRatio = totalAssignedTaskCount > 0 ? `${Math.round((completedTaskCount / totalAssignedTaskCount) * 100)}%` : "0%";
+      const performanceRatio = taskData.total > 0 ? `${Math.round((taskData.completed / taskData.total) * 100)}%` : "0%";
       // Project: count of projects where user is assigned
       const projectCount = allProjects.length;
       // Today Follow up
       const todayFollowups = leadStats.todayFollowups || 0;
+
+     const taskStat = {
+        totalTasks: taskData.total,
+        completedTasks: taskData.completed,
+        pendigTasks: taskData.pending,
+        inprogressTasks: taskData.inProgress
+      }
 
       // Only return the counts for the four stats
       res.status(200).json({
@@ -218,7 +228,8 @@ export const dashboardController = () => {
           myTaskCount,
           todayFollowups,
           projectCount,
-          performanceRatio
+          performanceRatio,
+          taskStat,
         }
       });
       return;
