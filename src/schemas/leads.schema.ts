@@ -61,8 +61,8 @@ export const excelLeadSchema = z.object({
 
 // Create Lead Schema
 export const createMetaLeadSchema = z.object({
-  first_name: z.string().min(1, "First name is required"),
-  phone_number: z.string().min(1, "Phone number is required"),
+  first_name: z.string().min(1, "First name is required").optional(),
+  phone_number: z.string().min(1, "Phone number is required").optional(),
   last_name: z.string().optional(),
   company: z.string().optional(),
   email: z.string().email("Invalid email format").optional(),
