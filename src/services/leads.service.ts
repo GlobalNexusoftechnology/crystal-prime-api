@@ -12,7 +12,7 @@ import {
   LeadFollowup,
   FollowupStatus,
 } from "../entities/lead-followups.entity";
-import { Between, Not } from "typeorm";
+import { Between, ILike, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
 import { createLeadSchema, createMetaLeadSchema } from "../schemas/leads.schema";
 import { getValidToken } from "./page-token.service";
@@ -971,7 +971,7 @@ export const LeadService = () => {
       }
     }
   } catch (err) {
-    console.error("Failed to fetch campaign info:", err);
+    console.error("Failed to fetch campaign info: ", err);
   }
 
   // Step 3: Find Source in DB (optional)
@@ -979,13 +979,16 @@ export const LeadService = () => {
   
   try {
     if (campaignName) {
-      source = await leadSourceRepo.findOne({ where: { name: campaignName } });
+      source = await leadSourceRepo.findOne({ where: { name: ILike(campaignName) } });
 
       if (!source) {
-        const createdSource = leadSourceRepo.create({
-          name: campaignName,
-        });
-        source = await leadSourceRepo.save(createdSource);
+        // const createdSource = leadSourceRepo.create({
+        //   name: campaignName,
+        // });
+        // source = await leadSourceRepo.save(createdSource);
+
+        console.log("No matching Campaign name");
+        return;
       }
     }
   } catch (e) {

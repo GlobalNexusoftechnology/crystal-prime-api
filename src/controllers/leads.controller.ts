@@ -285,7 +285,7 @@ const metaLeadWebhook = async (
         .json({ status: "error", message: "Invalid webhook payload" });
     }
   } catch (error) {
-    console.log("error we got", error);
+    console.log("Lead webhook error: ", error);
     next(error);
   }
 };
