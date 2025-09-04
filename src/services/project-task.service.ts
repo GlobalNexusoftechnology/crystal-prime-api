@@ -178,7 +178,39 @@ export const ProjectTaskService = () => {
     return await repo.save(task);
   };
 
+const getUserTaskCounts = async (userId: string) => {
+  const query = `
+    SELECT 
+      COUNT(*) as total_tasks,
+      SUM(CASE 
+        WHEN LOWER(status) IN ('completed', 'done') THEN 1 
+        ELSE 0 
+      END) as completed_tasks,
+      SUM(CASE 
+        WHEN LOWER(status) IN ('pending', 'open') THEN 1 
+        ELSE 0 
+      END) as pending_tasks,
+      SUM(CASE 
+        WHEN LOWER(status) IN ('in progress', 'in-progress') THEN 1 
+        ELSE 0 
+      END) as in_progress_tasks
+    FROM project_tasks 
+    WHERE assigned_to = $1
+    AND deleted = false
+  `;
+
+  const result = await taskRepo.query(query, [userId]);
+  
   return {
+    total: parseInt(result[0].total_tasks) || 0,
+    completed: parseInt(result[0].completed_tasks) || 0,
+    pending: parseInt(result[0].pending_tasks) || 0,
+    inProgress: parseInt(result[0].in_progress_tasks) || 0
+  };
+};
+
+  return {
+    getUserTaskCounts,
     createTask,
     getAllTasks,
     getTaskById,

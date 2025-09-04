@@ -224,8 +224,6 @@ export const ProjectService = () => {
     return await qb.getMany();
   };
 
-
-
   // Get Project by ID
   const getProjectById = async (id: string) => {
     const project = await ProjectRepo.findOne({

@@ -29,6 +29,7 @@ export const MODULES: TOptionItem[] = [
   { key: "PUBLIC_BUSINESS_DASHBOARD", label: "Public Business Dashboard", value: "31" },
   { key: "MY_PROJECTS", label: "My Projects Module", value: "32" },
   { key: "TICKET_MANAGEMENT", label: "Ticket Management Module", value: "33" },
+  { key: "SUPPORT_TICKETS", label: "Support Tickets Module", value: "34" },
 ];
 
 export const ACTIONS: TOptionItem[] = [
