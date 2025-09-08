@@ -69,4 +69,4 @@ export const createMetaLeadSchema = z.object({
   address: z.string().optional(),
   budget: z.union([z.string(), z.number()]).optional(),
   requirement: z.string().optional(),
-});
+}).passthrough();
