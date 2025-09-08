@@ -317,7 +317,7 @@ export const LeadService = () => {
         .leftJoin("lead.status", "status")
         .where("lead.deleted = :deleted", { deleted: false })
         .andWhere("LOWER(status.name) IN (:...statuses)", {
-          statuses: ["business done"], // Add more if needed
+          statuses: ["business done", "completed"], // Add more if needed
         })
         .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
         .getCount(),
