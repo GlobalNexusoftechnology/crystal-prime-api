@@ -146,7 +146,7 @@ export const ProjectController = () => {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
       const { milestones, attachments, description, ...projectData } = parsedData;
-      const project = await service.updateProject(id, { ...projectData }, queryRunner);
+      const project = await service.updateProject(id, { ...projectData, description }, queryRunner);
       
       let updatedMilestones = [];
       if (Array.isArray(milestones)) {
