@@ -317,7 +317,7 @@ export const LeadService = () => {
         .leftJoin("lead.status", "status")
         .where("lead.deleted = :deleted", { deleted: false })
         .andWhere("LOWER(status.name) IN (:...statuses)", {
-          statuses: ["business done"], // Add more if needed
+          statuses: ["business done", "completed"], // Add more if needed
         })
         .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
         .getCount(),
@@ -974,19 +974,14 @@ export const LeadService = () => {
     console.error("Failed to fetch campaign info: ", err);
   }
 
-  // Step 3: Find Source in DB (optional)
-  let source: LeadSources | null = null;
+  // Step 3: Find Type in DB (optional)
+  let leadType: LeadTypes | null = null;
   
   try {
     if (campaignName) {
-      source = await leadSourceRepo.findOne({ where: { name: ILike(campaignName) } });
+      leadType = await leadTypeRepo.findOne({ where: { name: ILike(campaignName) } });
 
-      if (!source) {
-        // const createdSource = leadSourceRepo.create({
-        //   name: campaignName,
-        // });
-        // source = await leadSourceRepo.save(createdSource);
-
+      if (!leadType) {
         console.log("No matching Campaign name");
         return;
       }
@@ -1008,16 +1003,16 @@ export const LeadService = () => {
     requirement: mapped.requirement,
     attachments: mapped.attachments || [],
     channel,
-    source: source || null,
+    type: leadType || null,
   });
 
   await leadRepo.save(newLead);
 
   console.log(
-    "✅ Lead saved with campaign source:",
+    "✅ Lead saved with campaign type:",
     campaignName,
     "->",
-    source?.name || "null"
+    leadType?.name || "null"
   );
 };
 

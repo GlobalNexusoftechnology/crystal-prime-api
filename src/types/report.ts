@@ -170,6 +170,10 @@ export interface LeadFunnelMetrics {
   avgTimeToConvert: number;
   avgFollowups: number;
   bestLeadSource: string;
+  avgLeadAge: number;
+  averageResponseTime: number;
+  pendingFollowups: number;
+  hotLeadsCount: number;
 }
 
 export interface ProjectDeliveryMetrics {
