@@ -7,14 +7,12 @@ import { User } from "./user.entity";
 export class TicketComment extends Model {
     @ManyToOne(() => Ticket, (ticket) => ticket.id, {
         nullable: false,
-        onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'ticket_id' })
     ticket: Ticket;
 
     @ManyToOne(() => User, (user) => user.id, {
         nullable: false,
-        onDelete: 'CASCADE',
     })
     @JoinColumn({ name: 'user_id' })
     user: User;
