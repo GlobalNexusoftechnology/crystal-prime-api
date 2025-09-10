@@ -5,6 +5,7 @@ import { User } from "../entities/user.entity";
 import AppError from "../utils/appError";
 import { NotificationType } from "../entities/notification.entity";
 import { NotificationService } from "./notification.service";
+import { sendTicketCommentEmail } from "../utils";
 
 const ticketCommentRepo = AppDataSource.getRepository(TicketComment);
 const ticketRepo = AppDataSource.getRepository(Ticket);
@@ -21,67 +22,98 @@ interface TicketCommentInput {
 }
 
 export const TicketCommentService = () => {
-    const createTicketComment = async (data: TicketCommentInput, userId: string) => {
-        // Verify ticket exists and get last comment with user relations in one query
-        const ticket = await ticketRepo.findOne({ 
-            where: { id: data.ticket_id, deleted: false },
-            relations: ["project", "milestone"]
-        });
-        if (!ticket) {
-            throw new AppError(404, "Ticket not found");
-        }
+ const createTicketComment = async (
+   data: TicketCommentInput,
+   userId: string
+ ) => {
+   // Verify ticket exists and get client email
+   const ticket = await ticketRepo.findOne({
+     where: { id: data.ticket_id, deleted: false },
+     relations: ["project", "project.client"], // Get client relation
+   });
+   if (!ticket) {
+     throw new AppError(404, "Ticket not found");
+   }
 
-        // Verify user exists with role relation
-        const user = await userRepo.findOne({ 
-            where: { id: userId, deleted: false },
-            relations: ["role"]
-        });
-        if (!user) {
-            throw new AppError(404, "User not found");
-        }
+   // Verify user exists with role relation
+   const user = await userRepo.findOne({
+     where: { id: userId, deleted: false },
+     relations: ["role"],
+   });
+   if (!user) {
+     throw new AppError(404, "User not found");
+   }
 
-        // Get the last comment with user and role relations
-        const lastComment = await ticketCommentRepo.findOne({
-            where: { ticket: { id: ticket.id } },
-            order: { created_at: 'DESC' },
-            relations: ["user", "user.role"]
-        });
+   // Get the last comment with user and role relations
+   const lastComment = await ticketCommentRepo.findOne({
+     where: { ticket: { id: ticket.id } },
+     order: { created_at: "DESC" },
+     relations: ["user", "user.role"],
+   });
 
-        // Auto-populate title and description from ticket if not provided
-        const title = data.title || ticket.title;
-        const description = data.description || ticket.description;
+   // Auto-populate title and description from ticket if not provided
+   const title = data.title || ticket.title;
+   const description = data.description || ticket.description;
+   const commentText = data.remark || description || "No comment text provided";
 
-        const ticketComment = ticketCommentRepo.create({
-            ticket,
-            user,
-            title,
-            description,
-            status: data.status || ticket.status,
-            priority: data.priority || ticket.priority,
-            remark: data.remark,
-        });
+   const ticketComment = ticketCommentRepo.create({
+     ticket,
+     user,
+     title,
+     description,
+     status: data.status || ticket.status,
+     priority: data.priority || ticket.priority,
+     remark: data.remark,
+   });
 
-        const savedComment = await ticketCommentRepo.save(ticketComment);
-        
-        // Send notification only if there was a previous comment from different user
-        if (lastComment && lastComment.user.id !== user.id) {
-            await sendTicketCommentNotification(
-                lastComment.user, // Notify the last commenter
-                user,            // Current commenter
-                ticket,
-                savedComment
-            );
-        }
+   const savedComment = await ticketCommentRepo.save(ticketComment);
 
-        // Return the comment with relationships loaded
-        return await ticketCommentRepo.createQueryBuilder("comment")
-            .leftJoinAndSelect("comment.ticket", "ticket")
-            .leftJoinAndSelect("comment.user", "user")
-            .leftJoinAndSelect("ticket.project", "project")
-            .leftJoinAndSelect("ticket.milestone", "milestone")
-            .where("comment.id = :id", { id: savedComment.id })
-            .getOne();
-    };
+   // Send notification only if there was a previous comment from different user
+   if (lastComment && lastComment.user.id !== user.id) {
+     await sendTicketCommentNotification(
+       lastComment.user, // Notify the last commenter
+       user, // Current commenter
+       ticket,
+       savedComment
+     );
+   }
+
+   // Send email to client ONLY if the commenter is staff (not client)
+   const commenterRole = user.role?.role?.toLowerCase() || "";
+   const isCommenterStaff = commenterRole !== "client";
+
+   if (
+     isCommenterStaff &&
+     ticket.project &&
+     ticket.project.client &&
+     ticket.project.client.email
+   ) {
+     try {
+       const commenterName =
+         `${user.first_name} ${user.last_name}`.trim() || "Support Team";
+       await sendTicketCommentEmail(
+         ticket.project.client.email,
+         commenterName,
+         ticket.title,
+         savedComment?.title || "-",
+         savedComment?.description || "-",
+         ticket.shortId
+       );
+     } catch (emailError) {
+       console.error("Failed to send email notification:", emailError);
+     }
+   }
+
+   // Return the comment with relationships loaded
+   return await ticketCommentRepo
+     .createQueryBuilder("comment")
+     .leftJoinAndSelect("comment.ticket", "ticket")
+     .leftJoinAndSelect("comment.user", "user")
+     .leftJoinAndSelect("ticket.project", "project")
+     .leftJoinAndSelect("ticket.milestone", "milestone")
+     .where("comment.id = :id", { id: savedComment.id })
+     .getOne();
+ };
 
     const getAllTicketComments = async (ticketId: string) => {
         const ticket = await ticketRepo.findOne({ where: { id: ticketId, deleted: false } });
