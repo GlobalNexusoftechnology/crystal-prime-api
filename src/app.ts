@@ -45,6 +45,8 @@ import eilogTypeRouter from './routes/eilog-type.routes';
 import eilogHeadRouter from './routes/eilog-head.routes';
 import eilogRouter from './routes/eilog.routes';
 import reportRoutes from './routes/report.routes';
+import { setupTicketCronJobs } from './cron/ticketCronJobs';
+import { setupProjectRenewalCron } from './cron/projectRenewalCronJob';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -144,6 +146,9 @@ AppDataSource.initialize()
         });
       }
     );
+
+    setupTicketCronJobs();
+    setupProjectRenewalCron();
 
     const port = config.get<number>('port');
     app.listen(port, () => {
