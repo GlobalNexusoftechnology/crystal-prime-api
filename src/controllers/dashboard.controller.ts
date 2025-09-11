@@ -128,18 +128,36 @@ export const dashboardController = () => {
             monthWiseProjectRenewalData[month].push(categoryGroup);
           }
 
-          // ✅ Calculate milestone completion %
-          const totalMilestones = project.milestones?.length || 0;
-          console.log(totalMilestones);
-          const completedMilestones =
-            project.milestones?.filter(
+          // ✅ Calculate milestone completion % (considering support milestone logic and open tickets)
+          const supportMilestones = project.milestones?.filter(m => m.name.toLowerCase() === "support") || [];
+          const nonSupportMilestones = project.milestones?.filter(m => m.name.toLowerCase() !== "support") || [];
+          
+          // Check if all non-support milestones are completed
+          const allNonSupportMilestonesCompleted = nonSupportMilestones.length > 0 && 
+            nonSupportMilestones.every(m => m.status?.toLowerCase() === "completed");
+          
+          // Check if support milestone has any open tickets
+          const supportMilestoneHasOpenTickets = supportMilestones.some(m => 
+            m.tickets && m.tickets.some(ticket => ticket.status?.toLowerCase() === "open")
+          );
+          
+          let completionPercentage = 0;
+          
+          // If all non-support milestones are completed AND no open tickets in support milestone, project is 100% complete
+          if ((allNonSupportMilestonesCompleted && !supportMilestoneHasOpenTickets) || 
+              (supportMilestones.some(m => m.status?.toLowerCase() === "open") && nonSupportMilestones.length === 0 && !supportMilestoneHasOpenTickets)) {
+            completionPercentage = 100;
+          } else {
+            // Otherwise calculate based on non-support milestones only
+            const totalMilestones = nonSupportMilestones.length || 0;
+            const completedMilestones = nonSupportMilestones.filter(
               (m) => m.status?.toLowerCase() === "completed"
             ).length || 0;
-
-          const completionPercentage =
-            totalMilestones > 0
+            
+            completionPercentage = totalMilestones > 0
               ? Math.round((completedMilestones / totalMilestones) * 100)
               : 0;
+          }
 
           categoryGroup.projects.push({
             name: project.name,

@@ -494,8 +494,38 @@ export async function getProjectPerformanceReport({ projectId, clientId, fromDat
         }
     });
     const assignedTeam = await Promise.all(Array.from(teamUserIds).map(getUserDetails));
-    const projectPhase = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.name || "";
-    const currentStatus = (project.milestones || []).find(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) && m.status && m.status.toLowerCase() !== 'completed')?.status || project.status;
+    // Separate support and non-support milestones
+    const supportMilestones = (project.milestones || []).filter(m => m.name.toLowerCase() === "support");
+    const nonSupportMilestones = (project.milestones || []).filter(m => m.name.toLowerCase() !== "support");
+    
+    // Check if all non-support milestones are completed
+    const allNonSupportMilestonesCompleted = nonSupportMilestones.length > 0 && 
+      nonSupportMilestones.every(m => m.status?.toLowerCase() === "completed");
+    
+    // Check if support milestone has any open tickets
+    const supportMilestoneHasOpenTickets = supportMilestones.some(m => 
+      m.tickets && m.tickets.some(ticket => ticket.status?.toLowerCase() === "open")
+    );
+    
+    // Determine project phase and status based on new logic
+    let projectPhase = "";
+    let currentStatus = project.status;
+    
+    if ((allNonSupportMilestonesCompleted && !supportMilestoneHasOpenTickets) || 
+        (supportMilestones.some(m => m.status?.toLowerCase() === "open") && nonSupportMilestones.length === 0 && !supportMilestoneHasOpenTickets)) {
+      // Project is completed
+      projectPhase = "Completed";
+      currentStatus = ProjectStatus.COMPLETED;
+    } else {
+      // Find the first non-completed non-support milestone
+      const activeMilestone = nonSupportMilestones.find(m => 
+        ((!dateFrom && !dateTo) || inRange(m.created_at)) && 
+        m.status && 
+        m.status.toLowerCase() !== 'completed'
+      );
+      projectPhase = activeMilestone?.name || "";
+      currentStatus = (activeMilestone?.status as ProjectStatus) || project.status;
+    }
 
 // Cost & Budget Analysis
 // Cost & Budget Analysis
@@ -514,8 +544,8 @@ const overrun = (project.budget && project.actual_cost && project.actual_cost > 
     : "No overrun";
 
 
-    // Task Metrics (filtered by date)
-    const allTasks = (project.milestones || []).flatMap(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) ? (m.tasks || []).filter(t => (!dateFrom && !dateTo) || inRange(t.created_at)) : []);
+    // Task Metrics (filtered by date, excluding support milestone tasks)
+    const allTasks = nonSupportMilestones.flatMap(m => ((!dateFrom && !dateTo) || inRange(m.created_at)) ? (m.tasks || []).filter(t => (!dateFrom && !dateTo) || inRange(t.created_at)) : []);
     const totalTasks = allTasks.length;
     const completedTasks = allTasks.filter(t => t.status?.toLowerCase() === 'completed').length;
     const inProgressTasks = allTasks.filter(t => t.status?.toLowerCase().includes('progress')).length;
