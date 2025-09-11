@@ -8,6 +8,32 @@ import { MilestoneService } from "./project-milestone.service";
 import { ProjectTaskService } from "./project-task.service";
 import { User } from "entities";
 
+
+const calculateTaskDelayDays = (task: any): number | null => {
+  if (!task.due_date) return null;
+  const incompleteStatuses = ["Pending", "In Progress", "On Hold", "Reopened"];
+  if (!incompleteStatuses.includes(task.status)) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(task.due_date);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  if (dueDate > today) return 0;
+  const diffTime = today.getTime() - dueDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+const calculateMilestoneDelay = (milestone: any): number | null => {
+  if (!milestone.tasks || milestone.tasks.length === 0) return null;
+  const taskDelays = milestone.tasks
+    .map((task: any) => calculateTaskDelayDays(task))
+    .filter((delay:any): delay is number => delay !== null && delay > 0);
+  if (taskDelays.length === 0) return 0;
+  return Math.max(...taskDelays);
+};
+
 interface ProjectInput {
   client_id?: string;
   name: string;
@@ -421,9 +447,31 @@ export const ProjectService = () => {
     return await qb.getMany();
   };
 
+  const getAllProjectWithDelays = async (userId?: string, userRole?: string, user?: User) => {
+    // Use existing function to get projects for all roles
+    const projects = await getAllProject(userId, userRole, user);
+    
+  return projects.map(project => ({
+    ...project,
+    milestones: project.milestones?.map(milestone => {
+      const delay = calculateMilestoneDelay(milestone);
+      return {
+        ...milestone,
+        milestone_delay_days: delay,
+        has_overdue_tasks: delay !== null && delay > 0,
+        tasks: milestone.tasks?.map(task => ({
+          ...task,
+          delay_days: calculateTaskDelayDays(task)
+        }))
+      };
+    })
+  }));
+  };
+
   return {
     getAllProjectDashboard,
     createProject,
+    getAllProjectWithDelays, 
     getAllProject,
     getProjectById,
     updateProject,
