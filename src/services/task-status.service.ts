@@ -171,7 +171,7 @@ export const TaskStatusService = () => {
 
     const milestones = await milestoneRepo.find({
       where: { project: { id: projectId }, deleted: false },
-      relations: ["tasks"]
+      relations: ["tasks", "tickets"]
     });
 
     if (milestones.length === 0) {
@@ -179,17 +179,51 @@ export const TaskStatusService = () => {
       return project;
     }
 
-    let newStatus = ProjectStatus.OPEN;
-    const hasCompletedMilestone = milestones.some(m => m.status === "Completed");
-    const hasOpenMilestone = milestones.some(m => m.status === "Open");
-    const hasInProgressMilestone = milestones.some(m => m.status === "In Progress");
-    const allMilestonesCompleted = milestones.every(m => m.status === "Completed");
+    // Separate support milestones from other milestones
+    const supportMilestones = milestones.filter(m => (m.name || "").toLowerCase() === "support");
+    const nonSupportMilestones = milestones.filter(m => (m.name || "").toLowerCase() !== "support");
 
-    if (hasInProgressMilestone || (hasCompletedMilestone && hasOpenMilestone)) {
+    let newStatus = ProjectStatus.OPEN;
+
+    // Build effective milestones list: ignore Support milestones that have zero tickets
+    const supportTickets = supportMilestones.flatMap(m => m.tickets || []);
+    const effectiveMilestones = milestones.filter(m => {
+      const isSupport = (m.name || "").toLowerCase() === "support";
+      if (!isSupport) return true;
+      const ticketsCount = (m.tickets || []).length;
+      return ticketsCount > 0; // count Support only when it actually has tickets
+    });
+
+    const anyInProgress = effectiveMilestones.some(m => m.status === "In Progress" || m.status === "in_progress");
+    const allOpen = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Open");
+    const allCompleted = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Completed");
+    const hasOpen = effectiveMilestones.some(m => m.status === "Open");
+
+    if (anyInProgress) {
       newStatus = ProjectStatus.IN_PROGRESS;
-    } else if (allMilestonesCompleted && milestones.length > 0) {
-      newStatus = ProjectStatus.COMPLETED;
-    } else if (hasOpenMilestone) {
+    } else if (allOpen) {
+      newStatus = ProjectStatus.OPEN;
+    } else if (allCompleted || effectiveMilestones.length === 0) {
+      // All effective milestones completed or none remain -> use Support tickets rule if Support exists
+      if (supportMilestones.length > 0) {
+        if (supportTickets.length === 0) {
+          newStatus = ProjectStatus.COMPLETED;
+        } else {
+          const allSupportTicketsCompleted = supportTickets.every(t => (t.status || "").toLowerCase() === "completed");
+          const anySupportOpenOrInProgress = supportTickets.some(t => {
+            const s = (t.status || "").toLowerCase();
+            return s === "open" || s === "in progress" || s === "in-progress";
+          });
+          newStatus = allSupportTicketsCompleted ? ProjectStatus.COMPLETED : (anySupportOpenOrInProgress ? ProjectStatus.IN_PROGRESS : ProjectStatus.OPEN);
+        }
+      } else {
+        newStatus = ProjectStatus.COMPLETED;
+      }
+    } else if (!allCompleted && !allOpen) {
+      // Mixed (some Completed, some Open) without any In Progress => In Progress
+      newStatus = ProjectStatus.IN_PROGRESS;
+    } else {
+      // Fallback
       newStatus = ProjectStatus.OPEN;
     }
 

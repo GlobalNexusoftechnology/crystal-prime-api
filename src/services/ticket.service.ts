@@ -3,6 +3,7 @@ import { Ticket } from "../entities/ticket.entity";
 import { Project } from "../entities/projects.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import AppError from "../utils/appError";
+import { TaskStatusService } from "./task-status.service";
 
 const ticketRepo = AppDataSource.getRepository(Ticket);
 const projectRepo = AppDataSource.getRepository(Project);
@@ -21,6 +22,67 @@ interface TicketInput {
 }
 
 export const TicketService = () => {
+  const { updateProjectStatus } = TaskStatusService();
+
+  const updateSupportMilestoneAndProject = async (
+    milestoneId: string | undefined,
+    projectId: string | undefined,
+    queryRunner?: any
+  ) => {
+    if (!milestoneId || !projectId) return;
+
+    const ticketRepository = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
+    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+
+    const milestone = await milestoneRepository.findOne({ where: { id: milestoneId, deleted: false } });
+    if (!milestone) return;
+
+    // Only apply special rules for Support milestone
+    if (milestone.name?.toLowerCase() !== "support") {
+      // Still refresh project status because tickets changed may impact overall rules
+      await updateProjectStatus(projectId, queryRunner);
+      return;
+    }
+
+    const tickets = await ticketRepository.find({
+      where: { milestone: { id: milestoneId }, deleted: false },
+    });
+
+    if (tickets.length === 0) {
+      // No tickets under support milestone -> treat as Completed to reflect maintenance done
+      if (milestone.status !== "Completed") {
+        milestone.status = "Completed";
+        await milestoneRepository.save(milestone);
+      }
+      await updateProjectStatus(projectId, queryRunner);
+      return;
+    }
+
+    const statuses = tickets.map(t => (t.status || "").toLowerCase());
+    const allOpen = statuses.length > 0 && statuses.every(s => s === "open");
+    const anyInProgress = statuses.some(s => s === "in progress" || s === "in-progress");
+    const allCompleted = statuses.length > 0 && statuses.every(s => s === "completed");
+
+    let newStatus = milestone.status;
+    if (anyInProgress) {
+      newStatus = "In Progress";
+    } else if (allOpen) {
+      newStatus = "Open";
+    } else if (allCompleted) {
+      newStatus = "Completed";
+    } else {
+      // Mixed Open and Completed -> In Progress
+      newStatus = "In Progress";
+    }
+
+    if (newStatus !== milestone.status) {
+      milestone.status = newStatus;
+      await milestoneRepository.save(milestone);
+    }
+
+    // Update project status based on consolidated rules
+    await updateProjectStatus(projectId, queryRunner);
+  };
   const createTicket = async (data: TicketInput, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
@@ -76,7 +138,10 @@ export const TicketService = () => {
     });
 
     const savedTicket = await repo.save(ticket);
-    
+
+    // Cascade status for Support milestone and project after creation
+    await updateSupportMilestoneAndProject(savedTicket.milestone?.id, savedTicket.project?.id, queryRunner);
+
     // Return the ticket with relationships loaded using QueryBuilder
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
@@ -278,7 +343,10 @@ export const TicketService = () => {
     if (data.remark !== undefined) ticket.remark = data.remark;
 
     const savedTicket = await repo.save(ticket);
-    
+
+    // Cascade status for Support milestone and project after update
+    await updateSupportMilestoneAndProject(savedTicket.milestone?.id, savedTicket.project?.id, queryRunner);
+
     // Return the ticket with relationships loaded using QueryBuilder
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
@@ -290,12 +358,15 @@ export const TicketService = () => {
   const updateTicketStatus = async (id: string, status: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
 
-    const ticket = await repo.findOne({ where: { id, deleted: false } });
+    const ticket = await repo.findOne({ where: { id, deleted: false }, relations: ["project", "milestone"] });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
     ticket.status = status;
 
     const saved = await repo.save(ticket);
+
+    // Cascade status for Support milestone and project after status change
+    await updateSupportMilestoneAndProject(saved.milestone?.id, saved.project?.id, queryRunner);
 
     return await repo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
