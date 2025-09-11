@@ -11,7 +11,7 @@ import { User } from "entities";
 
 const calculateTaskDelayDays = (task: any): number | null => {
   if (!task.due_date) return null;
-  const incompleteStatuses = ["Pending", "In Progress", "On Hold", "Reopened"];
+  const incompleteStatuses = ["Open", "In Progress", "On Hold", "Reopened"];
   if (!incompleteStatuses.includes(task.status)) return null;
   
   const today = new Date();
