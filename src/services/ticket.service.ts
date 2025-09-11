@@ -58,10 +58,10 @@ export const TicketService = () => {
       return;
     }
 
-    const statuses = tickets.map(t => (t.status || "").toLowerCase());
-    const allOpen = statuses.length > 0 && statuses.every(s => s === "open");
-    const anyInProgress = statuses.some(s => s === "in progress" || s === "in-progress");
-    const allCompleted = statuses.length > 0 && statuses.every(s => s === "completed");
+    const statuses = tickets.map((t: any) => (t.status || "").toLowerCase());
+    const allOpen = statuses.length > 0 && statuses.every((s: string) => s === "open");
+    const anyInProgress = statuses.some((s: string) => s === "in progress" || s === "in-progress");
+    const allCompleted = statuses.length > 0 && statuses.every((s: string) => s === "completed");
 
     let newStatus = milestone.status;
     if (anyInProgress) {
