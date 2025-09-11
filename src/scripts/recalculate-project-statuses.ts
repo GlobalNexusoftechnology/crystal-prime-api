@@ -39,8 +39,8 @@ async function recalcAllProjectStatuses() {
 
           let newStatus = ms.status;
           if (tickets.length === 0) {
-            // No tickets under Support -> keep/mark Completed per new rule
-            newStatus = "Completed";
+            // No tickets under Support -> milestone should be Open
+            newStatus = "Open";
           } else {
             const anyInProgress = statuses.some(s => s === "in progress" || s === "in-progress");
             const allOpen = statuses.length > 0 && statuses.every(s => s === "open");

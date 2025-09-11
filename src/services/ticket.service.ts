@@ -49,9 +49,9 @@ export const TicketService = () => {
     });
 
     if (tickets.length === 0) {
-      // No tickets under support milestone -> treat as Completed to reflect maintenance done
-      if (milestone.status !== "Completed") {
-        milestone.status = "Completed";
+      // No tickets under support milestone -> milestone stays Open
+      if (milestone.status !== "Open") {
+        milestone.status = "Open";
         await milestoneRepository.save(milestone);
       }
       await updateProjectStatus(projectId, queryRunner);
