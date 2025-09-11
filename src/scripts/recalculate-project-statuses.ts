@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { AppDataSource } from "../utils/data-source";
 import { Project } from "../entities/projects.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
+import { ProjectTasks } from "../entities/project-task.entity";
 import { Ticket } from "../entities/ticket.entity";
 import { TaskStatusService } from "../services/task-status.service";
 
@@ -15,6 +16,7 @@ async function recalcAllProjectStatuses() {
 
     const projectRepo = AppDataSource.getRepository(Project);
     const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
+    const taskRepo = AppDataSource.getRepository(ProjectTasks);
     const { updateProjectStatus } = TaskStatusService();
 
     const projects = await projectRepo.find({ where: { deleted: false } });
@@ -24,7 +26,7 @@ async function recalcAllProjectStatuses() {
 
     for (const project of projects) {
       try {
-        // Recalculate Support milestone status based on tickets
+        // Recalculate all milestone statuses based on tasks and tickets
         const milestones = await milestoneRepo.find({
           where: { project: { id: project.id }, deleted: false },
           relations: ["tickets"],
@@ -32,24 +34,53 @@ async function recalcAllProjectStatuses() {
 
         for (const ms of milestones) {
           const isSupport = (ms.name || "").toLowerCase() === "support";
-          if (!isSupport) continue;
-
-          const tickets = (ms.tickets || []) as Ticket[];
-          const statuses = tickets.map(t => (t.status || "").toLowerCase());
-
           let newStatus = ms.status;
-          if (tickets.length === 0) {
-            // No tickets under Support -> milestone should be Open
-            newStatus = "Open";
-          } else {
-            const anyInProgress = statuses.some(s => s === "in progress" || s === "in-progress");
-            const allOpen = statuses.length > 0 && statuses.every(s => s === "open");
-            const allCompleted = statuses.length > 0 && statuses.every(s => s === "completed");
 
-            if (anyInProgress) newStatus = "In Progress";
-            else if (allOpen) newStatus = "Open";
-            else if (allCompleted) newStatus = "Completed";
-            else newStatus = "In Progress"; // mixed open/completed
+          if (isSupport) {
+            // Support milestone: use ticket-based logic
+            const tickets = (ms.tickets || []) as Ticket[];
+            const statuses = tickets.map((t: any) => (t.status || "").toLowerCase());
+
+            if (tickets.length === 0) {
+              // No tickets under Support -> milestone should be Open
+              newStatus = "Open";
+            } else {
+              const anyInProgress = statuses.some((s: string) => s === "in progress" || s === "in-progress");
+              const allOpen = statuses.length > 0 && statuses.every((s: string) => s === "open");
+              const allCompleted = statuses.length > 0 && statuses.every((s: string) => s === "completed");
+
+              if (anyInProgress) newStatus = "In Progress";
+              else if (allOpen) newStatus = "Open";
+              else if (allCompleted) newStatus = "Completed";
+              else newStatus = "In Progress"; // mixed open/completed
+            }
+          } else {
+            // Non-Support milestone: use task-based logic
+            const tasks = await taskRepo.find({
+              where: { milestone: { id: ms.id }, deleted: false }
+            });
+
+            if (tasks.length === 0) {
+              // No tasks -> milestone should be Open by default
+              newStatus = "Open";
+            } else {
+              const allTasksCompleted = tasks.every((task: any) => task.status === "Completed");
+              const anyInProgress = tasks.some((task: any) => task.status === "In Progress");
+              const allOpen = tasks.every((task: any) => task.status === "Open");
+              const anyOpen = tasks.some((task: any) => task.status === "Open");
+              const anyCompleted = tasks.some((task: any) => task.status === "Completed");
+
+              if (anyInProgress) {
+                newStatus = "In Progress";
+              } else if (allTasksCompleted) {
+                newStatus = "Completed";
+              } else if (allOpen) {
+                newStatus = "Open";
+              } else if (anyOpen && anyCompleted) {
+                // Mixed Open + Completed with no In Progress => In Progress
+                newStatus = "In Progress";
+              }
+            }
           }
 
           if (newStatus !== ms.status) {

@@ -88,22 +88,35 @@ export const TaskStatusService = () => {
     });
 
     if (tasks.length === 0) {
-      // No tasks, keep current status
+      // No tasks -> milestone should be Open by default
+      if (milestone.status !== "Open") {
+        milestone.status = "Open";
+        await repo.save(milestone);
+        // Update project status after milestone status change
+        if (milestone.project) {
+          await updateProjectStatus(milestone.project.id, queryRunner);
+        }
+      }
       return milestone;
     }
 
     const allTasksCompleted = tasks.every((task: ProjectTasks) => task.status === "Completed");
-    const hasInProgressTasks = tasks.some((task: ProjectTasks) => task.status === "In Progress");
-    const hasOpenTasks = tasks.some((task: ProjectTasks) => task.status === "Open");
+    const anyInProgress = tasks.some((task: ProjectTasks) => task.status === "In Progress");
+    const allOpen = tasks.every((task: ProjectTasks) => task.status === "Open");
+    const anyOpen = tasks.some((task: ProjectTasks) => task.status === "Open");
+    const anyCompleted = tasks.some((task: ProjectTasks) => task.status === "Completed");
 
     let newStatus = milestone.status;
 
-    if (allTasksCompleted) {
-      newStatus = "Completed";
-    } else if (hasInProgressTasks) {
+    if (anyInProgress) {
       newStatus = "In Progress";
-    } else if (hasOpenTasks) {
+    } else if (allTasksCompleted) {
+      newStatus = "Completed";
+    } else if (allOpen) {
       newStatus = "Open";
+    } else if (anyOpen && anyCompleted) {
+      // Mixed Open + Completed with no In Progress => In Progress
+      newStatus = "In Progress";
     }
 
     // Only update if status has changed
