@@ -363,7 +363,7 @@ export const ClientService = () => {
     fileBuffer: Buffer
   ) => {
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(fileBuffer);
+    await workbook.xlsx.load(fileBuffer as any);
     const worksheet = workbook.worksheets[0];
 
     const headers: string[] = [];
