@@ -110,31 +110,25 @@ export class WebSocketService {
     }
   }
 
-  public async sendNotification(
-    userId: string,
-    type: string,
-    message: string,
-    metadata?: Record<string, any>
-  ) {
+  public sendNotification(userId: string, notification: any) {
     try {
-      const notification = await this.notificationService.createNotification(
-        userId,
-        type as any,
-        message,
-        metadata
-      );
-
       const sockets = this.userSockets.get(userId);
       if (sockets) {
-        sockets.forEach(socketId => {
-          this.io.to(socketId).emit('newNotification', notification);
+        sockets.forEach((socketId) => {
+          this.io.to(socketId).emit("newNotification", notification);
         });
       }
-
-      return notification;
     } catch (error) {
-      console.error('Error sending notification:', error);
+      console.error("Error sending notification:", error);
       throw error;
     }
   }
+} 
+
+export let wsService: WebSocketService;
+
+export const initWebSocket = (server: HTTPServer) => {
+  wsService = new WebSocketService(server);
+  return wsService;
+
 } 
