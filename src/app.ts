@@ -62,7 +62,6 @@ AppDataSource.initialize()
     const httpServer = createServer(app);
 
     // Initialize WebSocket service
-    const wsService = new WebSocketService(httpServer);
     initWebSocket(httpServer);
 
     // Inside src/app.ts or main file
