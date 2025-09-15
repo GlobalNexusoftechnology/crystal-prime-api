@@ -4,6 +4,8 @@ import { Project } from "../entities/projects.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import AppError from "../utils/appError";
 import { TaskStatusService } from "./task-status.service";
+import { transporter } from "../utils";
+import { string } from "zod";
 
 const ticketRepo = AppDataSource.getRepository(Ticket);
 const projectRepo = AppDataSource.getRepository(Project);
@@ -24,6 +26,39 @@ interface TicketInput {
 export const TicketService = () => {
   const { updateProjectStatus } = TaskStatusService();
 
+  const sendTicketCreatedMail = async (
+    emails: string[],
+    ticketTitle: string,
+    projectName: string,
+    clientName: string,
+    clientEmail: string,
+    clientPhone: string,
+    description: string,
+    priority: string,
+    status: string
+  ) => {
+    const mailOptions = {
+      from: `"Support System" <${process.env.EMAIL_USER}>`,
+      to: emails.join(', '),
+      subject: `New Ticket Created: ${ticketTitle}`,
+      html: `
+      <h3>New Ticket Created</h3>
+      <p><strong>Ticket Title:</strong> ${ticketTitle}</p>
+      <p><strong>Project:</strong> ${projectName}</p>
+      <p><strong>Client Name:</strong> ${clientName || 'N/A'}</p>
+      <p><strong>Client Email:</strong> ${clientEmail || 'N/A'}</p>
+      <p><strong>Client Phone:</strong> ${clientPhone || 'N/A'}</p>
+      <p><strong>Description:</strong> ${description || 'No description provided'}</p>
+      <p><strong>Priority:</strong> ${priority}</p>
+      <p><strong>Status:</strong> ${status}</p>
+      <p><strong>Created At:</strong> ${new Date().toLocaleString()}</p>
+      <br/>
+      <p>Please check the system for more details.</p>
+    `,
+    };
+
+    await transporter.sendMail(mailOptions);
+  };
   const updateSupportMilestoneAndProject = async (
     milestoneId: string | undefined,
     projectId: string | undefined,
@@ -87,7 +122,7 @@ export const TicketService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
     const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
-    
+
     const project = await projectRepository.findOne({ where: { id: data.project_id } });
     if (!project) throw new AppError(404, "Project not found");
 
@@ -98,10 +133,10 @@ export const TicketService = () => {
     } else {
       // Auto-assign to Support milestone
       milestone = await milestoneRepository.findOne({
-        where: { 
-          project: { id: data.project_id }, 
-          name: "Support", 
-          deleted: false 
+        where: {
+          project: { id: data.project_id },
+          name: "Support",
+          deleted: false
         },
         relations: ["project"]
       });
@@ -110,7 +145,7 @@ export const TicketService = () => {
         // Try to create Support milestone if it doesn't exist
         const project = await projectRepository.findOne({ where: { id: data.project_id } });
         if (!project) throw new AppError(404, "Project not found");
-        
+
         // Create Support milestone
         const supportMilestone = milestoneRepository.create({
           name: "Support",
@@ -120,7 +155,7 @@ export const TicketService = () => {
           start_date: new Date(),
           end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
         });
-        
+
         milestone = await milestoneRepository.save(supportMilestone);
       }
     }
@@ -139,6 +174,38 @@ export const TicketService = () => {
 
     const savedTicket = await repo.save(ticket);
 
+    const projectWithClient = await projectRepository.findOne({
+      where: { id: data.project_id },
+      relations: ['client'] // ← THIS LOADS CLIENT RELATION
+    });
+
+    let clientName = 'N/A';
+    let clientEmail = 'N/A';
+    let clientPhone = 'N/A';
+
+    if (projectWithClient && projectWithClient.client) {
+      clientName = projectWithClient.client.name || 'N/A';
+      clientEmail = projectWithClient.client.email || 'N/A';
+      clientPhone = projectWithClient.client.contact_number || 'N/A';
+    }
+
+    try {
+       const Email_NOTIFY_ONE = process.env.EMAI_TICKET_NOTIFY_ONE as string;
+       const Email_NOTIFY_TWO = process.env.EMAI_TICKET_NOTIFY_TWO as string;
+      await sendTicketCreatedMail(
+        [Email_NOTIFY_ONE , Email_NOTIFY_TWO],
+        savedTicket.title,
+        project.name,
+        clientName,    
+        clientEmail,    
+        clientPhone,   
+        savedTicket.description,
+        savedTicket.priority,
+        savedTicket.status
+      );
+    } catch (emailError) {
+      console.log('Email sending failed (non-critical):', emailError);
+    }
     // Cascade status for Support milestone and project after creation
     await updateSupportMilestoneAndProject(savedTicket.milestone?.id, savedTicket.project?.id, queryRunner);
 
@@ -299,10 +366,10 @@ export const TicketService = () => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
     const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
     const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
-    
-    const ticket = await repo.findOne({ 
-      where: { id, deleted: false }, 
-      relations: ["project", "milestone"] 
+
+    const ticket = await repo.findOne({
+      where: { id, deleted: false },
+      relations: ["project", "milestone"]
     });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
@@ -319,13 +386,13 @@ export const TicketService = () => {
     } else if (data.milestone_id === null) {
       // If milestone_id is explicitly set to null, auto-assign to Support milestone
       const supportMilestone = await milestoneRepository.findOne({
-        where: { 
-          project: { id: ticket.project.id }, 
-          name: "Support", 
-          deleted: false 
+        where: {
+          project: { id: ticket.project.id },
+          name: "Support",
+          deleted: false
         }
       });
-      
+
       if (supportMilestone) {
         ticket.milestone = supportMilestone;
       } else {
@@ -377,7 +444,7 @@ export const TicketService = () => {
 
   const deleteTicket = async (id: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
-    
+
     const ticket = await repo.findOne({ where: { id, deleted: false } });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
