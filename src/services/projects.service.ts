@@ -10,11 +10,37 @@ import { User } from "../entities";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
 
+
+const calculateTaskDelayDays = (task: any): number | null => {
+  if (!task.due_date) return null;
+  const incompleteStatuses = ["Open", "In Progress", "On Hold", "Reopened"];
+  if (!incompleteStatuses.includes(task.status)) return null;
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dueDate = new Date(task.due_date);
+  dueDate.setHours(0, 0, 0, 0);
+  
+  if (dueDate > today) return 0;
+  const diffTime = today.getTime() - dueDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+};
+
+const calculateMilestoneDelay = (milestone: any): number | null => {
+  if (!milestone.tasks || milestone.tasks.length === 0) return null;
+  const taskDelays = milestone.tasks
+    .map((task: any) => calculateTaskDelayDays(task))
+    .filter((delay:any): delay is number => delay !== null && delay > 0);
+  if (taskDelays.length === 0) return 0;
+  return Math.max(...taskDelays);
+};
+
 interface ProjectInput {
   client_id?: string;
   name: string;
   description: string;
-  project_type?: string; 
+  project_type?: string;
   status?: ProjectStatus;
   budget?: number;
   cost_of_labour?: number,
@@ -61,8 +87,8 @@ export const ProjectService = () => {
       return null;
     }
     const msPerDay = 1000 * 60 * 60 * 24;
-    const start = new Date(startDateObj).setHours(0,0,0,0);
-    const end = new Date(endDateObj).setHours(0,0,0,0);
+    const start = new Date(startDateObj).setHours(0, 0, 0, 0);
+    const end = new Date(endDateObj).setHours(0, 0, 0, 0);
     let days = Math.floor((end - start) / msPerDay) + 1;
     if (days < 1) days = 1;
     const total = (labour + overhead) * days + extra;
@@ -161,10 +187,22 @@ export const ProjectService = () => {
 
   // Get All Projects
   const getAllProject = async (userId?: string, userRole?: string, user?: User) => {
-    // If admin, return all projects
-    if (userRole && userRole.toLowerCase() === 'admin') {
+
+    if (userRole && userRole.toLowerCase() === 'client') {
+      console.log(user)
+      const currentClient = await clientRepo.findOne({
+        where: { user: { id: user?.id }, deleted: false },
+      });
+
+      if (!currentClient) {
+        throw new AppError(404, "Client not found for this user.");
+      }
+
       return await ProjectRepo.find({
-        where: { deleted: false },
+        where: {
+          client: { id: currentClient.id },
+          deleted: false
+        },
         order: { created_at: "DESC" },
         relations: [
           "client",
@@ -177,54 +215,37 @@ export const ProjectService = () => {
         ],
       });
     }
+    return await ProjectRepo.find({
+      where: { deleted: false },
+      order: { created_at: "DESC" },
+      relations: [
+        "client",
+        "milestones",
+        "milestones.tasks",
+        "milestones.tickets",
+        "attachments",
+        "attachments.uploaded_by",
+        "project_type"
+      ],
+    });
 
-    // If client role, return only projects for that client
-  if (userRole && userRole.toLowerCase() === 'client') {
-    console.log(user)
-  const currentClient = await clientRepo.findOne({
-    where: { user: { id: user?.id }, deleted: false },
-  });
+    // // Otherwise, return only projects where user is assigned to a milestone or task
+    // // Use QueryBuilder for complex joins
+    // const qb = ProjectRepo.createQueryBuilder("project")
+    //   .leftJoinAndSelect("project.client", "client")
+    //   .leftJoinAndSelect("project.milestones", "milestones")
+    //   .leftJoinAndSelect("milestones.tasks", "tasks")
+    //   .leftJoinAndSelect("milestones.tickets", "tickets")
+    //   .leftJoinAndSelect("project.attachments", "attachments")
+    //   .leftJoinAndSelect("attachments.uploaded_by", "uploaded_by")
+    //   .where("project.deleted = false")
+    //   .andWhere(
+    //     "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
+    //     { userId }
+    //   )
+    //   .orderBy("project.created_at", "DESC");
 
-  if (!currentClient) {
-    throw new AppError(404, "Client not found for this user.");
-  }
-
-  return await ProjectRepo.find({
-    where: { 
-      client: { id: currentClient.id },
-      deleted: false 
-    },
-    order: { created_at: "DESC" },
-    relations: [
-      "client",
-      "milestones",
-      "milestones.tasks",
-      "milestones.tickets",
-      "attachments",
-      "attachments.uploaded_by",
-      "project_type"
-    ],
-  });
-}
-
-
-    // Otherwise, return only projects where user is assigned to a milestone or task
-    // Use QueryBuilder for complex joins
-    const qb = ProjectRepo.createQueryBuilder("project")
-      .leftJoinAndSelect("project.client", "client")
-      .leftJoinAndSelect("project.milestones", "milestones")
-      .leftJoinAndSelect("milestones.tasks", "tasks")
-      .leftJoinAndSelect("milestones.tickets", "tickets")
-      .leftJoinAndSelect("project.attachments", "attachments")
-      .leftJoinAndSelect("attachments.uploaded_by", "uploaded_by")
-      .where("project.deleted = false")
-      .andWhere(
-        "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
-        { userId }
-      )
-      .orderBy("project.created_at", "DESC");
-
-    return await qb.getMany();
+    // return await qb.getMany();
   };
 
   // Get Project by ID
@@ -301,7 +322,7 @@ export const ProjectService = () => {
     if (overhead_cost !== undefined) project.overhead_cost = overhead_cost;
     if (extra_cost !== undefined) project.extra_cost = extra_cost;
     if (estimated_cost !== undefined) project.estimated_cost = estimated_cost;
-    
+
     // Auto-calculate actual cost if cost_of_labour, overhead_cost, actual_start_date, actual_end_date, or extra_cost is updated
     if (
       cost_of_labour !== undefined ||
@@ -326,7 +347,7 @@ export const ProjectService = () => {
       // Allow manual override if none of the above are being updated
       project.actual_cost = actual_cost;
     }
-    
+
     if (start_date !== undefined) project.start_date = mergeDateWithCurrentTime(start_date);
     if (end_date !== undefined) project.end_date = mergeDateWithCurrentTime(end_date);
     if (actual_start_date !== undefined)
@@ -367,7 +388,7 @@ export const ProjectService = () => {
     const qb = ProjectRepo.createQueryBuilder("project")
       .select(["project.status AS status", "COUNT(DISTINCT project.id)::int AS count"])
       .where("project.deleted = false");
-    
+
     if (role && role.toLowerCase() === 'client' && userId) {
       // For client role, filter by client's projects
       qb.leftJoin("project.client", "client")
@@ -406,9 +427,9 @@ export const ProjectService = () => {
     // If client role, return only projects for that client
     if (userRole && userRole.toLowerCase() === 'client') {
       return await ProjectRepo.find({
-        where: { 
+        where: {
           client: { user: { id: userId } },
-          deleted: false 
+          deleted: false
         },
         order: { created_at: "DESC" },
         relations: [
@@ -468,10 +489,33 @@ const sendProjectStatusChangeNotification = async (
   }
 };
 
+  const getAllProjectWithDelays = async (userId?: string, userRole?: string, user?: User) => {
+    // Use existing function to get projects for all roles
+    const projects = await getAllProject(userId, userRole, user);
+    
+  return projects.map(project => ({
+    ...project,
+    milestones: project.milestones?.map(milestone => {
+      const delay = calculateMilestoneDelay(milestone);
+      return {
+        ...milestone,
+        milestone_delay_days: delay,
+        has_overdue_tasks: delay !== null && delay > 0,
+        tasks: milestone.tasks?.map(task => ({
+          ...task,
+          delay_days: calculateTaskDelayDays(task)
+        }))
+      };
+    })
+  }));
+  };
+
+
   return {
     sendProjectStatusChangeNotification,
     getAllProjectDashboard,
     createProject,
+    getAllProjectWithDelays, 
     getAllProject,
     getProjectById,
     updateProject,

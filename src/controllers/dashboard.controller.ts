@@ -128,18 +128,36 @@ export const dashboardController = () => {
             monthWiseProjectRenewalData[month].push(categoryGroup);
           }
 
-          // ✅ Calculate milestone completion %
-          const totalMilestones = project.milestones?.length || 0;
-          console.log(totalMilestones);
-          const completedMilestones =
-            project.milestones?.filter(
+          // ✅ Calculate milestone completion % (considering support milestone logic and open tickets)
+          const supportMilestones = project.milestones?.filter(m => m.name.toLowerCase() === "support") || [];
+          const nonSupportMilestones = project.milestones?.filter(m => m.name.toLowerCase() !== "support") || [];
+          
+          // Check if all non-support milestones are completed
+          const allNonSupportMilestonesCompleted = nonSupportMilestones.length > 0 && 
+            nonSupportMilestones.every(m => m.status?.toLowerCase() === "completed");
+          
+          // Check if support milestone has any open tickets
+          const supportMilestoneHasOpenTickets = supportMilestones.some(m => 
+            m.tickets && m.tickets.some(ticket => ticket.status?.toLowerCase() === "open")
+          );
+          
+          let completionPercentage = 0;
+          
+          // If all non-support milestones are completed AND no open tickets in support milestone, project is 100% complete
+          if ((allNonSupportMilestonesCompleted && !supportMilestoneHasOpenTickets) || 
+              (supportMilestones.some(m => m.status?.toLowerCase() === "open") && nonSupportMilestones.length === 0 && !supportMilestoneHasOpenTickets)) {
+            completionPercentage = 100;
+          } else {
+            // Otherwise calculate based on non-support milestones only
+            const totalMilestones = nonSupportMilestones.length || 0;
+            const completedMilestones = nonSupportMilestones.filter(
               (m) => m.status?.toLowerCase() === "completed"
             ).length || 0;
-
-          const completionPercentage =
-            totalMilestones > 0
+            
+            completionPercentage = totalMilestones > 0
               ? Math.round((completedMilestones / totalMilestones) * 100)
               : 0;
+          }
 
           categoryGroup.projects.push({
             name: project.name,
@@ -190,35 +208,62 @@ export const dashboardController = () => {
       // 2. Today Follow up (from getLeadStats)
       // 3. Project (count of projects where user is assigned to a milestone or task)
       // 4. Performance Ratio (completed tasks / total task assigned)
-      const [leadStats, allTasks, allProjects] = await Promise.all([
+      const [leadStats, allProjects, allTasksInSystem] = await Promise.all([
         leadService.getLeadStats(userId, role),
-        // Get all tasks assigned to this user (from project_tasks)
+        // Get all projects where user is assigned to a milestone or task
+        projectService.getAllProject(userId, role),
+        // Get all tasks in the system for total count
         (async () => {
           const { data } = await projectTaskService.getAllTasks();
-          return data.filter((t: any) => t.assigned_to === userId);
-        })(),
-        // Get all projects where user is assigned to a milestone or task
-        projectService.getAllProject(userId, role)
+          return data;
+        })()
       ]);
 
       const taskData = await projectTaskService.getUserTaskCounts(userId);
 
-      // My Task: count of open and in process tasks
-      const myTaskCount = allTasks.filter((t: any) => t.status === "Open" || t.status === "In Progress").length;
+      // My Task: count of open and in process tasks (use taskData for consistency)
+      const myTaskCount = taskData.pending + taskData.inProgress;
       // Performance Ratio: completed / total assigned
-      const completedTaskCount = allTasks.filter((t: any) => t.status === "Completed").length;
-      const totalAssignedTaskCount = allTasks.length;
       const performanceRatio = taskData.total > 0 ? `${Math.round((taskData.completed / taskData.total) * 100)}%` : "0%";
       // Project: count of projects where user is assigned
       const projectCount = allProjects.length;
       // Today Follow up
       const todayFollowups = leadStats.todayFollowups || 0;
 
+     // Calculate total task counts from all tasks in system
+     // Filter out any tasks that might be marked as deleted AND tasks without proper milestone relationships
+     // Also filter out tasks whose milestones don't belong to existing projects
+     const validMilestoneIds = new Set();
+     allProjects.forEach((project: any) => {
+       project.milestones?.forEach((milestone: any) => {
+         validMilestoneIds.add(milestone.id);
+       });
+     });
+     
+     const activeTasksInSystem = allTasksInSystem.filter((t: any) => 
+       !t.deleted && t.milestone && t.milestone.id && validMilestoneIds.has(t.milestone.id)
+     );
+     const totalTasksInSystem = activeTasksInSystem.length;
+     
+     
+     // Use more flexible status matching to handle different case variations
+     const completedTasksInSystem = activeTasksInSystem.filter((t: any) => 
+       t.status && t.status.toLowerCase().includes('completed')
+     ).length;
+     
+     const openTasksInSystem = activeTasksInSystem.filter((t: any) => 
+       t.status && (t.status.toLowerCase().includes('open') || t.status.toLowerCase().includes('pending'))
+     ).length;
+     
+     const inProgressTasksInSystem = activeTasksInSystem.filter((t: any) => 
+       t.status && t.status.toLowerCase().includes('progress')
+     ).length;
+
      const taskStat = {
-        totalTasks: taskData.total,
-        completedTasks: taskData.completed,
-        openTasks: taskData.pending,
-        inprogressTasks: taskData.inProgress
+        totalTasks: totalTasksInSystem,
+        completedTasks: completedTasksInSystem,
+        openTasks: openTasksInSystem,
+        inprogressTasks: inProgressTasksInSystem
       }
 
       // Only return the counts for the four stats
