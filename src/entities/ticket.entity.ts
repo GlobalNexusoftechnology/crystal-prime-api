@@ -2,9 +2,13 @@ import { Entity, Column, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { Project } from "./projects.entity";
 import { ProjectMilestones } from "./project-milestone.entity";
+import { ModelWithShortId } from "./model-with-shortid.entity";
 
 @Entity("tickets")
-export class Ticket extends Model {
+export class Ticket extends ModelWithShortId {
+  
+  prefix = "ST";
+
   @Column({ type: "varchar", length: 255 })
   title: string;
 

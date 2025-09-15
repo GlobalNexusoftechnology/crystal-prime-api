@@ -6,7 +6,9 @@ import { LeadTypeService } from "./lead-types.service";
 import { mergeDateWithCurrentTime } from "../utils";
 import { MilestoneService } from "./project-milestone.service";
 import { ProjectTaskService } from "./project-task.service";
-import { User } from "entities";
+import { User } from "../entities";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
 
 
 const calculateTaskDelayDays = (task: any): number | null => {
@@ -60,6 +62,7 @@ const clientRepo = AppDataSource.getRepository(Clients);
 const leadTypeService = LeadTypeService();
 const milestoneService = MilestoneService();
 const taskService = ProjectTaskService();
+const Notification = NotificationService();
 
 export const ProjectService = () => {
   const getQueryRunner = () => {
@@ -270,7 +273,7 @@ export const ProjectService = () => {
     const clientRepository = queryRunner ? queryRunner.manager.getRepository(Clients) : clientRepo;
     const project = await repo.findOne({
       where: { id, deleted: false },
-      relations: ["client"],
+      relations: ["client", "client.user"],
     });
     if (!project) throw new AppError(404, "Project record not found");
 
@@ -294,6 +297,8 @@ export const ProjectService = () => {
       renewal_date,
       is_renewal,
     } = data;
+
+    const originalStatus = project.status;
 
     if (client_id) {
       const client = await clientRepository.findOne({ where: { id: client_id } });
@@ -352,6 +357,15 @@ export const ProjectService = () => {
     if (renewal_type !== undefined) project.renewal_type = renewal_type as any;
     if (renewal_date !== undefined) project.renewal_date = renewal_date;
     if (is_renewal !== undefined) project.is_renewal = is_renewal;
+
+      // Check if status changed and send notification to client
+    if (status !== undefined && status !== originalStatus) {
+        await sendProjectStatusChangeNotification(
+          project,
+          originalStatus,
+          status,
+        );
+    }
 
     return await repo.save(project);
   };
@@ -447,6 +461,34 @@ export const ProjectService = () => {
     return await qb.getMany();
   };
 
+const sendProjectStatusChangeNotification = async (
+  project: Project,
+  oldStatus: ProjectStatus,
+  newStatus: ProjectStatus
+) => {
+  try {
+    // We already have the user object from the relations
+    if (project.client && project.client.user) {
+      await Notification.createNotification(
+        project.client.user.id, // Directly use the user ID we already have
+        NotificationType.PROJECT_STATUS_CHANGED,
+        `Your project "${project.name}" status has changed from ${oldStatus} to ${newStatus}`,
+        {
+          projectId: project.id,
+          projectName: project.name,
+          oldStatus: oldStatus,
+          newStatus: newStatus,
+          changedAt: new Date().toISOString(),
+          clientId: project.client.id,
+          clientName: project.client.name
+        }
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send project status change notification:', error);
+  }
+};
+
   const getAllProjectWithDelays = async (userId?: string, userRole?: string, user?: User) => {
     // Use existing function to get projects for all roles
     const projects = await getAllProject(userId, userRole, user);
@@ -468,7 +510,9 @@ export const ProjectService = () => {
   }));
   };
 
+
   return {
+    sendProjectStatusChangeNotification,
     getAllProjectDashboard,
     createProject,
     getAllProjectWithDelays, 
