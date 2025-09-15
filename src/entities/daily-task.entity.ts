@@ -25,9 +25,6 @@ export class DailyTaskEntries extends Model {
     @Column({ type: 'date' })
     entry_date: Date;
 
-    @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-    hours_spent: number;
-
     @Column({ type: 'varchar', length: 50, default: 'Pending' })
     status: string;
 
