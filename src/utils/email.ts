@@ -65,3 +65,60 @@ export const sendForgotPasswordMail = async (email: string, otp: string) => {
 
   await transporter.sendMail(mailOptions);
 };
+
+export const sendTicketCommentEmail = async (
+  email: string, 
+  commenterName: string, 
+  ticketTitle: string, 
+  commentTitle: string, 
+  commentDescription: string, 
+  ticketId: string
+) => {
+  const mailOptions = {
+    from: `"Support" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: `New Comment on Ticket: ${ticketTitle}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">New Comment on Your Ticket</h2>
+        <p>Hello,</p>
+        <p><strong>${commenterName}</strong> has added a new comment to the ticket:</p>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
+          <h3 style="margin-top: 0; color: #333; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+            Ticket: ${ticketTitle}
+          </h3>
+          
+          ${commentTitle ? `
+            <div style="margin: 15px 0;">
+              <strong style="color: #555;">Comment Title:</strong>
+              <p style="margin: 5px 0 0 0; color: #333; font-size: 16px;">${commentTitle}</p>
+            </div>
+          ` : ''}
+          
+          ${commentDescription ? `
+            <div style="margin: 15px 0;">
+              <strong style="color: #555;">Comment Description:</strong>
+              <div style="background: white; padding: 15px; border-radius: 3px; border: 1px solid #eee; margin-top: 5px;">
+                <p style="margin: 0; color: #666; line-height: 1.5;">${commentDescription}</p>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+        
+        <p>You can view this ticket and respond by logging into your account.</p>
+        
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin-bottom: 5px;">
+            <strong>Ticket ID:</strong> ${ticketId}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            This is an automated notification. Please do not reply to this email.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};

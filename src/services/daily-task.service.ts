@@ -12,7 +12,6 @@ interface DailyTaskEntryInput {
     task_title: string;
     description?: string;
     entry_date: Date;
-    hours_spent?: number;
     status?: string;
     remarks?: string;
     priority?: string;
