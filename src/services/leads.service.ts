@@ -938,6 +938,8 @@ export const LeadService = () => {
   const data = await response.json();
   const fieldData = data.field_data;
 
+  console.log("\n\n\n\n\nMeta Lead Data:", data, "\n\n\n");
+
   const mapped: Record<string, any> = {};
 
   for (const item of fieldData) {
@@ -968,10 +970,11 @@ export const LeadService = () => {
       if (adResp.ok) {
         const adData = await adResp.json();
         campaignName = adData?.adset?.campaign?.name || null;
+        console.log("\n\n\n\nCampaign Name:", campaignName, "\n\n\n");
       }
     }
   } catch (err) {
-    console.error("Failed to fetch campaign info: ", err);
+    console.error("\n\nFailed to fetch campaign info: ", err, "\n\n");
   }
 
   // Step 3: Find Type in DB (optional)
@@ -982,12 +985,20 @@ export const LeadService = () => {
       leadType = await leadTypeRepo.findOne({ where: { name: ILike(campaignName) } });
 
       if (!leadType) {
-        console.log("No matching Campaign name");
+        console.log("\n\n\nNo matching Campaign name\n\n\n");
         return;
       }
     }
   } catch (e) {
-    console.log("Error while creating the source", e);
+    console.log("\n\n\nError while fetching lead types", e, "\n\n\n");
+  }
+
+  let phoneNumber = null;
+
+  if(mapped?.phone_number){
+    phoneNumber = mapped.phone_number;
+  }else if(mapped?.phone){
+    phoneNumber = mapped.phone;
   }
   
   // Step 4: Save lead
@@ -995,7 +1006,7 @@ export const LeadService = () => {
     first_name: mapped.first_name,
     last_name: mapped.last_name,
     company: mapped.company,
-    phone: mapped.phone_number,
+    phone: phoneNumber,
     other_contact: mapped.other_contact ?? null,
     email: mapped.email || "",
     location: mapped.address,
@@ -1009,10 +1020,11 @@ export const LeadService = () => {
   await leadRepo.save(newLead);
 
   console.log(
-    "✅ Lead saved with campaign type:",
+    "\n\n\n✅ Lead saved with campaign type:",
     campaignName,
     "->",
-    leadType?.name || "null"
+    leadType?.name || "null",
+    "\n\n\n"
   );
 };
 
