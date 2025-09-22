@@ -45,6 +45,7 @@ import eilogTypeRouter from './routes/eilog-type.routes';
 import eilogHeadRouter from './routes/eilog-head.routes';
 import eilogRouter from './routes/eilog.routes';
 import reportRoutes from './routes/report.routes';
+import {initWebSocket} from "./services/websocket.service" ;
 import { setupTicketCronJobs } from './cron/ticketCronJobs';
 import { setupProjectRenewalCron } from './cron/projectRenewalCronJob';
 
@@ -63,7 +64,7 @@ AppDataSource.initialize()
     const httpServer = createServer(app);
 
     // Initialize WebSocket service
-    const wsService = new WebSocketService(httpServer);
+    initWebSocket(httpServer);
 
     // Inside src/app.ts or main file
     app.use('/exports', express.static(path.join(__dirname, '..', 'public', 'exports')));
