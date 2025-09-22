@@ -88,6 +88,7 @@ export const ClientService = () => {
       .leftJoinAndSelect("client.lead", "lead")
       .leftJoinAndSelect("client.client_details", "client_details")
       .leftJoinAndSelect("client.user", "user")
+      .leftJoinAndSelect("client.projects", "projects")
       .where("client.deleted = false");
 
     if (searchText && searchText.trim() !== "") {
