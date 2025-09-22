@@ -6,7 +6,7 @@ const taskStatusService = TaskStatusService();
 
 // Validation schema for task status update
 const updateTaskStatusSchema = z.object({
-  status: z.enum(["Open", "In Progress", "Completed"])
+  status: z.enum(["Open", "In Progress", "Completed", "Approval"])
 });
 
 export const TaskStatusController = () => {
