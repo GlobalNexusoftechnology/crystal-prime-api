@@ -2,7 +2,7 @@ import { AppDataSource } from '../utils/data-source';
 import { Notification, NotificationType } from '../entities/notification.entity';
 import { User } from '../entities/user.entity';
 import AppError from '../utils/appError';
-
+import {wsService} from "../services/websocket.service";
 const notificationRepo = AppDataSource.getRepository(Notification);
 const userRepo = AppDataSource.getRepository(User);
 
@@ -25,7 +25,14 @@ export const NotificationService = () => {
       userId,
     });
 
-    return await notificationRepo.save(notification);
+    const savedNotification = notificationRepo.save(notification);
+      if (wsService) {
+      wsService.sendNotification(userId, savedNotification);
+    }
+
+    return savedNotification;
+
+
   };
 
   // Get all notifications for a user
