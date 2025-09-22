@@ -192,7 +192,7 @@ const getUserTaskCounts = async (userId: string) => {
         ELSE 0 
       END) as pending_tasks,
       SUM(CASE 
-        WHEN LOWER(t.status) IN ('in progress', 'in-progress') THEN 1 
+        WHEN LOWER(t.status) IN ('in progress', 'in-progress', 'approval') THEN 1 
         ELSE 0 
       END) as in_progress_tasks
     FROM project_tasks t

@@ -101,7 +101,7 @@ export const TaskStatusService = () => {
     }
 
     const allTasksCompleted = tasks.every((task: ProjectTasks) => task.status === "Completed");
-    const anyInProgress = tasks.some((task: ProjectTasks) => task.status === "In Progress");
+    const anyInProgress = tasks.some((task: ProjectTasks) => task.status === "In Progress" || task.status === "Approval");
     const allOpen = tasks.every((task: ProjectTasks) => task.status === "Open");
     const anyOpen = tasks.some((task: ProjectTasks) => task.status === "Open");
     const anyCompleted = tasks.some((task: ProjectTasks) => task.status === "Completed");
@@ -207,7 +207,7 @@ export const TaskStatusService = () => {
       return ticketsCount > 0; // count Support only when it actually has tickets
     });
 
-    const anyInProgress = effectiveMilestones.some(m => m.status === "In Progress" || m.status === "in_progress");
+    const anyInProgress = effectiveMilestones.some(m => m.status === "In Progress" || m.status === "in_progress" || m.status === "Approval");
     const allOpen = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Open");
     const allCompleted = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Completed");
     const hasOpen = effectiveMilestones.some(m => m.status === "Open");
