@@ -179,24 +179,29 @@ export const ProjectTaskService = () => {
   };
 
 const getUserTaskCounts = async (userId: string) => {
+  // Count tasks assigned to user, excluding tasks from deleted projects/milestones
   const query = `
     SELECT 
       COUNT(*) as total_tasks,
       SUM(CASE 
-        WHEN LOWER(status) IN ('completed', 'done') THEN 1 
+        WHEN LOWER(t.status) IN ('completed', 'done') THEN 1 
         ELSE 0 
       END) as completed_tasks,
       SUM(CASE 
-        WHEN LOWER(status) IN ('pending', 'open') THEN 1 
+        WHEN LOWER(t.status) IN ('pending', 'open') THEN 1 
         ELSE 0 
       END) as pending_tasks,
       SUM(CASE 
-        WHEN LOWER(status) IN ('in progress', 'in-progress') THEN 1 
+        WHEN LOWER(t.status) IN ('in progress', 'in-progress') THEN 1 
         ELSE 0 
       END) as in_progress_tasks
-    FROM project_tasks 
-    WHERE assigned_to = $1
-    AND deleted = false
+    FROM project_tasks t
+    LEFT JOIN project_milestones m ON m.id = t.milestone_id
+    LEFT JOIN projects p ON p.id = m.project_id
+    WHERE t.assigned_to = $1
+      AND t.deleted = false
+      AND (m.id IS NULL OR m.deleted = false)
+      AND (p.id IS NULL OR p.deleted = false)
   `;
 
   const result = await taskRepo.query(query, [userId]);
