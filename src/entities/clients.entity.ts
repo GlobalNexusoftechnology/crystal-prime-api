@@ -10,7 +10,7 @@ import Model from "./model.entity";
 import { Leads } from "./leads.entity";
 import { ClientDetails } from "./clients-details.entity";
 import { User } from "./user.entity";
-
+import { Project} from "../entities/projects.entity"
 @Entity("clients")
 export class Clients extends Model {
   @ManyToOne(() => Leads, (lead) => lead.id, { nullable: true })
@@ -50,4 +50,7 @@ export class Clients extends Model {
   @OneToOne(() => User, (user) => user.client, { nullable: true })
   @JoinColumn({ name: "user_id" })
   user: User;
+
+  @OneToMany(() => Project, (project) => project.client)
+  projects: Project[]; // This creates the "client.projects" path
 }
