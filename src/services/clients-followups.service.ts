@@ -59,6 +59,25 @@ export const ClientFollowupService = () => {
     return followup;
   };
 
+  // Count today's followups, filtered by user's tasks for non-admins
+  const getTodayFollowupsCount = async (userId?: string, role?: string) => {
+    const qb = followupRepo
+      .createQueryBuilder('f')
+      .leftJoin('f.user', 'u')
+      .leftJoin('f.project_task', 't')
+      .where('f.deleted = :deleted', { deleted: false })
+      // Treat due today based on DB current date to avoid timezone issues
+      .andWhere("DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE")
+      // Exclude completed
+      .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
+
+    if (role?.toLowerCase() !== 'admin' && userId) {
+      qb.andWhere('(u.id = :userId OR t.assigned_to = :userId)', { userId });
+    }
+
+    return await qb.getCount();
+  };
+
   const getFollowupById = async (id: string) => {
     const followup = await followupRepo.findOne({
       where: { id, deleted: false },
@@ -108,5 +127,6 @@ export const ClientFollowupService = () => {
     getFollowupById,
     updateFollowup,
     softDeleteFollowup,
+    getTodayFollowupsCount,
   };
 };
