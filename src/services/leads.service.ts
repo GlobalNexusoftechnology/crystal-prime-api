@@ -338,16 +338,15 @@ export const LeadService = () => {
         .andWhere(isAdmin ? "1=1" : "lead.assigned_to = :userId", { userId })
         .getCount(),
 
-      // Today's followups
-      leadFollowupRepo.count({
-        where: {
-          deleted: false,
-          ...followupUserFilter,
-          due_date: today,
-          status: Not(FollowupStatus.COMPLETED),
-        },
-        relations: ["user"],
-      }),
+      // Today's followups (date-only comparison, exclude COMPLETED)
+      leadFollowupRepo
+        .createQueryBuilder("f")
+        .leftJoin("f.user", "u")
+        .where("f.deleted = :deleted", { deleted: false })
+        .andWhere("DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE")
+        .andWhere("(f.status IS NULL OR f.status != :completed)", { completed: FollowupStatus.COMPLETED })
+        .andWhere(isAdmin ? "1=1" : "u.id = :userId", { userId })
+        .getCount(),
     ]);
 
     return {
