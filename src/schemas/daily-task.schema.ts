@@ -10,6 +10,7 @@ export const createDailyTaskEntrySchema = z.object({
     status: z.string().optional(),
     remarks: z.string().optional(),
     priority: z.string().optional().default('Medium'),
+    task_id: z.string().optional(),
 });
 
 // Schema for updating a Daily Task Entry

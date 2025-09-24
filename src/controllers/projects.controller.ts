@@ -18,6 +18,15 @@ const attachmentService = ProjectAttachmentService();
 const ticketService = TicketService();
 
 export const ProjectController = () => {
+  const sanitizeProjectForRole = (project: any, role?: string) => {
+    if (!role || role.toLowerCase() === 'admin' || !project) return project;
+    const { budget, cost_of_labour, overhead_cost, extra_cost, ...rest } = project;
+    return rest;
+  };
+
+  const sanitizeProjectsArrayForRole = (projects: any[], role?: string) =>
+    projects.map((p) => sanitizeProjectForRole(p, role));
+
   // Create Project
   const createProject = async (
     req: Request,
@@ -28,6 +37,14 @@ export const ProjectController = () => {
     await queryRunner.startTransaction();
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
+      const role = res?.locals?.user?.role?.role as string | undefined;
+      // Non-admins cannot set financial fields
+      if (!role || role.toLowerCase() !== 'admin') {
+        delete (parsedData as any).budget;
+        delete (parsedData as any).cost_of_labour;
+        delete (parsedData as any).overhead_cost;
+        delete (parsedData as any).extra_cost;
+      }
       const { milestones, attachments, description, ...projectData } = parsedData;
       const project = await service.createProject({ ...projectData, description: description ?? "" }, queryRunner);
       // Create user-provided milestones (Support is auto-created in service; update it if provided)
@@ -78,7 +95,11 @@ export const ProjectController = () => {
       res.status(201).json({
         status: "success",
         message: "Project created",
-        data: { project, milestones: createdMilestones, attachments: createdAttachments },
+        data: {
+          project: sanitizeProjectForRole(project as any, role),
+          milestones: createdMilestones,
+          attachments: createdAttachments
+        },
       });
     } catch (error) {
       await queryRunner.rollbackTransaction();
@@ -100,9 +121,7 @@ export const ProjectController = () => {
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
       const result = await service.getAllProjectWithDelays(userId, userRole, userData);
-      const projectsWithTemplateId = result.map(project => ({
-        ...project
-      }));
+      const projectsWithTemplateId = sanitizeProjectsArrayForRole(result as any[], userRole);
       res.status(200).json({
         status: "success",
         message: "All Project projects fetched",
@@ -121,12 +140,13 @@ export const ProjectController = () => {
   ) => {
     try {
       const { id } = req.params;
+      const role = res?.locals?.user?.role?.role as string | undefined;
       const result = await service.getProjectById(id);
       res.status(200).json({
         status: "success",
         message: "Project project fetched by id",
         data: {
-          ...result
+          ...(sanitizeProjectForRole(result as any, role))
         },
       });
     } catch (error) {
@@ -145,6 +165,14 @@ export const ProjectController = () => {
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
+      const role = res?.locals?.user?.role?.role as string | undefined;
+      // Non-admins cannot update financial fields
+      if (!role || role.toLowerCase() !== 'admin') {
+        delete (parsedData as any).budget;
+        delete (parsedData as any).cost_of_labour;
+        delete (parsedData as any).overhead_cost;
+        delete (parsedData as any).extra_cost;
+      }
       const { milestones, attachments, description, ...projectData } = parsedData;
       const project = await service.updateProject(id, { ...projectData, description }, queryRunner);
       
@@ -262,7 +290,11 @@ export const ProjectController = () => {
       res.status(200).json({
         status: "success",
         message: "Project updated",
-        data: { project, milestones: updatedMilestones, attachments: updatedAttachments },
+        data: {
+          project: sanitizeProjectForRole(project as any, role),
+          milestones: updatedMilestones,
+          attachments: updatedAttachments
+        },
       });
     } catch (error) {
       await queryRunner.rollbackTransaction();

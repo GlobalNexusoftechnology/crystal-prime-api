@@ -3,10 +3,12 @@ import { LeadService } from "../services/leads.service";
 import { ProjectService } from "../services/projects.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { getEILogChartData } from "../services/eilog.service";
+import { ClientFollowupService } from "../services/clients-followups.service";
 
 const leadService = LeadService();
 const projectService = ProjectService();
 const projectTaskService = ProjectTaskService();
+const clientFollowupService = ClientFollowupService();
 
 
 export const dashboardController = () => {
@@ -208,7 +210,7 @@ export const dashboardController = () => {
       // 2. Today Follow up (from getLeadStats)
       // 3. Project (count of projects where user is assigned to a milestone or task)
       // 4. Performance Ratio (completed tasks / total task assigned)
-      const [leadStats, allProjects, allTasksInSystem] = await Promise.all([
+      const [leadStats, allProjects, allTasksInSystem, todayFollowupsCount] = await Promise.all([
         leadService.getLeadStats(userId, role),
         // Get all projects where user is assigned to a milestone or task
         projectService.getAllProject(userId, role),
@@ -216,7 +218,8 @@ export const dashboardController = () => {
         (async () => {
           const { data } = await projectTaskService.getAllTasks();
           return data;
-        })()
+        })(),
+        clientFollowupService.getTodayFollowupsCount(userId, role),
       ]);
 
       const taskData = await projectTaskService.getUserTaskCounts(userId);
@@ -228,7 +231,7 @@ export const dashboardController = () => {
       // Project: count of projects where user is assigned
       const projectCount = allProjects.length;
       // Today Follow up
-      const todayFollowups = leadStats.todayFollowups || 0;
+      const todayFollowups = todayFollowupsCount || 0;
 
      // Calculate total task counts from all tasks in system
      // Filter out any tasks that might be marked as deleted AND tasks without proper milestone relationships
