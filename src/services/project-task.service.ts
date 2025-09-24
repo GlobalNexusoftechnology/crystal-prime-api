@@ -44,14 +44,14 @@ export const ProjectTaskService = () => {
   const getAllTasks = async () => {
     const data = await taskRepo.find({
       where: { deleted: false },
-      relations: ["milestone"],
+      relations: ["milestone", "milestone.project", "milestone.project.client"],
       order: {created_at: "DESC"}
     });
     return { data, total: data.length };
   };
 
   const getTaskById = async (id: string) => {
-    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project"] });
+    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project", "milestone.project.client"] });
     if (!task) throw new AppError(404, "Task not found");
     return task;
   };
