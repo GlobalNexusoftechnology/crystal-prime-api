@@ -42,8 +42,18 @@ export const clientFollowupController = () => {
     next: NextFunction
   ) => {
     try {
-      const { project_task_id } = req.query;
-      const result = await service.getAllFollowups(project_task_id as string | undefined);
+      const result = await service.getAllFollowups({
+        project_task_id: req.query.project_task_id as string | undefined,
+        client_id: req.query.client_id as string | undefined,
+        user_id: req.query.user_id as string | undefined,
+        status: req.query.status as string | string[] | undefined,
+        from_date: req.query.from_date as string | undefined,
+        to_date: req.query.to_date as string | undefined,
+        due_from: req.query.due_from as string | undefined,
+        due_to: req.query.due_to as string | undefined,
+        due_today: (req.query.due_today as string | undefined) ?? undefined,
+        q: req.query.q as string | undefined,
+      });
       res.status(200).json({
         status: "success",
         message: "All Client Follow-ups fetched",

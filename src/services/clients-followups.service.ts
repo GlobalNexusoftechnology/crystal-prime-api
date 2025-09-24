@@ -43,20 +43,80 @@ export const ClientFollowupService = () => {
       remarks: data.remarks,
     });
 
-    return await followupRepo.save(followup);
+    const saved = await followupRepo.save(followup);
+    // Reload with relations
+    const withRelations = await followupRepo.findOne({
+      where: { id: saved.id },
+      relations: [
+        "user",
+        "client",
+        "project_task",
+        "project_task.milestone",
+        "project_task.milestone.project",
+        "project_task.milestone.project.client",
+      ],
+    });
+    return withRelations as ClientFollowup;
   };
 
-  const getAllFollowups = async (project_task_id?: string) => {
-    let where: any = { deleted: false };
-    if (project_task_id) {
-      where.project_task = { id: project_task_id };
+  const getAllFollowups = async (filters?: {
+    project_task_id?: string;
+    client_id?: string;
+    user_id?: string;
+    status?: string | string[];
+    from_date?: string; // ISO string
+    to_date?: string;   // ISO string
+    due_from?: string;  // ISO string for due_date
+    due_to?: string;    // ISO string for due_date
+    due_today?: string | boolean; // "true" | "false"
+    q?: string; // search in remarks
+  }) => {
+    const qb = followupRepo
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.user', 'u')
+      .leftJoinAndSelect('f.client', 'c')
+      .leftJoinAndSelect('f.project_task', 't')
+      .leftJoinAndSelect('t.milestone', 'm')
+      .leftJoinAndSelect('m.project', 'p')
+      .leftJoinAndSelect('p.client', 'pc')
+      .where('f.deleted = :deleted', { deleted: false });
+
+    if (filters?.project_task_id) {
+      qb.andWhere('t.id = :taskId', { taskId: filters.project_task_id });
     }
-    const followup = await followupRepo.find({
-      where,
-      relations: ["user", "project_task"],
-      order: { created_at: "DESC" },
-    });
-    return followup;
+    if (filters?.client_id) {
+      qb.andWhere('c.id = :clientId', { clientId: filters.client_id });
+    }
+    if (filters?.user_id) {
+      qb.andWhere('u.id = :userId', { userId: filters.user_id });
+    }
+    if (filters?.status) {
+      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
+      qb.andWhere('f.status IN (:...statuses)', { statuses });
+    }
+    if (filters?.from_date && filters?.to_date) {
+      qb.andWhere('f.created_at BETWEEN :from AND :to', { from: filters.from_date, to: filters.to_date });
+    } else if (filters?.from_date) {
+      qb.andWhere('f.created_at >= :from', { from: filters.from_date });
+    } else if (filters?.to_date) {
+      qb.andWhere('f.created_at <= :to', { to: filters.to_date });
+    }
+    if (filters?.due_from && filters?.due_to) {
+      qb.andWhere('f.due_date BETWEEN :dfrom AND :dto', { dfrom: filters.due_from, dto: filters.due_to });
+    } else if (filters?.due_from) {
+      qb.andWhere('f.due_date >= :dfrom', { dfrom: filters.due_from });
+    } else if (filters?.due_to) {
+      qb.andWhere('f.due_date <= :dto', { dto: filters.due_to });
+    }
+    if (filters?.due_today && String(filters.due_today).toLowerCase() === 'true') {
+      qb.andWhere('DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE');
+    }
+    if (filters?.q) {
+      qb.andWhere('LOWER(f.remarks) LIKE :q', { q: `%${filters.q.toLowerCase()}%` });
+    }
+
+    qb.orderBy('f.created_at', 'DESC');
+    return await qb.getMany();
   };
 
   // Count today's followups, filtered by user's tasks for non-admins
@@ -81,7 +141,14 @@ export const ClientFollowupService = () => {
   const getFollowupById = async (id: string) => {
     const followup = await followupRepo.findOne({
       where: { id, deleted: false },
-      relations: ["user", "project_task"],
+      relations: [
+        "user",
+        "client",
+        "project_task",
+        "project_task.milestone",
+        "project_task.milestone.project",
+        "project_task.milestone.project.client",
+      ],
     });
     if (!followup) throw new AppError(404, "Followup not found");
     return followup;
@@ -110,7 +177,20 @@ export const ClientFollowupService = () => {
     }
     if (data.remarks !== undefined) followup.remarks = data.remarks;
 
-    return await followupRepo.save(followup);
+    const saved = await followupRepo.save(followup);
+    // Reload with relations
+    const withRelations = await followupRepo.findOne({
+      where: { id: saved.id },
+      relations: [
+        "user",
+        "client",
+        "project_task",
+        "project_task.milestone",
+        "project_task.milestone.project",
+        "project_task.milestone.project.client",
+      ],
+    });
+    return withRelations as ClientFollowup;
   };
 
   const softDeleteFollowup = async (id: string) => {
