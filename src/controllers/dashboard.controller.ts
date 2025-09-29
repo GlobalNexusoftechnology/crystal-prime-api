@@ -60,7 +60,7 @@ export const dashboardController = () => {
           },
           {
             count: String(todayClientFollowupsCount || 0),
-            title: "Follow-Ups Due Today",
+            title: "Follow-Ups Today",
             subtitle: "Today's pending work"
           },
           {
