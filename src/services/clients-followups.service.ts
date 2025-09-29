@@ -121,19 +121,19 @@ export const ClientFollowupService = () => {
 
   // Count today's followups, filtered by user's tasks for non-admins
   const getTodayFollowupsCount = async (userId?: string, role?: string) => {
-    // Get today's date in the format YYYY-MM-DD to ensure consistent comparison
-    const today = new Date().toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+    // Get start and end of today to handle timezone issues properly
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     
     const qb = followupRepo
       .createQueryBuilder('f')
       .leftJoin('f.user', 'u')
       .leftJoin('f.project_task', 't')
       .where('f.deleted = :deleted', { deleted: false })
-      // Check if due_date is today, or if no due_date, check if created_at is today
-      .andWhere(
-        "(DATE(f.due_date) = :today AND f.due_date IS NOT NULL) OR (f.due_date IS NULL AND DATE(f.created_at) = :today)",
-        { today }
-      )
+      // Check if followup was created today using date range
+      .andWhere('f.created_at >= :startOfToday', { startOfToday })
+      .andWhere('f.created_at < :endOfToday', { endOfToday })
       // Exclude completed followups
       .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
 
@@ -142,6 +142,48 @@ export const ClientFollowupService = () => {
     }
 
     return await qb.getCount();
+  };
+
+  // Debug method to get today's followups with details
+  const getTodayFollowupsDetails = async (userId?: string, role?: string) => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    
+    const qb = followupRepo
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.user', 'u')
+      .leftJoinAndSelect('f.client', 'c')
+      .leftJoinAndSelect('f.project_task', 't')
+      .where('f.deleted = :deleted', { deleted: false })
+      .andWhere('f.created_at >= :startOfToday', { startOfToday })
+      .andWhere('f.created_at < :endOfToday', { endOfToday })
+      .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
+
+    if (role?.toLowerCase() !== 'admin' && userId) {
+      qb.andWhere('(u.id = :userId OR t.assigned_to = :userId)', { userId });
+    }
+
+    return await qb.getMany();
+  };
+
+  // Simple method to get all followups created today (no filters)
+  const getAllTodayFollowups = async () => {
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    
+    const followups = await followupRepo
+      .createQueryBuilder('f')
+      .leftJoinAndSelect('f.user', 'u')
+      .leftJoinAndSelect('f.client', 'c')
+      .leftJoinAndSelect('f.project_task', 't')
+      .where('f.deleted = :deleted', { deleted: false })
+      .andWhere('f.created_at >= :startOfToday', { startOfToday })
+      .andWhere('f.created_at < :endOfToday', { endOfToday })
+      .getMany();
+    
+    return followups;
   };
 
   const getFollowupById = async (id: string) => {
@@ -214,5 +256,7 @@ export const ClientFollowupService = () => {
     updateFollowup,
     softDeleteFollowup,
     getTodayFollowupsCount,
+    getTodayFollowupsDetails,
+    getAllTodayFollowups,
   };
 };
