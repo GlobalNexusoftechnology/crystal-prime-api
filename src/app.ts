@@ -72,7 +72,9 @@ AppDataSource.initialize()
     // MIDDLEWARE
 
     // 1. Body parser
-    app.use(express.json({ limit: '10kb' }));
+    app.use(express.json({ limit: '25mb' }));
+    // 2. URL encoded parser
+    app.use(express.urlencoded({ extended: true, limit: '25mb' }));
 
     // 2. Logger
     if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
