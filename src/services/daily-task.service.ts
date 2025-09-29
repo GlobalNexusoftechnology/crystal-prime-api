@@ -2,7 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { DailyTaskEntries } from "../entities/daily-task.entity";
 import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
-import { Between, MoreThanOrEqual, LessThanOrEqual, In, Brackets } from "typeorm";
+import { In, Brackets } from "typeorm";
 import { ProjectTasks } from "../entities/project-task.entity";
 
 // interfaces/dailyTaskEntry.interface.ts
