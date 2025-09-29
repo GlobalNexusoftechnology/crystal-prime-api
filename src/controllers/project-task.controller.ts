@@ -17,7 +17,9 @@ export const projectTaskController = () => {
 
   const getAllTasks = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await service.getAllTasks();
+      const userId = res?.locals?.user?.id;
+      const role = res?.locals?.user?.role?.role;
+      const result = await service.getAllTasks(userId, role);
       res.status(200).json({ status: "success", ...result });
     } catch (err) {
       next(err);

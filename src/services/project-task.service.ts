@@ -41,11 +41,17 @@ export const ProjectTaskService = () => {
     return await repo.save(task);
   };
 
-  const getAllTasks = async () => {
+  const getAllTasks = async (userId?: string, role?: string) => {
+    const isAdmin = (role || "").toLowerCase() === "admin";
+    const where: any = { deleted: false };
+    if (!isAdmin && userId) {
+      // Restrict to only tasks assigned to the logged-in staff
+      where.assigned_to = userId;
+    }
     const data = await taskRepo.find({
-      where: { deleted: false },
+      where,
       relations: ["milestone", "milestone.project", "milestone.project.client"],
-      order: {created_at: "DESC"}
+      order: { created_at: "DESC" }
     });
     return { data, total: data.length };
   };

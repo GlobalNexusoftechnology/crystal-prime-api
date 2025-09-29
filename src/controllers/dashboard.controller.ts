@@ -219,7 +219,7 @@ export const dashboardController = () => {
         projectService.getAllProject(userId, role),
         // Get all tasks in the system for total count
         (async () => {
-          const { data } = await projectTaskService.getAllTasks();
+          const { data } = await projectTaskService.getAllTasks(userId, role);
           return data;
         })(),
         clientFollowupService.getTodayFollowupsCount(userId, role),
@@ -261,15 +261,20 @@ export const dashboardController = () => {
        t.status && (t.status.toLowerCase().includes('open') || t.status.toLowerCase().includes('pending'))
      ).length;
      
-     const inProgressTasksInSystem = activeTasksInSystem.filter((t: any) => 
-       t.status && t.status.toLowerCase().includes('progress')
-     ).length;
+    const inProgressTasksInSystem = activeTasksInSystem.filter((t: any) => 
+      t.status && t.status.toLowerCase().includes('progress')
+    ).length;
+    
+    const approvalTasksInSystem = activeTasksInSystem.filter((t: any) =>
+      t.status && t.status.toLowerCase().includes('approval')
+    ).length;
 
      const taskStat = {
         totalTasks: totalTasksInSystem,
         completedTasks: completedTasksInSystem,
         openTasks: openTasksInSystem,
-        inprogressTasks: inProgressTasksInSystem
+        inprogressTasks: inProgressTasksInSystem,
+        approvalTasks: approvalTasksInSystem
       }
 
       // Only return the counts for the four stats
