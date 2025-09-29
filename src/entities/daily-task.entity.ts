@@ -2,6 +2,7 @@ import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
 import { Project } from "./projects.entity";
 import { User } from "./user.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 @Entity('daily_task_entries')
 export class DailyTaskEntries extends Model {
@@ -33,4 +34,13 @@ export class DailyTaskEntries extends Model {
 
     @Column({ type: 'text', nullable: true })
     remarks?: string;
+
+    // Optional linkage to a master project task for precise filtering
+    @ManyToOne(() => ProjectTasks, (task) => task.id, {
+        nullable: true,
+        eager: false,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'task_id' })
+    task?: ProjectTasks | null;
 }

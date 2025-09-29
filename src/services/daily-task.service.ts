@@ -29,7 +29,7 @@ export const DailyTaskEntryService = () => {
         const project = await projectRepo.findOne({ where: { id: data.project_id } });
         if (!project) throw new AppError(404, "Project not found");
 
-        // If task_id provided, normalize title/assignee from that task (when project matches)
+        // If task_id provided, normalize title/assignee from that task (when project matches) and set relation
         if (data.task_id) {
           const linkedTask = await taskRepo.findOne({
             where: { id: data.task_id, deleted: false },
@@ -51,6 +51,14 @@ export const DailyTaskEntryService = () => {
             project,
             priority: data.priority || 'Medium',
         });
+
+        // Attach task relation if provided and valid
+        if (data.task_id) {
+          const task = await taskRepo.findOne({ where: { id: data.task_id, deleted: false } });
+          if (task) {
+            (entry as any).task = task;
+          }
+        }
 
         return await entryRepo.save(entry);
     };
@@ -89,24 +97,7 @@ export const DailyTaskEntryService = () => {
 
       // If a specific taskId is provided, constrain entries to that task's attributes
       if (filters?.taskId) {
-        const targetTask = await taskRepo.findOne({
-          where: { id: filters.taskId, deleted: false },
-          relations: ["milestone", "milestone.project"],
-        });
-        if (!targetTask) {
-          return [];
-        }
-        const targetProjectId = targetTask.milestone?.project?.id;
-        if (targetProjectId) {
-          query = query.andWhere("project.id = :tProjectId", { tProjectId: targetProjectId });
-        }
-        if (targetTask.assigned_to) {
-          query = query.andWhere("entry.assigned_to = :tAssignedTo", { tAssignedTo: targetTask.assigned_to });
-        }
-        if ((targetTask as any).title) {
-          const tTitle = ((targetTask as any).title as string).toLowerCase();
-          query = query.andWhere("LOWER(entry.task_title) = :tTitle", { tTitle });
-        }
+        query = query.andWhere("entry.task_id = :taskId", { taskId: filters.taskId });
       }
 
       // Add search filter if present
@@ -148,32 +139,33 @@ export const DailyTaskEntryService = () => {
 
     // Helper to add projectId, milestoneId, and taskId to each entry
     const addTaskAndMilestoneIds = async (entries: any[], targetTaskId?: string) => {
-      // If a target task is specified, only tag entries that actually match it
+      // If a specific taskId was requested, enrich using that task alone.
       if (targetTaskId) {
         const targetTask = await taskRepo.findOne({
           where: { id: targetTaskId, deleted: false },
           relations: ["milestone", "milestone.project"],
         });
+        if (!targetTask) return entries.map(entry => ({
+          ...entry,
+          projectId: entry.project?.id,
+          milestoneId: null,
+          taskId: null,
+        }));
 
-        if (targetTask) {
-          const tProjectId = targetTask.milestone?.project?.id;
-          const tAssignedTo = targetTask.assigned_to;
-          const tTitle = ((targetTask as any).title as string | undefined)?.toLowerCase?.();
+        const tProjectId = targetTask.milestone?.project?.id;
+        const tAssignedTo = targetTask.assigned_to;
 
-          return entries.map(entry => {
-            const sameProject = entry.project?.id === tProjectId;
-            const sameAssignee = tAssignedTo ? entry.assigned_to === tAssignedTo : true;
-            const sameTitle = tTitle ? (entry.task_title || "").toLowerCase() === tTitle : true;
-            const match = sameProject && sameAssignee && sameTitle;
-            return {
-              ...entry,
-              projectId: entry.project?.id,
-              milestoneId: match ? (targetTask.milestone?.id || null) : null,
-              taskId: match ? targetTask.id : null,
-            };
-          });
-        }
-        // target task not found: fall through to generic enrichment
+        return entries.map(entry => {
+          const sameProject = entry.project?.id === tProjectId;
+          const sameAssignee = tAssignedTo ? entry.assigned_to === tAssignedTo : true;
+          const match = sameProject && sameAssignee;
+          return {
+            ...entry,
+            projectId: entry.project?.id,
+            milestoneId: match ? (targetTask.milestone?.id || null) : null,
+            taskId: match ? targetTask.id : null,
+          };
+        });
       }
 
       // Batch fetch all tasks for the relevant projects and assigned_to
@@ -191,6 +183,16 @@ export const DailyTaskEntryService = () => {
       });
 
       return entries.map(entry => {
+        // Prefer the direct relation if present
+        const relatedTask: any = (entry as any).task;
+        if (relatedTask?.id) {
+          return {
+            ...entry,
+            projectId: entry.project?.id,
+            milestoneId: relatedTask.milestone?.id || null,
+            taskId: relatedTask.id,
+          };
+        }
         // Find a matching task
         let matchingTask = allTasks.find(task =>
           task.assigned_to === entry.assigned_to &&
