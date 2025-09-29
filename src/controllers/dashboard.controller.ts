@@ -165,6 +165,7 @@ export const dashboardController = () => {
 
           categoryGroup.projects.push({
             name: project.name,
+            company_name: project.client?.company_name || project.client?.name || null,
             date: dateObj.toLocaleDateString("en-GB", {
               day: "2-digit",
               month: "long",
