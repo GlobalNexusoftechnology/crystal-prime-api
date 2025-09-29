@@ -121,14 +121,20 @@ export const ClientFollowupService = () => {
 
   // Count today's followups, filtered by user's tasks for non-admins
   const getTodayFollowupsCount = async (userId?: string, role?: string) => {
+    // Get today's date in the format YYYY-MM-DD to ensure consistent comparison
+    const today = new Date().toISOString().split('T')[0]; // Gets YYYY-MM-DD format
+    
     const qb = followupRepo
       .createQueryBuilder('f')
       .leftJoin('f.user', 'u')
       .leftJoin('f.project_task', 't')
       .where('f.deleted = :deleted', { deleted: false })
-      // Treat due today based on DB current date to avoid timezone issues
-      .andWhere("DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE")
-      // Exclude completed
+      // Check if due_date is today, or if no due_date, check if created_at is today
+      .andWhere(
+        "(DATE(f.due_date) = :today AND f.due_date IS NOT NULL) OR (f.due_date IS NULL AND DATE(f.created_at) = :today)",
+        { today }
+      )
+      // Exclude completed followups
       .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
 
     if (role?.toLowerCase() !== 'admin' && userId) {
