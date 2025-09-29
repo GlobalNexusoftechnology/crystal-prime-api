@@ -51,7 +51,14 @@ export const ProjectTaskService = () => {
       priority: data.priority,
     });
 
-    return await repo.save(task);
+    const savedTask = await repo.save(task);
+
+    // Update milestone status after task creation
+    const { TaskStatusService } = await import("./task-status.service");
+    const taskStatusService = TaskStatusService();
+    await taskStatusService.updateMilestoneStatus(milestone.id, queryRunner);
+
+    return savedTask;
   };
 
   const getAllTasks = async (userId?: string, role?: string) => {
@@ -82,6 +89,9 @@ export const ProjectTaskService = () => {
     const task = await repo.findOne({ where: { id, deleted: false }, relations: ["milestone"] });
     if (!task) throw new AppError(404, "Task not found");
 
+    const oldMilestoneId = task.milestone?.id;
+    const oldStatus = task.status;
+
     if (data.milestone_id) {
       const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
       if (!milestone) throw new AppError(404, "Milestone not found");
@@ -95,7 +105,25 @@ export const ProjectTaskService = () => {
     if (data.assigned_to !== undefined) task.assigned_to = data.assigned_to;
     if (data.priority !== undefined) task.priority = data.priority;
 
-    return await repo.save(task);
+    const savedTask = await repo.save(task);
+
+    // Update milestone status if task status changed or milestone changed
+    const { TaskStatusService } = await import("./task-status.service");
+    const taskStatusService = TaskStatusService();
+    
+    if (oldStatus !== task.status && task.milestone) {
+      await taskStatusService.updateMilestoneStatus(task.milestone.id, queryRunner);
+    }
+    
+    // If milestone changed, update both old and new milestone statuses
+    if (oldMilestoneId && oldMilestoneId !== task.milestone?.id) {
+      await taskStatusService.updateMilestoneStatus(oldMilestoneId, queryRunner);
+      if (task.milestone) {
+        await taskStatusService.updateMilestoneStatus(task.milestone.id, queryRunner);
+      }
+    }
+
+    return savedTask;
   };
 
   const deleteTask = async (id: string, queryRunner?: any) => {
@@ -127,13 +155,23 @@ export const ProjectTaskService = () => {
       throw new AppError(400, "This task is in use by client followups cannot delete.");
     }
 
-    const task = await repo.findOne({ where: { id, deleted: false } });
+    const task = await repo.findOne({ where: { id, deleted: false }, relations: ["milestone"] });
     if (!task) throw new AppError(404, "Task not found");
 
+    const milestoneId = task.milestone?.id;
     task.deleted = true;
     task.deleted_at = new Date();
 
-    return await repo.save(task);
+    const savedTask = await repo.save(task);
+
+    // Update milestone status after task deletion
+    if (milestoneId) {
+      const { TaskStatusService } = await import("./task-status.service");
+      const taskStatusService = TaskStatusService();
+      await taskStatusService.updateMilestoneStatus(milestoneId, queryRunner);
+    }
+
+    return savedTask;
   };
 
   const deleteTaskWithCascade = async (id: string, queryRunner?: any) => {

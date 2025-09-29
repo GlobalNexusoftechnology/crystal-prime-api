@@ -3,6 +3,7 @@ import { Project, ProjectStatus } from "../entities/projects.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
 import { ProjectTasks } from "../entities/project-task.entity";
 import { ProjectMilestoneMaster } from "../entities/milestone-master.entity";
+import { Ticket } from "../entities/ticket.entity";
 import AppError from "../utils/appError";
 
 const projectRepo = AppDataSource.getRepository(Project);
@@ -71,52 +72,77 @@ export const TaskStatusService = () => {
   };
 
   /**
-   * Update milestone status based on task completion
+   * Update milestone status
+   * - Normal milestones: compute from tasks
+   * - Support milestone (name === "Support"): compute from tickets; empty => Open
    */
   const updateMilestoneStatus = async (milestoneId: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
 
     const milestone = await repo.findOne({
       where: { id: milestoneId, deleted: false },
-      relations: ["tasks", "project"]
+      relations: ["tasks", "project", "tickets"]
     });
 
     if (!milestone) throw new AppError(404, "Milestone not found");
 
-    const tasks = await taskRepo.find({
-      where: { milestone: { id: milestoneId }, deleted: false }
-    });
-
-    if (tasks.length === 0) {
-      // No tasks -> milestone should be Open by default
-      if (milestone.status !== "Open") {
-        milestone.status = "Open";
-        await repo.save(milestone);
-        // Update project status after milestone status change
-        if (milestone.project) {
-          await updateProjectStatus(milestone.project.id, queryRunner);
-        }
-      }
-      return milestone;
-    }
-
-    const allTasksCompleted = tasks.every((task: ProjectTasks) => task.status === "Completed");
-    const anyInProgress = tasks.some((task: ProjectTasks) => task.status === "In Progress" || task.status === "Approval");
-    const allOpen = tasks.every((task: ProjectTasks) => task.status === "Open");
-    const anyOpen = tasks.some((task: ProjectTasks) => task.status === "Open");
-    const anyCompleted = tasks.some((task: ProjectTasks) => task.status === "Completed");
+    const isSupport = (milestone.name || "").toLowerCase() === "support";
 
     let newStatus = milestone.status;
 
-    if (anyInProgress) {
-      newStatus = "In Progress";
-    } else if (allTasksCompleted) {
-      newStatus = "Completed";
-    } else if (allOpen) {
-      newStatus = "Open";
-    } else if (anyOpen && anyCompleted) {
-      // Mixed Open + Completed with no In Progress => In Progress
-      newStatus = "In Progress";
+    if (isSupport) {
+      const tickets = (milestone.tickets || []).filter((t: Ticket) => !t.deleted);
+      if (tickets.length === 0) {
+        // Empty support milestone => treat as Open
+        newStatus = "Open";
+      } else {
+        // Treat "Closed" tickets as "Completed" for Support milestone status calculation
+        const allCompleted = tickets.every((t: Ticket) => {
+          const status = (t.status || "").toLowerCase();
+          return status === "completed" || status === "closed";
+        });
+        const allOpen = tickets.every((t: Ticket) => (t.status || "").toLowerCase() === "open");
+        const anyInProgress = tickets.some((t: Ticket) => (t.status || "").toLowerCase() === "in progress" || (t.status || "").toLowerCase() === "in-progress");
+        const anyOpen = tickets.some((t: Ticket) => (t.status || "").toLowerCase() === "open");
+        const anyCompleted = tickets.some((t: Ticket) => {
+          const status = (t.status || "").toLowerCase();
+          return status === "completed" || status === "closed";
+        });
+
+        if (anyInProgress) {
+          newStatus = "In Progress";
+        } else if (allCompleted) {
+          newStatus = "Completed";
+        } else if (allOpen) {
+          newStatus = "Open";
+        } else if (anyOpen && anyCompleted) {
+          newStatus = "In Progress";
+        }
+      }
+    } else {
+      const tasks = (milestone.tasks || []).filter((t: ProjectTasks) => !t.deleted);
+
+      if (tasks.length === 0) {
+        // No tasks -> milestone should be Open by default
+        newStatus = "Open";
+      } else {
+        const allTasksCompleted = tasks.every((task: ProjectTasks) => task.status === "Completed");
+        const anyInProgress = tasks.some((task: ProjectTasks) => task.status === "In Progress" || task.status === "Approval");
+        const allOpen = tasks.every((task: ProjectTasks) => task.status === "Open");
+        const anyOpen = tasks.some((task: ProjectTasks) => task.status === "Open");
+        const anyCompleted = tasks.some((task: ProjectTasks) => task.status === "Completed");
+
+        if (anyInProgress) {
+          newStatus = "In Progress";
+        } else if (allTasksCompleted) {
+          newStatus = "Completed";
+        } else if (allOpen) {
+          newStatus = "Open";
+        } else if (anyOpen && anyCompleted) {
+          // Mixed Open + Completed with no In Progress => In Progress
+          newStatus = "In Progress";
+        }
+      }
     }
 
     // Only update if status has changed
@@ -170,7 +196,7 @@ export const TaskStatusService = () => {
   };
 
   /**
-   * Update project status based on milestone statuses
+   * Update project status based on NORMAL milestone statuses only (exclude Support)
    */
   const updateProjectStatus = async (projectId: string, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
@@ -192,52 +218,29 @@ export const TaskStatusService = () => {
       return project;
     }
 
-    // Separate support milestones from other milestones
-    const supportMilestones = milestones.filter(m => (m.name || "").toLowerCase() === "support");
-    const nonSupportMilestones = milestones.filter(m => (m.name || "").toLowerCase() !== "support");
+    // Consider ONLY non-support milestones for project status
+    const normalMilestones = milestones.filter(m => (m.name || "").toLowerCase() !== "support");
 
     let newStatus = ProjectStatus.OPEN;
 
-    // Build effective milestones list: ignore Support milestones that have zero tickets
-    const supportTickets = supportMilestones.flatMap(m => m.tickets || []);
-    const effectiveMilestones = milestones.filter(m => {
-      const isSupport = (m.name || "").toLowerCase() === "support";
-      if (!isSupport) return true;
-      const ticketsCount = (m.tickets || []).length;
-      return ticketsCount > 0; // count Support only when it actually has tickets
-    });
-
-    const anyInProgress = effectiveMilestones.some(m => m.status === "In Progress" || m.status === "in_progress" || m.status === "Approval");
-    const allOpen = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Open");
-    const allCompleted = effectiveMilestones.length > 0 && effectiveMilestones.every(m => m.status === "Completed");
-    const hasOpen = effectiveMilestones.some(m => m.status === "Open");
-
-    if (anyInProgress) {
-      newStatus = ProjectStatus.IN_PROGRESS;
-    } else if (allOpen) {
+    if (normalMilestones.length === 0) {
+      // No normal milestones -> keep Open by default
       newStatus = ProjectStatus.OPEN;
-    } else if (allCompleted || effectiveMilestones.length === 0) {
-      // All effective milestones completed or none remain -> use Support tickets rule if Support exists
-      if (supportMilestones.length > 0) {
-        if (supportTickets.length === 0) {
-          newStatus = ProjectStatus.COMPLETED;
-        } else {
-          const allSupportTicketsCompleted = supportTickets.every(t => (t.status || "").toLowerCase() === "completed");
-          const anySupportOpenOrInProgress = supportTickets.some(t => {
-            const s = (t.status || "").toLowerCase();
-            return s === "open" || s === "in progress" || s === "in-progress";
-          });
-          newStatus = allSupportTicketsCompleted ? ProjectStatus.COMPLETED : (anySupportOpenOrInProgress ? ProjectStatus.IN_PROGRESS : ProjectStatus.OPEN);
-        }
-      } else {
-        newStatus = ProjectStatus.COMPLETED;
-      }
-    } else if (!allCompleted && !allOpen) {
-      // Mixed (some Completed, some Open) without any In Progress => In Progress
-      newStatus = ProjectStatus.IN_PROGRESS;
     } else {
-      // Fallback
-      newStatus = ProjectStatus.OPEN;
+      const anyInProgress = normalMilestones.some(m => m.status === "In Progress" || m.status === "in_progress" || m.status === "Approval");
+      const allOpen = normalMilestones.every(m => m.status === "Open");
+      const allCompleted = normalMilestones.every(m => m.status === "Completed");
+
+      if (anyInProgress) {
+        newStatus = ProjectStatus.IN_PROGRESS;
+      } else if (allOpen) {
+        newStatus = ProjectStatus.OPEN;
+      } else if (allCompleted) {
+        newStatus = ProjectStatus.COMPLETED;
+      } else {
+        // Mixed states (some Completed, some Open) and none In Progress
+        newStatus = ProjectStatus.IN_PROGRESS;
+      }
     }
 
     // Only update if status has changed
@@ -268,6 +271,75 @@ export const TaskStatusService = () => {
     }
 
     return project;
+  };
+
+  /**
+   * Recompute all milestone statuses for a project and update project status
+   */
+  const recomputeProjectStatuses = async (projectId: string, queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
+
+    const project = await repo.findOne({
+      where: { id: projectId, deleted: false },
+      relations: ["milestones"]
+    });
+
+    if (!project) throw new AppError(404, "Project not found");
+
+    // Recompute each milestone first
+    for (const m of project.milestones) {
+      await updateMilestoneStatus(m.id, queryRunner);
+    }
+
+    // Then update project status based on NORMAL milestones only
+    await updateProjectStatus(projectId, queryRunner);
+
+    return await getProjectStatusDetails(projectId);
+  };
+
+  /**
+   * Recompute all projects' milestone and project statuses
+   * Useful for fixing existing projects after logic updates
+   */
+  const recomputeAllProjectStatuses = async (queryRunner?: any) => {
+    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
+
+    const projects = await repo.find({
+      where: { deleted: false },
+      relations: ["milestones"]
+    });
+
+    const results = [];
+    
+    for (const project of projects) {
+      try {
+        // Recompute each milestone first
+        for (const milestone of project.milestones) {
+          await updateMilestoneStatus(milestone.id, queryRunner);
+        }
+        
+        // Then update project status
+        await updateProjectStatus(project.id, queryRunner);
+        
+        results.push({
+          projectId: project.id,
+          projectName: project.name,
+          status: 'success'
+        });
+      } catch (error) {
+        results.push({
+          projectId: project.id,
+          projectName: project.name,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+    }
+
+    return {
+      message: `Recomputed statuses for ${projects.length} projects`,
+      results
+    };
   };
 
   /**
@@ -311,6 +383,8 @@ export const TaskStatusService = () => {
     updateTaskStatus,
     updateMilestoneStatus,
     updateProjectStatus,
-    getProjectStatusDetails
+    getProjectStatusDetails,
+    recomputeProjectStatuses,
+    recomputeAllProjectStatuses
   };
 }; 

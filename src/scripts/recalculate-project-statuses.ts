@@ -6,6 +6,12 @@ import { ProjectTasks } from "../entities/project-task.entity";
 import { Ticket } from "../entities/ticket.entity";
 import { TaskStatusService } from "../services/task-status.service";
 
+function getArg(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  const arg = process.argv.find(a => a.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : undefined;
+}
+
 async function recalcAllProjectStatuses() {
   try {
     console.log("Connecting to database (AppDataSource)...");
@@ -17,80 +23,22 @@ async function recalcAllProjectStatuses() {
     const projectRepo = AppDataSource.getRepository(Project);
     const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
     const taskRepo = AppDataSource.getRepository(ProjectTasks);
-    const { updateProjectStatus } = TaskStatusService();
+    const { updateProjectStatus, recomputeProjectStatuses } = TaskStatusService();
 
-    const projects = await projectRepo.find({ where: { deleted: false } });
+    const projectIdArg = getArg("projectId");
+
+    // If projectId provided, only process that project; else process all
+    const projects = projectIdArg
+      ? await projectRepo.find({ where: { id: projectIdArg, deleted: false } })
+      : await projectRepo.find({ where: { deleted: false } });
 
     let success = 0;
     let failed = 0;
 
     for (const project of projects) {
       try {
-        // Recalculate all milestone statuses based on tasks and tickets
-        const milestones = await milestoneRepo.find({
-          where: { project: { id: project.id }, deleted: false },
-          relations: ["tickets"],
-        });
-
-        for (const ms of milestones) {
-          const isSupport = (ms.name || "").toLowerCase() === "support";
-          let newStatus = ms.status;
-
-          if (isSupport) {
-            // Support milestone: use ticket-based logic
-            const tickets = (ms.tickets || []) as Ticket[];
-            const statuses = tickets.map((t: any) => (t.status || "").toLowerCase());
-
-            if (tickets.length === 0) {
-              // No tickets under Support -> milestone should be Open
-              newStatus = "Open";
-            } else {
-              const anyInProgress = statuses.some((s: string) => s === "in progress" || s === "in-progress");
-              const allOpen = statuses.length > 0 && statuses.every((s: string) => s === "open");
-              const allCompleted = statuses.length > 0 && statuses.every((s: string) => s === "completed");
-
-              if (anyInProgress) newStatus = "In Progress";
-              else if (allOpen) newStatus = "Open";
-              else if (allCompleted) newStatus = "Completed";
-              else newStatus = "In Progress"; // mixed open/completed
-            }
-          } else {
-            // Non-Support milestone: use task-based logic
-            const tasks = await taskRepo.find({
-              where: { milestone: { id: ms.id }, deleted: false }
-            });
-
-            if (tasks.length === 0) {
-              // No tasks -> milestone should be Open by default
-              newStatus = "Open";
-            } else {
-              const allTasksCompleted = tasks.every((task: any) => task.status === "Completed");
-              const anyInProgress = tasks.some((task: any) => task.status === "In Progress");
-              const allOpen = tasks.every((task: any) => task.status === "Open");
-              const anyOpen = tasks.some((task: any) => task.status === "Open");
-              const anyCompleted = tasks.some((task: any) => task.status === "Completed");
-
-              if (anyInProgress) {
-                newStatus = "In Progress";
-              } else if (allTasksCompleted) {
-                newStatus = "Completed";
-              } else if (allOpen) {
-                newStatus = "Open";
-              } else if (anyOpen && anyCompleted) {
-                // Mixed Open + Completed with no In Progress => In Progress
-                newStatus = "In Progress";
-              }
-            }
-          }
-
-          if (newStatus !== ms.status) {
-            ms.status = newStatus as any;
-            await milestoneRepo.save(ms);
-          }
-        }
-
-        // Now recalc project status using service rules
-        await updateProjectStatus(project.id);
+        // Delegate recomputation to service (handles support milestones, tasks, tickets, and project status)
+        await recomputeProjectStatuses(project.id);
         success++;
         console.log(`✅ Updated project ${project.name} (${project.id})`);
       } catch (err: any) {
