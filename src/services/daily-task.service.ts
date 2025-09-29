@@ -2,7 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { DailyTaskEntries } from "../entities/daily-task.entity";
 import { Project } from "../entities/projects.entity";
 import AppError from "../utils/appError";
-import { Between, MoreThanOrEqual, LessThanOrEqual, In } from "typeorm";
+import { Between, MoreThanOrEqual, LessThanOrEqual, In, Brackets } from "typeorm";
 import { ProjectTasks } from "../entities/project-task.entity";
 
 // interfaces/dailyTaskEntry.interface.ts
@@ -97,7 +97,28 @@ export const DailyTaskEntryService = () => {
 
       // If a specific taskId is provided, constrain entries to that task's attributes
       if (filters?.taskId) {
-        query = query.andWhere("entry.task_id = :taskId", { taskId: filters.taskId });
+        const targetTask = await taskRepo.findOne({
+          where: { id: filters.taskId, deleted: false },
+          relations: ["milestone", "milestone.project"],
+        });
+        if (!targetTask) {
+          // If task not found, no results expected
+          return [];
+        }
+        const tProjectId = targetTask.milestone?.project?.id;
+        const tAssignedTo = targetTask.assigned_to;
+        // Backward compatible: include entries with direct relation OR historical entries by project+assignee
+        query = query.andWhere(new Brackets((qb) => {
+          qb.where("entry.task_id = :taskId", { taskId: filters.taskId });
+          if (tProjectId && tAssignedTo) {
+            qb.orWhere("(project.id = :tProjectId AND entry.assigned_to = :tAssignedTo)", {
+              tProjectId,
+              tAssignedTo,
+            });
+          } else if (tProjectId) {
+            qb.orWhere("project.id = :tProjectId", { tProjectId });
+          }
+        }));
       }
 
       // Add search filter if present
