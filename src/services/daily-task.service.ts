@@ -87,6 +87,28 @@ export const DailyTaskEntryService = () => {
         query = query.andWhere("entry.entry_date <= :to", { to: new Date(filters.to) });
       }
 
+      // If a specific taskId is provided, constrain entries to that task's attributes
+      if (filters?.taskId) {
+        const targetTask = await taskRepo.findOne({
+          where: { id: filters.taskId, deleted: false },
+          relations: ["milestone", "milestone.project"],
+        });
+        if (!targetTask) {
+          return [];
+        }
+        const targetProjectId = targetTask.milestone?.project?.id;
+        if (targetProjectId) {
+          query = query.andWhere("project.id = :tProjectId", { tProjectId: targetProjectId });
+        }
+        if (targetTask.assigned_to) {
+          query = query.andWhere("entry.assigned_to = :tAssignedTo", { tAssignedTo: targetTask.assigned_to });
+        }
+        if ((targetTask as any).title) {
+          const tTitle = ((targetTask as any).title as string).toLowerCase();
+          query = query.andWhere("LOWER(entry.task_title) = :tTitle", { tTitle });
+        }
+      }
+
       // Add search filter if present
       if (filters?.search) {
         const search = `%${filters.search.toLowerCase()}%`;
@@ -120,18 +142,13 @@ export const DailyTaskEntryService = () => {
       
       // Add task and milestone IDs
       let enriched = await addTaskAndMilestoneIds(entries, filters?.taskId);
-      
-      // Apply taskId filter after enrichment
-      if (filters?.taskId) {
-        enriched = enriched.filter(e => e.taskId === filters.taskId);
-      }
-      
+
       return enriched;
     };
 
     // Helper to add projectId, milestoneId, and taskId to each entry
     const addTaskAndMilestoneIds = async (entries: any[], targetTaskId?: string) => {
-      // If we're filtering by a specific taskId, fetch only that task for efficiency
+      // If a target task is specified, only tag entries that actually match it
       if (targetTaskId) {
         const targetTask = await taskRepo.findOne({
           where: { id: targetTaskId, deleted: false },
@@ -139,21 +156,24 @@ export const DailyTaskEntryService = () => {
         });
 
         if (targetTask) {
-          return entries.map(entry => ({
-            ...entry,
-            projectId: entry.project?.id,
-            milestoneId: targetTask.milestone?.id || null,
-            taskId: targetTask.id,
-          }));
-        } else {
-          // If target task not found, return entries without task matching
-          return entries.map(entry => ({
-            ...entry,
-            projectId: entry.project?.id,
-            milestoneId: null,
-            taskId: null,
-          }));
+          const tProjectId = targetTask.milestone?.project?.id;
+          const tAssignedTo = targetTask.assigned_to;
+          const tTitle = ((targetTask as any).title as string | undefined)?.toLowerCase?.();
+
+          return entries.map(entry => {
+            const sameProject = entry.project?.id === tProjectId;
+            const sameAssignee = tAssignedTo ? entry.assigned_to === tAssignedTo : true;
+            const sameTitle = tTitle ? (entry.task_title || "").toLowerCase() === tTitle : true;
+            const match = sameProject && sameAssignee && sameTitle;
+            return {
+              ...entry,
+              projectId: entry.project?.id,
+              milestoneId: match ? (targetTask.milestone?.id || null) : null,
+              taskId: match ? targetTask.id : null,
+            };
+          });
         }
+        // target task not found: fall through to generic enrichment
       }
 
       // Batch fetch all tasks for the relevant projects and assigned_to
