@@ -120,7 +120,7 @@ export const ProjectController = () => {
       const userId = res.locals.user.id;
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
-      const result = await service.getAllProjectWithDelays(userId, userRole, userData);
+      const result = await service.getAllProject(userId, userRole, userData);
       const projectsWithTemplateId = sanitizeProjectsArrayForRole(result as any[], userRole);
       res.status(200).json({
         status: "success",

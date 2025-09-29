@@ -22,6 +22,19 @@ interface TaskInput {
 }
 
 export const ProjectTaskService = () => {
+  const calculateTaskDelayDays = (task: { due_date?: Date | string | null; status?: string | null; }) => {
+    if (!task?.due_date) return null;
+    const incompleteStatuses = ["Open", "In Progress", "On Hold", "Reopened", "Pending", "Approval", "In-Progress"];
+    if (task.status && !incompleteStatuses.includes(task.status)) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(task.due_date as any);
+    dueDate.setHours(0, 0, 0, 0);
+    if (dueDate > today) return 0;
+    const diffTime = today.getTime() - dueDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
   const createTask = async (data: TaskInput, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
     const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
@@ -48,18 +61,19 @@ export const ProjectTaskService = () => {
       // Restrict to only tasks assigned to the logged-in staff
       where.assigned_to = userId;
     }
-    const data = await taskRepo.find({
+    const tasks = await taskRepo.find({
       where,
       relations: ["milestone", "milestone.project", "milestone.project.client"],
       order: { created_at: "DESC" }
     });
+    const data = tasks.map((t) => ({ ...t, delay_days: calculateTaskDelayDays(t) }));
     return { data, total: data.length };
   };
 
   const getTaskById = async (id: string) => {
     const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project", "milestone.project.client"] });
     if (!task) throw new AppError(404, "Task not found");
-    return task;
+    return { ...task, delay_days: calculateTaskDelayDays(task) } as any;
   };
 
   const updateTask = async (id: string, data: Partial<TaskInput>, queryRunner?: any) => {

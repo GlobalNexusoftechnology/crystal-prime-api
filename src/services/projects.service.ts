@@ -474,33 +474,13 @@ const sendProjectStatusChangeNotification = async (
   }
 };
 
-  const getAllProjectWithDelays = async (userId?: string, userRole?: string, user?: User) => {
-    // Use existing function to get projects for all roles
-    const projects = await getAllProject(userId, userRole, user);
-    
-  return projects.map(project => ({
-    ...project,
-    milestones: project.milestones?.map(milestone => {
-      const delay = calculateMilestoneDelay(milestone);
-      return {
-        ...milestone,
-        milestone_delay_days: delay,
-        has_overdue_tasks: delay !== null && delay > 0,
-        tasks: milestone.tasks?.map(task => ({
-          ...task,
-          delay_days: calculateTaskDelayDays(task)
-        }))
-      };
-    })
-  }));
-  };
+  // Removed: getAllProjectWithDelays
 
 
   return {
     sendProjectStatusChangeNotification,
     getAllProjectDashboard,
     createProject,
-    getAllProjectWithDelays, 
     getAllProject,
     getProjectById,
     updateProject,
