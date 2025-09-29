@@ -61,42 +61,48 @@ export const DailyTaskEntryService = () => {
       role?: string,
       filters?: { status?: string; priority?: string; from?: string; to?: string; search?: string; taskId?: string; projectId?: string }
     ) => {
-      let whereClause: any = { deleted: false };
+      // Build query using explicit conditions (QueryBuilder does not accept object where for nested props reliably)
+      let query = entryRepo
+        .createQueryBuilder("entry")
+        .leftJoinAndSelect("entry.project", "project")
+        .where("entry.deleted = :deleted", { deleted: false });
 
       if (filters?.projectId) {
-        whereClause.project = { id: filters.projectId };
+        query = query.andWhere("project.id = :projectId", { projectId: filters.projectId });
       }
       if (filters?.status) {
-        whereClause.status = filters.status;
+        query = query.andWhere("entry.status = :status", { status: filters.status });
       }
       if (filters?.priority) {
-        whereClause.priority = filters.priority;
+        query = query.andWhere("entry.priority = :priority", { priority: filters.priority });
       }
       if (filters?.from && filters?.to) {
-        whereClause.entry_date = Between(new Date(filters.from), new Date(filters.to));
+        query = query.andWhere("entry.entry_date BETWEEN :from AND :to", {
+          from: new Date(filters.from),
+          to: new Date(filters.to),
+        });
       } else if (filters?.from) {
-        whereClause.entry_date = MoreThanOrEqual(new Date(filters.from));
+        query = query.andWhere("entry.entry_date >= :from", { from: new Date(filters.from) });
       } else if (filters?.to) {
-        whereClause.entry_date = LessThanOrEqual(new Date(filters.to));
+        query = query.andWhere("entry.entry_date <= :to", { to: new Date(filters.to) });
       }
-
-      // Always use query builder for consistent behavior and better filtering
-      let query = entryRepo.createQueryBuilder("entry")
-        .leftJoinAndSelect("entry.project", "project")
-        .where(whereClause);
 
       // Add search filter if present
       if (filters?.search) {
+        const search = `%${filters.search.toLowerCase()}%`;
         query = query.andWhere(
           "(LOWER(entry.task_title) LIKE :search OR LOWER(entry.description) LIKE :search)",
-          { search: `%${filters.search.toLowerCase()}%` }
+          { search }
         );
       }
 
       // Custom priority ordering: High > Medium > Low
-      query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
+      query = query.addOrderBy(
+        `CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`,
+        "ASC"
+      );
       query = query.addOrderBy("entry.created_at", "DESC");
-      
+
       const entries = await query.getMany();
       
       // Manually load client relationships for each project
