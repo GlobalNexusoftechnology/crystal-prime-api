@@ -80,47 +80,25 @@ export const DailyTaskEntryService = () => {
         whereClause.entry_date = LessThanOrEqual(new Date(filters.to));
       }
 
-      // If search is present, use query builder for LIKE
+      // Always use query builder for consistent behavior and better filtering
+      let query = entryRepo.createQueryBuilder("entry")
+        .leftJoinAndSelect("entry.project", "project")
+        .where(whereClause);
+
+      // Add search filter if present
       if (filters?.search) {
-        let query = entryRepo.createQueryBuilder("entry")
-          .leftJoinAndSelect("entry.project", "project")
-          .where(whereClause);
         query = query.andWhere(
           "(LOWER(entry.task_title) LIKE :search OR LOWER(entry.description) LIKE :search)",
           { search: `%${filters.search.toLowerCase()}%` }
         );
-        // Custom priority ordering: High > Medium > Low
-        query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
-        query = query.addOrderBy("entry.created_at", "DESC");
-        const entries = await query.getMany();
-        
-        // Manually load client relationships for each project
-        for (const entry of entries) {
-          if (entry.project) {
-            const projectWithClient = await projectRepo.findOne({
-              where: { id: entry.project.id },
-              relations: ["client"]
-            });
-            if (projectWithClient) {
-              entry.project = projectWithClient;
-            }
-          }
-        }
-        
-        let enriched = await addTaskAndMilestoneIds(entries, filters?.taskId);
-        if (filters?.taskId) {
-          enriched = enriched.filter(e => e.taskId === filters.taskId);
-        }
-        return enriched;
       }
 
-      // For repository find, fetch and sort in-memory by priority then created_at
-      const entries = await entryRepo.find({
-        where: whereClause,
-        relations: ["project"],
-        order: { created_at: "DESC" },
-      });
-
+      // Custom priority ordering: High > Medium > Low
+      query = query.addOrderBy(`CASE entry.priority WHEN 'High' THEN 1 WHEN 'Medium' THEN 2 WHEN 'Low' THEN 3 ELSE 4 END`, "ASC");
+      query = query.addOrderBy("entry.created_at", "DESC");
+      
+      const entries = await query.getMany();
+      
       // Manually load client relationships for each project
       for (const entry of entries) {
         if (entry.project) {
@@ -133,27 +111,49 @@ export const DailyTaskEntryService = () => {
           }
         }
       }
-      // Custom sort: High > Medium > Low > others
-      const priorityOrder = { High: 1, Medium: 2, Low: 3 };
-      entries.sort((a, b) => {
-        const pa = priorityOrder[a.priority as keyof typeof priorityOrder] || 4;
-        const pb = priorityOrder[b.priority as keyof typeof priorityOrder] || 4;
-        if (pa !== pb) return pa - pb;
-        // If same priority, sort by created_at DESC
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
+      
+      // Add task and milestone IDs
       let enriched = await addTaskAndMilestoneIds(entries, filters?.taskId);
+      
+      // Apply taskId filter after enrichment
       if (filters?.taskId) {
         enriched = enriched.filter(e => e.taskId === filters.taskId);
       }
+      
       return enriched;
     };
 
     // Helper to add projectId, milestoneId, and taskId to each entry
     const addTaskAndMilestoneIds = async (entries: any[], targetTaskId?: string) => {
+      // If we're filtering by a specific taskId, fetch only that task for efficiency
+      if (targetTaskId) {
+        const targetTask = await taskRepo.findOne({
+          where: { id: targetTaskId, deleted: false },
+          relations: ["milestone", "milestone.project"],
+        });
+
+        if (targetTask) {
+          return entries.map(entry => ({
+            ...entry,
+            projectId: entry.project?.id,
+            milestoneId: targetTask.milestone?.id || null,
+            taskId: targetTask.id,
+          }));
+        } else {
+          // If target task not found, return entries without task matching
+          return entries.map(entry => ({
+            ...entry,
+            projectId: entry.project?.id,
+            milestoneId: null,
+            taskId: null,
+          }));
+        }
+      }
+
       // Batch fetch all tasks for the relevant projects and assigned_to
       const projectIds = Array.from(new Set(entries.map(e => e.project?.id).filter(Boolean)));
       const assignedTos = Array.from(new Set(entries.map(e => e.assigned_to).filter(Boolean)));
+      
       // Fetch all tasks for these projects and assigned_to
       const allTasks = await taskRepo.find({
         where: {
@@ -164,8 +164,6 @@ export const DailyTaskEntryService = () => {
         relations: ["milestone", "milestone.project"],
       });
 
-      // If filtering by a specific task, resolve it once for relaxed matching
-      const targetTask = targetTaskId ? allTasks.find(t => t.id === targetTaskId) : undefined;
       return entries.map(entry => {
         // Find a matching task
         let matchingTask = allTasks.find(task =>
@@ -173,15 +171,7 @@ export const DailyTaskEntryService = () => {
           task.milestone?.project?.id === entry.project?.id &&
           (task.title?.toLowerCase() === (entry.task_title || '').toLowerCase())
         );
-        // If a target task is specified and project/assignee match, prefer it regardless of title
-        if (!matchingTask && targetTask) {
-          if (
-            targetTask.assigned_to === entry.assigned_to &&
-            targetTask.milestone?.project?.id === entry.project?.id
-          ) {
-            matchingTask = targetTask;
-          }
-        }
+        
         return {
           ...entry,
           projectId: entry.project?.id,
