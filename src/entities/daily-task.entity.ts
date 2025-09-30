@@ -4,43 +4,43 @@ import { Project } from "./projects.entity";
 import { User } from "./user.entity";
 import { ProjectTasks } from "./project-task.entity";
 
-@Entity('daily_task_entries')
+@Entity("daily_task_entries")
 export class DailyTaskEntries extends Model {
-    @ManyToOne(() => Project, (project) => project.id, {
-        nullable: false,
-        eager: true, // if you want auto-populate
-        onDelete: 'CASCADE',
-    })
-    @JoinColumn({ name: 'project_id' })
-    project: Project;
+  @ManyToOne(() => Project, (project) => project.id, {
+    nullable: false,
+    eager: true, // if you want auto-populate
+    onDelete: "CASCADE",
+  })
+  @JoinColumn({ name: "project_id" })
+  project: Project;
 
-    @Column({ type: 'varchar', length: 150 })
-    task_title: string;
+  @Column({ type: "varchar", length: 150 })
+  task_title: string;
 
-    @Column({ type: 'varchar', length: 150, nullable: true })
-    assigned_to: string;
+  @Column({ type: "varchar", length: 150, nullable: true })
+  assigned_to: string;
 
-    @Column({ type: 'text', nullable: true })
-    description: string;
+  @Column({ type: "text", nullable: true })
+  description: string;
 
-    @Column({ type: 'date' })
-    entry_date: Date;
+  @Column({ type: "date" })
+  entry_date: Date;
 
-    @Column({ type: 'varchar', length: 50, default: 'Pending' })
-    status: string;
+  @Column({ type: "varchar", length: 50, default: "Pending" })
+  status: string;
 
-    @Column({ type: 'varchar', length: 20, default: 'Medium' })
-    priority: string;
+  @Column({ type: "varchar", length: 20, default: "Medium" })
+  priority: string;
 
-    @Column({ type: 'text', nullable: true })
-    remarks?: string;
+  @Column({ type: "text", nullable: true })
+  remarks?: string;
 
-    // Optional linkage to a master project task for precise filtering
-    @ManyToOne(() => ProjectTasks, (task) => task.id, {
-        nullable: true,
-        eager: false,
-        onDelete: 'SET NULL',
-    })
-    @JoinColumn({ name: 'task_id' })
-    task?: ProjectTasks | null;
+  // Optional linkage to a master project task for precise filtering
+  @ManyToOne(() => ProjectTasks, (task) => task.id, {
+    nullable: true,
+    eager: false,
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({ name: "task_id" })
+  task?: ProjectTasks | null;
 }

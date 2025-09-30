@@ -2,23 +2,19 @@ import { z } from "zod";
 
 // Schema for creating a new Daily Task Entry
 export const createDailyTaskEntrySchema = z.object({
-    project_id: z.string({ required_error: "Project ID is required" }),
-    assigned_to: z.string({ required_error: "Assigned To is required" }),
-    task_title: z.string().min(1, "Task title is required"),
+    task_id: z.string({ required_error: "Task ID is required" }),
     entry_date: z.coerce.date({ required_error: "Entry date is required" }),
+    task_title: z.string().optional(),
     description: z.string().optional(),
     status: z.string().optional(),
     remarks: z.string().optional(),
     priority: z.string().optional().default('Medium'),
-    task_id: z.string().optional(),
 });
 
 // Schema for updating a Daily Task Entry
 export const updateDailyTaskEntrySchema = z.object({
-    project_id: z.string().optional(),
-    task_title: z.string().min(1).optional(),
+    task_title: z.string().optional(),
     description: z.string().optional(),
-    assigned_to: z.string({ required_error: "Assigned To is required" }).optional(),
     entry_date: z.coerce.date().optional(),
     status: z.string().optional(),
     remarks: z.string().optional(),

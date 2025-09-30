@@ -25,23 +25,19 @@ export const dailyTaskEntryController = () => {
 
   const getAllEntries = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = res?.locals?.user?.id;
-      const role = res?.locals?.user?.role?.role;
-      // Parse filters from query params
-      const { status, priority, from, to, search, taskId, projectId } = req.query;
-      const filters = {
-        status: status as string | undefined,
-        priority: priority as string | undefined,
-        from: from as string | undefined,
-        to: to as string | undefined,
-        search: search as string | undefined,
-        taskId: taskId as string | undefined,
-        projectId: projectId as string | undefined,
-      };
-      const result = await service.getAllEntries(userId, role, filters);
+      const { task_id } = req.query;
+      
+      if (!task_id) {
+        return res.status(400).json({
+          status: "error",
+          message: "Task ID is required",
+        });
+      }
+      
+      const result = await service.getAllEntries(task_id as string);
       res.status(200).json({
         status: "success",
-        message: "All daily task entries fetched",
+        message: "Daily task entries fetched for the specified task",
         data: result,
       });
     } catch (err) {
