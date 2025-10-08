@@ -39,16 +39,18 @@ export const TicketService = () => {
   ) => {
     const mailOptions = {
       from: `"Support System" <${process.env.EMAIL_USER}>`,
-      to: emails.join(', '),
+      to: emails.join(", "),
       subject: `New Ticket Created: ${ticketTitle}`,
       html: `
       <h3>New Ticket Created</h3>
       <p><strong>Ticket Title:</strong> ${ticketTitle}</p>
       <p><strong>Project:</strong> ${projectName}</p>
-      <p><strong>Client Name:</strong> ${clientName || 'N/A'}</p>
-      <p><strong>Client Email:</strong> ${clientEmail || 'N/A'}</p>
-      <p><strong>Client Phone:</strong> ${clientPhone || 'N/A'}</p>
-      <p><strong>Description:</strong> ${description || 'No description provided'}</p>
+      <p><strong>Client Name:</strong> ${clientName || "N/A"}</p>
+      <p><strong>Client Email:</strong> ${clientEmail || "N/A"}</p>
+      <p><strong>Client Phone:</strong> ${clientPhone || "N/A"}</p>
+      <p><strong>Description:</strong> ${
+        description || "No description provided"
+      }</p>
       <p><strong>Priority:</strong> ${priority}</p>
       <p><strong>Status:</strong> ${status}</p>
       <p><strong>Created At:</strong> ${new Date().toLocaleString()}</p>
@@ -66,10 +68,16 @@ export const TicketService = () => {
   ) => {
     if (!milestoneId || !projectId) return;
 
-    const ticketRepository = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
-    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const ticketRepository = queryRunner
+      ? queryRunner.manager.getRepository(Ticket)
+      : ticketRepo;
+    const milestoneRepository = queryRunner
+      ? queryRunner.manager.getRepository(ProjectMilestones)
+      : milestoneRepo;
 
-    const milestone = await milestoneRepository.findOne({ where: { id: milestoneId, deleted: false } });
+    const milestone = await milestoneRepository.findOne({
+      where: { id: milestoneId, deleted: false },
+    });
     if (!milestone) return;
 
     // Only apply special rules for Support milestone
@@ -94,9 +102,13 @@ export const TicketService = () => {
     }
 
     const statuses = tickets.map((t: any) => (t.status || "").toLowerCase());
-    const allOpen = statuses.length > 0 && statuses.every((s: string) => s === "open");
-    const anyInProgress = statuses.some((s: string) => s === "in progress" || s === "in-progress");
-    const allCompleted = statuses.length > 0 && statuses.every((s: string) => s === "completed");
+    const allOpen =
+      statuses.length > 0 && statuses.every((s: string) => s === "open");
+    const anyInProgress = statuses.some(
+      (s: string) => s === "in progress" || s === "in-progress"
+    );
+    const allCompleted =
+      statuses.length > 0 && statuses.every((s: string) => s === "completed");
 
     let newStatus = milestone.status;
     if (anyInProgress) {
@@ -119,16 +131,26 @@ export const TicketService = () => {
     await updateProjectStatus(projectId, queryRunner);
   };
   const createTicket = async (data: TicketInput, queryRunner?: any) => {
-    const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
-    const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
-    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Ticket)
+      : ticketRepo;
+    const projectRepository = queryRunner
+      ? queryRunner.manager.getRepository(Project)
+      : projectRepo;
+    const milestoneRepository = queryRunner
+      ? queryRunner.manager.getRepository(ProjectMilestones)
+      : milestoneRepo;
 
-    const project = await projectRepository.findOne({ where: { id: data.project_id } });
+    const project = await projectRepository.findOne({
+      where: { id: data.project_id },
+    });
     if (!project) throw new AppError(404, "Project not found");
 
     let milestone = null;
     if (data.milestone_id) {
-      milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
+      milestone = await milestoneRepository.findOne({
+        where: { id: data.milestone_id },
+      });
       if (!milestone) throw new AppError(404, "Milestone not found");
     } else {
       // Auto-assign to Support milestone
@@ -136,20 +158,23 @@ export const TicketService = () => {
         where: {
           project: { id: data.project_id },
           name: "Support",
-          deleted: false
+          deleted: false,
         },
-        relations: ["project"]
+        relations: ["project"],
       });
 
       if (!milestone) {
         // Try to create Support milestone if it doesn't exist
-        const project = await projectRepository.findOne({ where: { id: data.project_id } });
+        const project = await projectRepository.findOne({
+          where: { id: data.project_id },
+        });
         if (!project) throw new AppError(404, "Project not found");
 
         // Create Support milestone
         const supportMilestone = milestoneRepository.create({
           name: "Support",
-          description: "Support and maintenance milestone for ongoing project support",
+          description:
+            "Support and maintenance milestone for ongoing project support",
           status: "Open",
           project: project,
           start_date: new Date(),
@@ -176,59 +201,79 @@ export const TicketService = () => {
 
     const projectWithClient = await projectRepository.findOne({
       where: { id: data.project_id },
-      relations: ['client'] // ← THIS LOADS CLIENT RELATION
+      relations: ["client"], // ← THIS LOADS CLIENT RELATION
     });
 
-    let clientName = 'N/A';
-    let clientEmail = 'N/A';
-    let clientPhone = 'N/A';
+    let clientName = "N/A";
+    let clientEmail = "N/A";
+    let clientPhone = "N/A";
 
     if (projectWithClient && projectWithClient.client) {
-      clientName = projectWithClient.client.name || 'N/A';
-      clientEmail = projectWithClient.client.email || 'N/A';
-      clientPhone = projectWithClient.client.contact_number || 'N/A';
+      clientName = projectWithClient.client.name || "N/A";
+      clientEmail = projectWithClient.client.email || "N/A";
+      clientPhone = projectWithClient.client.contact_number || "N/A";
     }
 
     try {
-       const Email_NOTIFY_ONE = process.env.EMAI_TICKET_NOTIFY_ONE as string;
-       const Email_NOTIFY_TWO = process.env.EMAI_TICKET_NOTIFY_TWO as string;
+      const Email_NOTIFY_ONE = process.env.EMAI_TICKET_NOTIFY_ONE as string;
+      const Email_NOTIFY_TWO = process.env.EMAI_TICKET_NOTIFY_TWO as string;
       await sendTicketCreatedMail(
-        [Email_NOTIFY_ONE , Email_NOTIFY_TWO],
+        [Email_NOTIFY_ONE, Email_NOTIFY_TWO],
         savedTicket.title,
         project.name,
-        clientName,    
-        clientEmail,    
-        clientPhone,   
+        clientName,
+        clientEmail,
+        clientPhone,
         savedTicket.description,
         savedTicket.priority,
         savedTicket.status
       );
     } catch (emailError) {
-      console.log('Email sending failed (non-critical):', emailError);
+      console.log("Email sending failed (non-critical):", emailError);
     }
     // Cascade status for Support milestone and project after creation
-    await updateSupportMilestoneAndProject(savedTicket.milestone?.id, savedTicket.project?.id, queryRunner);
+    await updateSupportMilestoneAndProject(
+      savedTicket.milestone?.id,
+      savedTicket.project?.id,
+      queryRunner
+    );
 
     // Return the ticket with relationships loaded using QueryBuilder
-    return await repo.createQueryBuilder("ticket")
+    return await repo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: savedTicket.id })
       .getOne();
   };
 
-  const getAllTickets = async (filters: any = {}) => {
+  const getAllTickets = async (filters: any = {}, currentUser?: any) => {
     const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
     const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
     const skip = (page - 1) * limit;
-
+  
     const { searchText, status, priority } = filters;
-
+  
     let query = ticketRepo.createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false");
-
+  
+    // Client filtering based on your entity relationships
+    if (currentUser && currentUser.clientId) {
+      console.log('🔒 Filtering tickets for client ID:', currentUser.clientId);
+      
+      // Join project -> client and filter by client ID
+      // This follows: Ticket -> Project -> Client
+      query = query
+        .innerJoinAndSelect("project.client", "client") // Join project.client relation
+        .andWhere("client.id = :clientId", { clientId: currentUser.clientId });
+    } else {
+      console.log('👨‍💼 No client filtering - showing all tickets');
+      query = query
+        .leftJoinAndSelect("project.client", "client"); // Still join client for data
+    }
+  
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
       query = query.andWhere(
@@ -236,20 +281,22 @@ export const TicketService = () => {
         { search }
       );
     }
-
+  
     if (status && status.trim() !== "") {
       query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
     }
-
+  
     if (priority && priority.trim() !== "") {
       query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
     }
-
+  
     query = query.orderBy("ticket.created_at", "DESC");
     query.skip(skip).take(limit);
-
+  
     const [tickets, total] = await query.getManyAndCount();
-
+  
+    console.log(`📊 Found ${total} tickets for user ${currentUser?.id} with role ${currentUser?.role}`);
+  
     return {
       data: tickets,
       pagination: {
@@ -262,7 +309,8 @@ export const TicketService = () => {
   };
 
   const getTicketById = async (id: string) => {
-    const ticket = await ticketRepo.createQueryBuilder("ticket")
+    const ticket = await ticketRepo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id })
@@ -279,7 +327,8 @@ export const TicketService = () => {
 
     const { searchText, status, priority } = filters;
 
-    let query = ticketRepo.createQueryBuilder("ticket")
+    let query = ticketRepo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false")
@@ -294,11 +343,15 @@ export const TicketService = () => {
     }
 
     if (status && status.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
+      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", {
+        status,
+      });
     }
 
     if (priority && priority.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
+      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", {
+        priority,
+      });
     }
 
     query = query.orderBy("ticket.created_at", "DESC");
@@ -317,14 +370,18 @@ export const TicketService = () => {
     };
   };
 
-  const getTicketsByMilestone = async (milestoneId: string, filters: any = {}) => {
+  const getTicketsByMilestone = async (
+    milestoneId: string,
+    filters: any = {}
+  ) => {
     const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
     const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
     const skip = (page - 1) * limit;
 
     const { searchText, status, priority } = filters;
 
-    let query = ticketRepo.createQueryBuilder("ticket")
+    let query = ticketRepo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.deleted = false")
@@ -339,11 +396,15 @@ export const TicketService = () => {
     }
 
     if (status && status.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", { status });
+      query = query.andWhere("LOWER(ticket.status) = LOWER(:status)", {
+        status,
+      });
     }
 
     if (priority && priority.trim() !== "") {
-      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", { priority });
+      query = query.andWhere("LOWER(ticket.priority) = LOWER(:priority)", {
+        priority,
+      });
     }
 
     query = query.orderBy("ticket.created_at", "DESC");
@@ -362,25 +423,39 @@ export const TicketService = () => {
     };
   };
 
-  const updateTicket = async (id: string, data: Partial<TicketInput>, queryRunner?: any) => {
-    const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
-    const projectRepository = queryRunner ? queryRunner.manager.getRepository(Project) : projectRepo;
-    const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
+  const updateTicket = async (
+    id: string,
+    data: Partial<TicketInput>,
+    queryRunner?: any
+  ) => {
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Ticket)
+      : ticketRepo;
+    const projectRepository = queryRunner
+      ? queryRunner.manager.getRepository(Project)
+      : projectRepo;
+    const milestoneRepository = queryRunner
+      ? queryRunner.manager.getRepository(ProjectMilestones)
+      : milestoneRepo;
 
     const ticket = await repo.findOne({
       where: { id, deleted: false },
-      relations: ["project", "milestone"]
+      relations: ["project", "milestone"],
     });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
     if (data.project_id) {
-      const project = await projectRepository.findOne({ where: { id: data.project_id } });
+      const project = await projectRepository.findOne({
+        where: { id: data.project_id },
+      });
       if (!project) throw new AppError(404, "Project not found");
       ticket.project = project;
     }
 
     if (data.milestone_id) {
-      const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
+      const milestone = await milestoneRepository.findOne({
+        where: { id: data.milestone_id },
+      });
       if (!milestone) throw new AppError(404, "Milestone not found");
       ticket.milestone = milestone;
     } else if (data.milestone_id === null) {
@@ -389,8 +464,8 @@ export const TicketService = () => {
         where: {
           project: { id: ticket.project.id },
           name: "Support",
-          deleted: false
-        }
+          deleted: false,
+        },
       });
 
       if (supportMilestone) {
@@ -412,20 +487,34 @@ export const TicketService = () => {
     const savedTicket = await repo.save(ticket);
 
     // Cascade status for Support milestone and project after update
-    await updateSupportMilestoneAndProject(savedTicket.milestone?.id, savedTicket.project?.id, queryRunner);
+    await updateSupportMilestoneAndProject(
+      savedTicket.milestone?.id,
+      savedTicket.project?.id,
+      queryRunner
+    );
 
     // Return the ticket with relationships loaded using QueryBuilder
-    return await repo.createQueryBuilder("ticket")
+    return await repo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: savedTicket.id })
       .getOne();
   };
 
-  const updateTicketStatus = async (id: string, status: string, queryRunner?: any) => {
-    const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
+  const updateTicketStatus = async (
+    id: string,
+    status: string,
+    queryRunner?: any
+  ) => {
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Ticket)
+      : ticketRepo;
 
-    const ticket = await repo.findOne({ where: { id, deleted: false }, relations: ["project", "milestone"] });
+    const ticket = await repo.findOne({
+      where: { id, deleted: false },
+      relations: ["project", "milestone"],
+    });
     if (!ticket) throw new AppError(404, "Ticket not found");
 
     ticket.status = status;
@@ -433,9 +522,14 @@ export const TicketService = () => {
     const saved = await repo.save(ticket);
 
     // Cascade status for Support milestone and project after status change
-    await updateSupportMilestoneAndProject(saved.milestone?.id, saved.project?.id, queryRunner);
+    await updateSupportMilestoneAndProject(
+      saved.milestone?.id,
+      saved.project?.id,
+      queryRunner
+    );
 
-    return await repo.createQueryBuilder("ticket")
+    return await repo
+      .createQueryBuilder("ticket")
       .leftJoinAndSelect("ticket.project", "project")
       .leftJoinAndSelect("ticket.milestone", "milestone")
       .where("ticket.id = :id", { id: saved.id })
@@ -443,7 +537,9 @@ export const TicketService = () => {
   };
 
   const deleteTicket = async (id: string, queryRunner?: any) => {
-    const repo = queryRunner ? queryRunner.manager.getRepository(Ticket) : ticketRepo;
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Ticket)
+      : ticketRepo;
 
     const ticket = await repo.findOne({ where: { id, deleted: false } });
     if (!ticket) throw new AppError(404, "Ticket not found");
