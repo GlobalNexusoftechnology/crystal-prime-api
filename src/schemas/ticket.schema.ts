@@ -9,7 +9,7 @@ export const createTicketSchema = z.object({
   milestone_id: z.string().uuid("Invalid milestone ID").optional(),
   assigned_to: z.string().optional(),
   image_url: z.string().optional(),
-  remark: z.string().optional(),
+  // remark: z.string().optional(),
 });
 
 export const updateTicketSchema = z.object({
@@ -21,7 +21,7 @@ export const updateTicketSchema = z.object({
   milestone_id: z.string().uuid().optional(),
   assigned_to: z.string().optional(),
   image_url: z.string().optional(),
-  remark: z.string().optional(),
+  // remark: z.string().optional(),
 });
 
 export const updateTicketStatusSchema = z.object({

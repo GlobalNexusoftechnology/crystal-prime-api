@@ -194,7 +194,7 @@ export const TicketService = () => {
       project,
       milestone,
       image_url: data.image_url,
-      remark: data.remark,
+      // remark: data.remark,
     });
 
     const savedTicket = await repo.save(ticket);
@@ -277,7 +277,7 @@ export const TicketService = () => {
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
       query = query.andWhere(
-        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(ticket.remark) LIKE :search OR LOWER(project.name) LIKE :search`,
+        `LOWER(ticket.title) LIKE :search OR LOWER(ticket.description) LIKE :search OR LOWER(ticket.status) LIKE :search OR LOWER(ticket.priority) LIKE :search OR LOWER(project.name) LIKE :search`,
         { search }
       );
     }
@@ -482,7 +482,7 @@ export const TicketService = () => {
     if (data.priority !== undefined) ticket.priority = data.priority;
     if (data.assigned_to !== undefined) ticket.assigned_to = data.assigned_to;
     if (data.image_url !== undefined) ticket.image_url = data.image_url;
-    if (data.remark !== undefined) ticket.remark = data.remark;
+    // if (data.remark !== undefined) ticket.remark = data.remark;
 
     const savedTicket = await repo.save(ticket);
 

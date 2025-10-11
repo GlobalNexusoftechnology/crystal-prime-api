@@ -31,8 +31,8 @@ export class Ticket extends ModelWithShortId {
   @Column({ type: "varchar", length: 500, nullable: true })
   image_url: string;
 
-  @Column({ type: "text", nullable: true })
-  remark: string;
+  // @Column({ type: "text", nullable: true })
+  // remark: string;
 
   @ManyToOne(() => ProjectMilestones, (milestone) => milestone.tickets, { nullable: true })
   @JoinColumn({ name: "milestone_id" })
