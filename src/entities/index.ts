@@ -9,4 +9,5 @@ export * from './eilog-head.entity';
 export * from './eilog.entity';
 export * from './ticket.entity';
 export * from './ticket-comment.entity';
+export * from './holiday.entity';
 

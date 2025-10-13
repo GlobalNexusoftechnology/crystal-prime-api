@@ -7,3 +7,4 @@ export * from './eilog-type.controller';
 export * from './eilog-head.controller';
 export * from './eilog.controller';
 export * from './ticket.controller';
+export * from './holiday.controller';
