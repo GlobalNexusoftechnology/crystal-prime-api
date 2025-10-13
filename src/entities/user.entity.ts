@@ -18,6 +18,7 @@ import { Role } from "./roles.entity";
 import { projectAttachments } from "./project-attachments.entity";
 import { EILog } from "./eilog.entity";
 import { Clients } from "./clients.entity";
+import { Leave } from "./leaves.entity";
 
 @Entity("users")
 export class User extends Model {
@@ -72,6 +73,9 @@ export class User extends Model {
 
   @OneToOne(() => Clients, (client) => client.user)
   client: Clients;
+
+  @OneToMany(() => Leave, (leave) => leave.staff)
+  leaves: Leave[];
 
   @BeforeInsert()
   async hashPassword() {

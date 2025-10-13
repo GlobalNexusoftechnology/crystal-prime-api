@@ -2,17 +2,29 @@
 import { Request, Response, NextFunction } from "express";
 import * as holidayService from "../services";
 import { createHolidaySchema, updateHolidaySchema } from "../schemas";
+import { findUserById } from "../services";
 
 /** Create a new holiday */
 export const createHoliday = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const payload = createHolidaySchema.parse(req.body);
-    const result = await holidayService.createHoliday(payload);
-    res.status(201).json({ status: true, message: "Holiday created successfully", data: result });
-  } catch (err) {
-    next(err);
-  }
-};
+    try {
+        const userId = res.locals.user.id;
+        const userData = await findUserById(userId);
+        const userRole = userData.role.role;
+    
+        if (userRole !== "Admin") {
+        return res.status(403).json({
+          status: false,
+          message: "Only admin can create holidays",
+        });
+      }
+  
+      const payload = createHolidaySchema.parse(req.body);
+      const result = await holidayService.createHoliday(payload);
+      res.status(201).json({ status: true, message: "Holiday created successfully", data: result });
+    } catch (err) {
+      next(err);
+    }
+  };
 
 /** Get all holidays */
 export const getAllHolidays = async (req: Request, res: Response, next: NextFunction) => {
@@ -37,15 +49,26 @@ export const getHolidayById = async (req: Request, res: Response, next: NextFunc
 
 /** Update holiday */
 export const updateHoliday = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const payload = updateHolidaySchema.parse(req.body);
-    const { id } = req.params;
-    const data = await holidayService.updateHoliday(id, payload);
-    res.json({ status: true, message: "Holiday updated successfully", data });
-  } catch (err) {
-    next(err);
-  }
-};
+    try {
+        const userId = res.locals.user.id;
+        const userData = await findUserById(userId);
+        const userRole = userData.role.role;
+    
+        if (userRole !== "Admin") {
+        return res.status(403).json({
+          status: false,
+          message: "Only admin can update holidays",
+        });
+      }
+  
+      const payload = updateHolidaySchema.parse(req.body);
+      const { id } = req.params;
+      const data = await holidayService.updateHoliday(id, payload);
+      res.json({ status: true, message: "Holiday updated successfully", data });
+    } catch (err) {
+      next(err);
+    }
+  };
 
 /** Delete holiday */
 export const deleteHoliday = async (req: Request, res: Response, next: NextFunction) => {

@@ -9,4 +9,5 @@ export * from './eilog-head.service';
 export * from './eilog.service';
 export * from './ticket.service';
 export * from './holiday.service';
+export * from './leaves.services';
 
