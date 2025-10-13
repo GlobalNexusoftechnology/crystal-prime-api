@@ -9,3 +9,4 @@ export * from './eilog.controller';
 export * from './ticket.controller';
 export * from './holiday.controller';
 export * from './leaves.controller';
+export * from './attendance.controller';

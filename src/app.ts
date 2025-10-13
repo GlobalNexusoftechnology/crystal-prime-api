@@ -36,6 +36,7 @@ import ticketRoutes from "./routes/ticket.routes";
 import ticketCommentRoutes from "./routes/ticket-comment.routes";
 import holidayRoutes from "./routes/holiday.routes";
 import LeaveRoutes from "./routes/leaves.routes";
+import AttendanceRoutes from "./routes/attendance.routes";
 
 import dailyTaskEntryRoutes from "./routes/daily-task.routes";
 
@@ -127,6 +128,7 @@ AppDataSource.initialize()
     app.use('/api/reports', reportRoutes);
     app.use('/api/holidays', holidayRoutes);
     app.use('/api/leaves', LeaveRoutes);
+    app.use('/api/attendances', AttendanceRoutes);
 
     // HEALTH CHECKER
     app.get('/api/healthChecker', async (_, res: Response) => {
