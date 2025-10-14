@@ -1,6 +1,7 @@
 import { Entity, Column, ManyToOne, JoinColumn } from "typeorm";
 import Model from "./model.entity";
 import { ProjectMilestones } from "./project-milestone.entity";
+import { User } from "./user.entity";
 
 @Entity("project_tasks")
 export class ProjectTasks extends Model {
@@ -22,6 +23,10 @@ export class ProjectTasks extends Model {
 
   @Column({ type: "varchar", length: 100, nullable: true })
   assigned_to: string;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: "assigned_by" })
+  assigned_by: User;
 
   @Column({ type: "varchar", length: 50, default: "Medium" })
   priority: string;

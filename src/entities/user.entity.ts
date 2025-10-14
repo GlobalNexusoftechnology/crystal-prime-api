@@ -20,6 +20,7 @@ import { EILog } from "./eilog.entity";
 import { Clients } from "./clients.entity";
 import { Leave } from "./leaves.entity";
 import { Attendance } from "./attendance.entity";
+import { ProjectTasks } from "./project-task.entity";
 
 @Entity("users")
 export class User extends Model {
@@ -80,6 +81,9 @@ export class User extends Model {
 
   @OneToMany(() => Attendance, (attendance) => attendance.staff)
   attendance: Attendance[];
+
+  @OneToMany(() => ProjectTasks, (task) => task.assigned_by)
+  tasks_assigned_by: ProjectTasks[];
 
   @BeforeInsert()
   async hashPassword() {

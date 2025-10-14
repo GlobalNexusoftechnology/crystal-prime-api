@@ -41,6 +41,7 @@ export const updateLeadSchema = z.object({
   followups: z.array(z.any()).optional(),
   attachments: z.array(z.any()).optional(),
   status_histories: z.array(z.any()).optional(),
+  escalate_to: z.boolean().optional(),
 });
 
 // Lead Upload Schema (fields expected in Excel)

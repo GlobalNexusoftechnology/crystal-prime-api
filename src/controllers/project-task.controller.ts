@@ -8,7 +8,8 @@ export const projectTaskController = () => {
   const createTask = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const parsed = createTaskSchema.parse(req.body);
-      const result = await service.createTask(parsed);
+      const user = res.locals.user;
+      const result = await service.createTask(parsed, user);
       res.status(201).json({ status: "success", data: result });
     } catch (err) {
       next(err);
@@ -58,7 +59,8 @@ export const projectTaskController = () => {
     try {
       const { id } = req.params;
       const parsed = updateTaskSchema.parse(req.body);
-      const result = await service.updateTask(id, parsed);
+      const user = res?.locals?.user;
+      const result = await service.updateTask(id, parsed, user);
       res.status(200).json({ status: "success", data: result });
     } catch (err) {
       next(err);
