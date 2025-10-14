@@ -11,7 +11,7 @@ export const createHoliday = async (req: Request, res: Response, next: NextFunct
         const userData = await findUserById(userId);
         const userRole = userData.role.role;
     
-        if (userRole !== "Admin") {
+        if (userRole !== "admin") {
         return res.status(403).json({
           status: false,
           message: "Only admin can create holidays",

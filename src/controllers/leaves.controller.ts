@@ -31,7 +31,7 @@ export const applyLeave = async (req: Request, res: Response, next: NextFunction
       const userData = await findUserById(userId);
       const userRole = userData.role.role;
   
-      if (userRole !== "Admin") {
+      if (userRole !== "admin") {
         return res.status(403).json({
           status: false,
           message: "Only admin can approve or reject leaves",
