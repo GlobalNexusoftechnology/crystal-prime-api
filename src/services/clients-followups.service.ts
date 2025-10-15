@@ -5,6 +5,8 @@ import AppError from "../utils/appError";
 import { ClientFollowup } from "../entities/clients-followups.entity";
 import { Clients } from "../entities/clients.entity";
 import { ProjectTasks } from "../entities/project-task.entity";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
 
 const followupRepo = AppDataSource.getRepository(ClientFollowup);
 const clientRepo = AppDataSource.getRepository(Clients);
@@ -44,6 +46,24 @@ export const ClientFollowupService = () => {
     });
 
     const saved = await followupRepo.save(followup);
+
+    // 1. Staff Notification
+if (saved.user) {
+  const notificationService = NotificationService();
+  const staffName = saved.user.first_name + " " + (saved.user.last_name || "");
+  const clientName = saved.client.name; // assuming Clients has name
+  await notificationService.createNotification(
+    saved.user.id,
+    NotificationType.CLIENT_FOLLOWUP_ASSIGNED,
+    `New follow-up assigned to you for client ${clientName}. Due on ${saved.due_date?.toDateString() || 'N/A'}.`,
+    {
+      followupId: saved.id,
+      clientId: saved.client.id,
+      projectTaskId: saved.project_task?.id || null,
+      dueDate: saved.due_date,
+    }
+  );
+}
     // Reload with relations
     const withRelations = await followupRepo.findOne({
       where: { id: saved.id },
