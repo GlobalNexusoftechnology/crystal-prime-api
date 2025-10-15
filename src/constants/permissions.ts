@@ -30,6 +30,14 @@ export const MODULES: TOptionItem[] = [
   { key: "MY_PROJECTS", label: "My Projects Module", value: "32" },
   { key: "TICKET_MANAGEMENT", label: "Ticket Management Module", value: "33" },
   { key: "SUPPORT_TICKETS", label: "Support Tickets Module", value: "34" },
+  { key: "HR_MANAGEMENET", label: "HR Management Module", value: "35" },
+  { key: "HOLIDAY_LIST", label: "Holiday List Module", value: "36" },
+  { key: "ATTENDANCE", label: "Attendance Module", value: "37" },
+  { key: "LEAVES", label: "Leaves Module", value: "38" },
+  { key: "LEAVE", label: "Leave Module", value: "39" },
+  { key: "APPLY_LEAVE", label: "Apply Leave Module", value: "40" },
+  { key: "HOLIDAYS", label: "Holidays Module", value: "41" },
+  
 ];
 
 export const ACTIONS: TOptionItem[] = [

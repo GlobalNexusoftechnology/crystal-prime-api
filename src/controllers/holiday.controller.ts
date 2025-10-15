@@ -7,17 +7,6 @@ import { findUserById } from "../services";
 /** Create a new holiday */
 export const createHoliday = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = res.locals.user.id;
-        const userData = await findUserById(userId);
-        const userRole = userData.role.role;
-    
-        if (userRole !== "admin") {
-        return res.status(403).json({
-          status: false,
-          message: "Only admin can create holidays",
-        });
-      }
-  
       const payload = createHolidaySchema.parse(req.body);
       const result = await holidayService.createHoliday(payload);
       res.status(201).json({ status: true, message: "Holiday created successfully", data: result });
@@ -50,17 +39,6 @@ export const getHolidayById = async (req: Request, res: Response, next: NextFunc
 /** Update holiday */
 export const updateHoliday = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = res.locals.user.id;
-        const userData = await findUserById(userId);
-        const userRole = userData.role.role;
-    
-        if (userRole !== "Admin") {
-        return res.status(403).json({
-          status: false,
-          message: "Only admin can update holidays",
-        });
-      }
-  
       const payload = updateHolidaySchema.parse(req.body);
       const { id } = req.params;
       const data = await holidayService.updateHoliday(id, payload);
