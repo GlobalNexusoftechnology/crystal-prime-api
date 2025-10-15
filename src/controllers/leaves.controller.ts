@@ -27,17 +27,6 @@ export const applyLeave = async (req: Request, res: Response, next: NextFunction
   
   export const updateLeaveStatus = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const userId = res.locals.user.id;
-      const userData = await findUserById(userId);
-      const userRole = userData.role.role;
-  
-      if (userRole !== "admin") {
-        return res.status(403).json({
-          status: false,
-          message: "Only admin can approve or reject leaves",
-        });
-      }
-  
       const payload = updateLeaveSchema.parse(req.body);
       const { id } = req.params;
       const leave = await leaveService.updateLeaveStatus(id, payload);

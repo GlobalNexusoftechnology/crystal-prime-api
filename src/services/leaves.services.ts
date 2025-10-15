@@ -6,6 +6,39 @@ import { NotificationType } from "../entities/notification.entity";
 import {sendLeaveApplicationEmail} from "../utils/email"
 const leaveRepo = AppDataSource.getRepository(Leave);
 const userRepo = AppDataSource.getRepository(User)
+
+// Function to validate and swap dates if needed
+const validateAndFormatDates = (fromDate: Date, toDate: Date): { startDate: Date; endDate: Date } => {
+  const start = new Date(fromDate);
+  const end = new Date(toDate);
+  
+  // If toDate is before fromDate, swap them
+  if (end < start) {
+    return { startDate: end, endDate: start };
+  }
+  
+  return { startDate: start, endDate: end };
+};
+
+// Function to calculate total leave days (excluding weekends)
+const calculateLeaveDays = (fromDate: Date, toDate: Date): number => {
+  const { startDate, endDate } = validateAndFormatDates(fromDate, toDate);
+  
+  let leaveDays = 0;
+  const currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    // Skip weekends (Saturday = 6, Sunday = 0)
+    const dayOfWeek = currentDate.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      leaveDays++;
+    }
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  
+  return leaveDays;
+};
+
 export const applyLeave = async (data: LeaveCreateInput) => {
 
   const adminUsers = await userRepo.find({
@@ -113,8 +146,33 @@ export const updateLeaveStatus = async (id: string, data: LeaveUpdateInput) => {
   return await leaveRepo.save(leave);
 };
 
+// export const getAllLeaves = async () => {
+//   return await leaveRepo.find({ relations: ["staff"] });
+// };
+
 export const getAllLeaves = async () => {
-  return await leaveRepo.find({ relations: ["staff"] });
+  const leaves = await leaveRepo.find({ 
+    relations: ["staff"],
+    order: { appliedDate: "DESC" }
+  });
+
+  // Calculate leave days for each leave
+  const leavesWithDays = leaves.map(leave => {
+    const { startDate, endDate } = validateAndFormatDates(
+      new Date(leave.fromDate), 
+      new Date(leave.toDate)
+    );
+    
+    const leaveDays = calculateLeaveDays(startDate, endDate);
+    
+    return {
+      ...leave,
+      leaveDays, // Sirf yeh field return karo
+      hasDateError: leave.fromDate > leave.toDate
+    };
+  });
+
+  return leavesWithDays;
 };
 
 export const getLeavesByStaff = async (staffId: string) => {
