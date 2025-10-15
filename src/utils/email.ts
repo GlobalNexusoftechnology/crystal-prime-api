@@ -122,3 +122,56 @@ export const sendTicketCommentEmail = async (
 
   await transporter.sendMail(mailOptions);
 };
+
+export const sendLeaveApplicationEmail = async (
+  recipientEmail: string,
+  staffName: string,
+  leaveType: string,
+  fromDate: string,
+  toDate: string,
+  appliedDate: string,
+  description: string | null,
+  leaveId: string
+) => {
+  const mailOptions = {
+    from: `"HR/Leave Management" <${process.env.EMAIL_USER}>`,
+    to: recipientEmail,
+    subject: `New Leave Request from ${staffName}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">New Leave Request Submitted</h2>
+        <p>Hello,</p>
+        <p><strong>${staffName}</strong> has applied for leave. Details are as follows:</p>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #007bff;">
+          <p><strong>Leave Type:</strong> ${leaveType}</p>
+          <p><strong>From:</strong> ${fromDate}</p>
+          <p><strong>To:</strong> ${toDate}</p>
+          <p><strong>Applied On:</strong> ${appliedDate}</p>
+          
+          ${description ? `
+            <div style="margin-top: 15px;">
+              <strong style="color: #555;">Reason / Description:</strong>
+              <div style="background: white; padding: 15px; border-radius: 3px; border: 1px solid #eee; margin-top: 5px;">
+                <p style="margin: 0; color: #666; line-height: 1.5;">${description}</p>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <p>Please review and take necessary action.</p>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee;">
+          <p style="color: #666; font-size: 14px; margin-bottom: 5px;">
+            <strong>Leave ID:</strong> ${leaveId}
+          </p>
+          <p style="color: #999; font-size: 12px; margin: 0;">
+            This is an automated notification. Please do not reply to this email.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
