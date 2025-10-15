@@ -126,7 +126,13 @@ export const createAnnouncement = async (
     // Return immediately; processing is async
     res.status(202).json({
       status: "accepted",
-      data: { jobId: job.id, status: job.status },
+      message: `Announcement sent to all ${userType}s successfully`,
+      data: { 
+        jobId: job.id, 
+        status: job.status,
+        announcementMessage: message,
+        targetAudience: userType
+      },
     });
   } catch (error) {
     next(error);
