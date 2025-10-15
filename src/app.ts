@@ -51,6 +51,7 @@ import reportRoutes from './routes/report.routes';
 import {initWebSocket} from "./services/websocket.service" ;
 import { setupTicketCronJobs } from './cron/ticketCronJobs';
 import { setupProjectRenewalCron } from './cron/projectRenewalCronJob';
+import { setupBirthdayCronJob } from './cron/birthdayCronJob';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -158,6 +159,7 @@ AppDataSource.initialize()
 
     setupTicketCronJobs();
     setupProjectRenewalCron();
+    setupBirthdayCronJob();
 
     const port = config.get<number>('port');
     app.listen(port, () => {
