@@ -157,7 +157,13 @@ export const LeadService = () => {
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
       query = query.andWhere(
-        `LOWER(lead.first_name) LIKE :search OR LOWER(lead.last_name) LIKE :search OR LOWER(lead.company) LIKE :search OR LOWER(lead.phone) LIKE :search OR LOWER(lead.location) LIKE :search OR LOWER(lead.requirement) LIKE :search OR EXISTS (SELECT 1 FROM unnest(lead.email) AS e WHERE LOWER(e) LIKE :search)`,
+        `LOWER(lead.first_name) LIKE :search
+         OR LOWER(lead.last_name) LIKE :search
+         OR LOWER(lead.company) LIKE :search
+         OR LOWER(lead.phone) LIKE :search
+         OR LOWER(lead.location) LIKE :search
+         OR LOWER(lead.requirement) LIKE :search
+         OR LOWER(lead.email) LIKE :search`,
         { search }
       );
     }

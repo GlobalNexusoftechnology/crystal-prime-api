@@ -51,6 +51,22 @@ export const LeadFollowupService = () => {
       relations: ["role"]
     });
 
+    if (user) {
+      await notificationService.createNotification(
+        user.id,
+        NotificationType.FOLLOWUP_CREATED,
+        `Dear ${user?.first_name || ""} ${user?.last_name || ""}, a new follow-up has been assigned to you for lead: ${lead?.first_name || ""} ${lead?.last_name || ""}.`,
+        {
+          followupId: savedFollowup?.id,
+          leadId: lead?.id,
+          leadName: `${lead?.first_name} ${lead?.last_name}`,
+          leadContact: lead.phone || lead.email,
+          dueDate: due_date,
+          remarks: remarks,
+        }
+      );
+    }
+
     // Handle specific status notifications
     if (status === FollowupStatus.AWAITING_RESPONSE) {
       // Notify all admins about quotation sent
