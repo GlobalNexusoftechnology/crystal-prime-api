@@ -53,6 +53,7 @@ import { setupTicketCronJobs } from './cron/ticketCronJobs';
 import { setupProjectRenewalCron } from './cron/projectRenewalCronJob';
 import { setupBirthdayCronJob } from './cron/birthdayCronJob';
 import { setupHolidayNotificationCron } from './cron/holidayCronJob';
+import { setupAnnouncementCron } from './cron/announcementCron';
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -162,6 +163,7 @@ AppDataSource.initialize()
     setupProjectRenewalCron();
     setupBirthdayCronJob();
     setupHolidayNotificationCron();
+    setupAnnouncementCron();
 
     const port = config.get<number>('port');
     app.listen(port, () => {

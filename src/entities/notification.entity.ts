@@ -24,6 +24,7 @@ export enum NotificationType {
   TICKET_COMMENT_ADDED = 'TICKET_COMMENT_ADDED',
   BIRTHDAY = 'BIRTHDAY',
   HOLIDAY_REMINDER = 'HOLIDAY_REMINDER',
+  ANNOUNCEMENT = 'ANNOUNCEMENT',
 }
 
 @Entity('notifications')
