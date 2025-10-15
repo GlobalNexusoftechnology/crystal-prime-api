@@ -7,12 +7,13 @@ import AppError from "../utils/appError";
 import { mergeDateWithCurrentTime } from "../utils";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
-import type { User } from "../entities/user.entity";
+import { User } from "../entities/user.entity";
 
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const taskCommentRepo = AppDataSource.getRepository(TaskComment);
 const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
+const userRepo = AppDataSource.getRepository(User)
 const notificationService = NotificationService();
 
 
@@ -151,6 +152,60 @@ export const ProjectTaskService = () => {
           assignedByName: assignedByName,
         }
       );
+    }
+
+    // Handle task escalation to admin for approval
+    if (data.status === "Approval") {
+      // Get all admin users
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" }, deleted: false },
+        relations: ["role"],
+      });
+
+      // Notify all admins about task needing approval
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.TASK_ESCALATED,
+          `Task "${savedTask.title}" needs approval from ${user.first_name} ${user.last_name}`,
+          {
+            taskId: savedTask.id,
+            taskTitle: savedTask.title,
+            milestoneId: savedTask.milestone?.id,
+            projectId: savedTask.milestone?.project?.id,
+            escalatedBy: `${user.first_name} ${user.last_name}`,
+            escalatedById: user.id,
+            escalatedAt: new Date().toISOString(),
+          }
+        );
+      }
+    }
+
+    // Handle task completion notification to admin
+    if (oldStatus !== "Completed" && data.status === "Completed") {
+      // Get all admin users
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" }, deleted: false },
+        relations: ["role"],
+      });
+
+      // Notify all admins about task completion
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.TASK_COMPLETED,
+          `Task "${savedTask.title}" has been completed by ${user.first_name} ${user.last_name}`,
+          {
+            taskId: savedTask.id,
+            taskTitle: savedTask.title,
+            completedBy: `${user.first_name} ${user.last_name}`,
+            completedById: user.id,
+            milestoneId: savedTask.milestone?.id,
+            projectId: savedTask.milestone?.project?.id,
+            completedAt: new Date().toISOString(),
+          }
+        );
+      }
     }
 
     // Update milestone status if task status changed or milestone changed
