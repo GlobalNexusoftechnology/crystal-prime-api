@@ -4,7 +4,7 @@ import { AnnouncementJob } from "../entities/announcement-job.entity";
 import { User } from "../entities/user.entity";
 import { NotificationService } from "../services/notification.service";
 import { NotificationType } from "../entities/notification.entity";
-import { Not } from "typeorm";
+import { In, Not } from "typeorm";
 
 const notificationService = NotificationService();
 
@@ -25,7 +25,7 @@ export const setupAnnouncementCron = () => {
       const isClient = job.userType === "client";
       const where = isClient
         ? { deleted: false, role: { role: "client" } as any }
-        : { deleted: false, role: { role: Not("client") } as any };
+        : { deleted: false, role: { role: Not(In(["client", "admin"])) } as any };
 
       const users = await userRepo.find({ where, relations: ["role"], select: ["id"] as any });
 
