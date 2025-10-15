@@ -5,11 +5,16 @@ import { TaskComment } from "../entities/task-comment.entity";
 import { ClientFollowup } from "../entities/clients-followups.entity";
 import AppError from "../utils/appError";
 import { mergeDateWithCurrentTime } from "../utils";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
+import type { User } from "../entities/user.entity";
 
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const taskCommentRepo = AppDataSource.getRepository(TaskComment);
 const clientFollowupRepo = AppDataSource.getRepository(ClientFollowup);
+const notificationService = NotificationService();
+
 
 interface TaskInput {
   milestone_id: string;
@@ -35,7 +40,7 @@ export const ProjectTaskService = () => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
-  const createTask = async (data: TaskInput, queryRunner?: any) => {
+  const createTask = async (data: TaskInput, user: User,  queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
     const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const milestone = await milestoneRepository.findOne({ where: { id: data.milestone_id } });
@@ -49,10 +54,28 @@ export const ProjectTaskService = () => {
       status: data.status,
       assigned_to: data.assigned_to,
       priority: data.priority,
+      assigned_by: user?.id ? ({ id: user.id } as any) : undefined,
     });
 
     const savedTask = await repo.save(task);
-
+    if (data.assigned_to) {
+      const assignedByName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : undefined;
+      await notificationService.createNotification(
+        data.assigned_to,
+        NotificationType.TASK_ASSIGNED,
+        `You have been assigned a new task: ${savedTask.title}`,
+        {
+          taskId: savedTask.id,
+          taskTitle: savedTask.title,
+          milestoneId: milestone.id,
+          dueDate: savedTask.due_date,
+          priority: savedTask.priority,
+          status: savedTask.status,
+          assignedById: user?.id,
+          assignedByName: assignedByName,
+        }
+      );
+    }
     // Update milestone status after task creation
     const { TaskStatusService } = await import("./task-status.service");
     const taskStatusService = TaskStatusService();
@@ -70,7 +93,7 @@ export const ProjectTaskService = () => {
     }
     const tasks = await taskRepo.find({
       where,
-      relations: ["milestone", "milestone.project", "milestone.project.client"],
+      relations: ["milestone", "milestone.project", "milestone.project.client", "assigned_by"],
       order: { created_at: "DESC" }
     });
     const data = tasks.map((t) => ({ ...t, delay_days: calculateTaskDelayDays(t) }));
@@ -78,12 +101,12 @@ export const ProjectTaskService = () => {
   };
 
   const getTaskById = async (id: string) => {
-    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project", "milestone.project.client"] });
+    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project", "milestone.project.client", "assigned_by"] });
     if (!task) throw new AppError(404, "Task not found");
     return { ...task, delay_days: calculateTaskDelayDays(task) } as any;
   };
 
-  const updateTask = async (id: string, data: Partial<TaskInput>, queryRunner?: any) => {
+  const updateTask = async (id: string, data: Partial<TaskInput>, user: User, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
     const milestoneRepository = queryRunner ? queryRunner.manager.getRepository(ProjectMilestones) : milestoneRepo;
     const task = await repo.findOne({ where: { id, deleted: false }, relations: ["milestone"] });
@@ -102,10 +125,33 @@ export const ProjectTaskService = () => {
     if (data.description !== undefined) task.description = data.description;
     if (data.due_date !== undefined) task.due_date = mergeDateWithCurrentTime(data.due_date);
     if (data.status !== undefined) task.status = data.status;
-    if (data.assigned_to !== undefined) task.assigned_to = data.assigned_to;
+    const prevAssignedTo = task.assigned_to;
+    if (data.assigned_to !== undefined){
+      task.assigned_to = data.assigned_to;
+      task.assigned_by = user?.id ? { id: user.id } as any : task.assigned_by;
+    }
     if (data.priority !== undefined) task.priority = data.priority;
 
     const savedTask = await repo.save(task);
+
+    if (data.assigned_to && data.assigned_to !== prevAssignedTo) {
+      const assignedByName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : undefined;
+      await notificationService.createNotification(
+        data.assigned_to,
+        NotificationType.TASK_ASSIGNED,
+        `You have been assigned a new task: ${savedTask.title}`,
+        {
+          taskId: savedTask.id,
+          taskTitle: savedTask.title,
+          milestoneId: savedTask.milestone?.id,
+          dueDate: savedTask.due_date,
+          priority: savedTask.priority,
+          status: savedTask.status,
+          assignedById: user?.id,
+          assignedByName: assignedByName,
+        }
+      );
+    }
 
     // Update milestone status if task status changed or milestone changed
     const { TaskStatusService } = await import("./task-status.service");

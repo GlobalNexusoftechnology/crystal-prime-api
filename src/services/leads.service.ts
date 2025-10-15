@@ -157,7 +157,13 @@ export const LeadService = () => {
     if (searchText && searchText.trim() !== "") {
       const search = `%${searchText.trim().toLowerCase()}%`;
       query = query.andWhere(
-        `LOWER(lead.first_name) LIKE :search OR LOWER(lead.last_name) LIKE :search OR LOWER(lead.company) LIKE :search OR LOWER(lead.phone) LIKE :search OR LOWER(lead.location) LIKE :search OR LOWER(lead.requirement) LIKE :search OR EXISTS (SELECT 1 FROM unnest(lead.email) AS e WHERE LOWER(e) LIKE :search)`,
+        `LOWER(lead.first_name) LIKE :search
+         OR LOWER(lead.last_name) LIKE :search
+         OR LOWER(lead.company) LIKE :search
+         OR LOWER(lead.phone) LIKE :search
+         OR LOWER(lead.location) LIKE :search
+         OR LOWER(lead.requirement) LIKE :search
+         OR LOWER(lead.email) LIKE :search`,
         { search }
       );
     }
@@ -378,7 +384,9 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
-    const lead = await leadRepo.findOne({ where: { id, deleted: false } });
+    const lead = await leadRepo.findOne({ where: { id, deleted: false },
+    relations: ["assigned_to"],
+   });
     if (!lead) throw new AppError(400, "Lead not found");
 
     if (email) {
@@ -450,80 +458,67 @@ export const LeadService = () => {
           : await leadTypeRepo.findOne({ where: { id: type_id } });
     }
 
-    if (assigned_to !== undefined) {
+        // Handle lead escalation
+        if (data.escalate_to === true) {
+          lead.escalate_to = true;
+
+          // Notify all admins about the escalated lead
+          const adminUsers = await userRepo.find({
+            where: { role: { role: "admin" }, deleted: false },
+            relations: ["role"],
+          });
+    
+          for (const admin of adminUsers) {
+            await notificationService.createNotification(
+              admin.id,
+              NotificationType.LEAD_ESCALATED,
+              `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
+                lead.phone || lead.email
+              })`,
+              {
+                leadId: lead.id,
+                leadName: `${lead.first_name} ${lead.last_name}`,
+                leadContact: lead.phone || lead.email,
+                escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
+                requirement: lead.requirement,
+              }
+            );
+          }
+        }
+
+    if (assigned_to !== undefined && assigned_to !== lead.assigned_to?.id) {
       lead.assigned_to =
         assigned_to === null
           ? null
           : await userRepo.findOne({ where: { id: assigned_to } });
-    }
 
-    // Handle lead escalation
-    if (data.escalate_to === true && !lead.escalate_to) {
-      lead.escalate_to = true;
-
-      // Get all staff members to notify
-      const staffMembers = await userRepo.find({
-        where: { role: { role: "staff" } },
-        relations: ["role"],
-      });
-
-      // Notify all staff members about the escalated lead
-      for (const staff of staffMembers) {
-        await notificationService.createNotification(
-          staff.id,
-          NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
-            lead.phone || lead.email
-          })`,
-          {
-            leadId: lead.id,
-            leadName: `${lead.first_name} ${lead.last_name}`,
-            leadContact: lead.phone || lead.email,
-            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
-            requirement: lead.requirement,
-          }
-        );
-      }
-
-      // Notify all admins about the escalated lead
-      const adminUsers = await userRepo.find({
-        where: { role: { role: "admin" } },
-        relations: ["role"],
-      });
-
-      for (const admin of adminUsers) {
-        await notificationService.createNotification(
-          admin.id,
-          NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
-            lead.phone || lead.email
-          })`,
-          {
-            leadId: lead.id,
-            leadName: `${lead.first_name} ${lead.last_name}`,
-            leadContact: lead.phone || lead.email,
-            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
-            requirement: lead.requirement,
-          }
-        );
-      }
+          await notificationService.createNotification(
+            assigned_to,
+            NotificationType.LEAD_ASSIGNED,
+            `You have been assigned a new lead: ${lead.first_name} ${lead.last_name}`,
+            {
+              leadId: lead.id,
+              leadName: `${lead.first_name} ${lead.last_name}`,
+              assignedBy: `${userData?.first_name} ${userData?.last_name}`,
+            }
+          );
     }
 
     const savedLead = await leadRepo.save(lead);
 
-    // Send notification to assigned user if any
-    if (lead.assigned_to) {
-      await notificationService.createNotification(
-        lead.assigned_to.id,
-        NotificationType.LEAD_ASSIGNED,
-        `You have been assigned a new lead: ${first_name} ${last_name}`,
-        {
-          leadId: savedLead.id,
-          leadName: `${first_name} ${last_name}`,
-          assignedBy: `${userData?.first_name} ${userData?.last_name}`,
-        }
-      );
-    }
+    // // Send notification to assigned user if any
+    // if (lead.assigned_to) {
+    //   await notificationService.createNotification(
+    //     lead.assigned_to.id,
+    //     NotificationType.LEAD_ASSIGNED,
+    //     `You have been assigned a new lead: ${first_name} ${last_name}`,
+    //     {
+    //       leadId: savedLead.id,
+    //       leadName: `${first_name} ${last_name}`,
+    //       assignedBy: `${userData?.first_name} ${userData?.last_name}`,
+    //     }
+    //   );
+    // }
 
     return savedLead;
   };

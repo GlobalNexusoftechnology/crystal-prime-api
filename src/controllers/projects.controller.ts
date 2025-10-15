@@ -35,6 +35,7 @@ export const ProjectController = () => {
   ) => {
     const queryRunner = service.getQueryRunner();
     await queryRunner.startTransaction();
+    const user = res.locals.user;
     try {
       const parsedData = createProjectSchema.parse(req.body); // Zod validation
       const role = res?.locals?.user?.role?.role as string | undefined;
@@ -71,7 +72,7 @@ export const ProjectController = () => {
           let createdTasks: any[] = [];
           if (Array.isArray(milestone.tasks)) {
             for (const task of milestone.tasks) {
-              const taskResult = await taskService.createTask({ ...task, milestone_id: milestoneResult.id }, queryRunner);
+              const taskResult = await taskService.createTask({ ...task, milestone_id: milestoneResult.id },user, queryRunner);
               createdTasks.push(taskResult);
             }
           }
@@ -162,6 +163,7 @@ export const ProjectController = () => {
   ) => {
     const queryRunner = service.getQueryRunner();
     await queryRunner.startTransaction();
+    const user = res.locals.user;
     try {
       const { id } = req.params;
       const parsedData = updateProjectSchema.parse(req.body);
@@ -225,9 +227,9 @@ export const ProjectController = () => {
             for (const task of milestone.tasks) {
               let taskResult;
               if (task.id) {
-                taskResult = await taskService.updateTask(task.id, task, queryRunner);
+                taskResult = await taskService.updateTask(task.id, task, user, queryRunner);
               } else {
-                taskResult = await taskService.createTask({ ...task, milestone_id: milestoneResult.id }, queryRunner);
+                taskResult = await taskService.createTask({ ...task, milestone_id: milestoneResult.id }, user, queryRunner);
               }
               updatedTasks.push(taskResult);
             }
