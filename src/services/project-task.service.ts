@@ -181,32 +181,34 @@ export const ProjectTaskService = () => {
       }
     }
 
-    // Handle task completion notification to admin
-    if (oldStatus !== "Completed" && data.status === "Completed") {
-      // Get all admin users
-      const adminUsers = await userRepo.find({
-        where: { role: { role: "admin" }, deleted: false },
-        relations: ["role"],
-      });
+ if (
+  (oldStatus?.toLowerCase() ?? "") !== "completed" &&
+  (data.status?.toLowerCase() ?? "") === "completed"
+) {
+  const adminUsers = await userRepo.find({
+    where: { role: { role: "admin" }, deleted: false },
+    relations: ["role"],
+  });
 
-      // Notify all admins about task completion
-      for (const admin of adminUsers) {
-        await notificationService.createNotification(
-          admin.id,
-          NotificationType.TASK_COMPLETED,
-          `Task "${savedTask.title}" has been completed by ${user.first_name} ${user.last_name}`,
-          {
-            taskId: savedTask.id,
-            taskTitle: savedTask.title,
-            completedBy: `${user.first_name} ${user.last_name}`,
-            completedById: user.id,
-            milestoneId: savedTask.milestone?.id,
-            projectId: savedTask.milestone?.project?.id,
-            completedAt: new Date().toISOString(),
-          }
-        );
+  for (const admin of adminUsers) {
+    await notificationService.createNotification(
+      admin.id,
+      NotificationType.TASK_COMPLETED,
+      `Task "${savedTask.title}" has been completed by ${user.first_name} ${user.last_name}`,
+      {
+        taskId: savedTask.id,
+        taskTitle: savedTask.title,
+        completedBy: `${user.first_name} ${user.last_name}`,
+        completedById: user.id,
+        milestoneId: savedTask.milestone?.id,
+        projectId: savedTask.milestone?.project?.id,
+        completedAt: new Date().toISOString(),
       }
-    }
+    );
+  }
+}
+
+
 
     // Update milestone status if task status changed or milestone changed
     const { TaskStatusService } = await import("./task-status.service");
