@@ -19,6 +19,7 @@ import { getValidToken } from "./page-token.service";
 import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } from "docx";
 import fs from "fs";
 import path from "path";
+import { formatQuotationDate } from "../utils/formatQuotationDate";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -1067,7 +1068,12 @@ export const LeadService = () => {
     await leadRepo.save(newLead);
   };
 
-  const generateQuotationDocService = async (leadId: string) => {
+  const generateQuotationDocService = async (
+    leadId: string,
+    proposalDate?: string,
+    proposalNumber?: string,
+    proposalText?: string
+  ) => {
     const lead = await leadRepo.findOne({
       where: { id: leadId },
       relations: ["assigned_to", "status", "type", "source"],
@@ -1158,6 +1164,99 @@ export const LeadService = () => {
                         new Paragraph({ text: `Client Address: ${lead.location || "-"}`, alignment: AlignmentType.RIGHT }),
                         new Paragraph({ text: `Client Contact No: ${lead.phone || "-"}`, alignment: AlignmentType.RIGHT }),
                         new Paragraph({ text: `Client Email ID: ${lead.email || "-"}`, alignment: AlignmentType.RIGHT }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            
+            // Proposal Date and Number section
+            new Paragraph({ text: "", spacing: { after: 200 } }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    // Proposal Date field
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                      },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Proposal Date:", bold: true }),
+                            new TextRun({ text: " " }),
+                            new TextRun({ text: formatQuotationDate(proposalDate) || "_____________" }),
+                          ],
+                          alignment: AlignmentType.CENTER,
+                          spacing: { after: 100, before: 100 },
+                        }),
+                      ],
+                    }),
+                    
+                    // Proposal Number field
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                      },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Proposal Number:", bold: true }),
+                            new TextRun({ text: " " }),
+                            new TextRun({ text: proposalNumber || "_____________" }),
+                          ],
+                          alignment: AlignmentType.CENTER,
+                          spacing: { after: 100, before: 100 },
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+            
+            // Large text area section
+            new Paragraph({ text: "", spacing: { after: 200 } }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      width: { size: 100, type: WidthType.PERCENTAGE },
+                      margins: { top: 200, bottom: 200, left: 120, right: 120 },
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                      },
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Proposal Details:", bold: true }),
+                          ],
+                          alignment: AlignmentType.LEFT,
+                          spacing: { after: 120, before: 120 },
+                        }),
+                        new Paragraph({
+                          text: proposalText || "_________________________________________________________",
+                          alignment: AlignmentType.LEFT,
+                          spacing: { after: 120, before: 0 },
+                        }),
                       ],
                     }),
                   ],

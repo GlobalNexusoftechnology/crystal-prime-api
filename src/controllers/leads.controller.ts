@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
-import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import { createLeadSchema, updateLeadSchema, generateQuotationSchema } from "../schemas/leads.schema";
 import { verifyMetaSignature } from "../utils";
 import { ChannelType } from "../entities/leads.entity";
 
@@ -319,7 +319,17 @@ const googleLeadWebhook = async (
 const exportQuotationDoc = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const buffer = await service.generateQuotationDocService(id);
+    
+    // Validate request body
+    const validatedData = generateQuotationSchema.parse(req.body);
+    const { proposalDate, proposalNumber, proposalText } = validatedData;
+    
+    const buffer = await service.generateQuotationDocService(
+      id,
+      proposalDate?.toISOString(),
+      proposalNumber,
+      proposalText
+    );
 
     // Build file name: quotation_<lead-name>.docx
     const lead = await service.getLeadById(id);
