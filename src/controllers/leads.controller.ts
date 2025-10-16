@@ -316,7 +316,28 @@ const googleLeadWebhook = async (
   }
 };
 
+const exportQuotationDoc = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const buffer = await service.generateQuotationDocService(id);
+
+    // Build file name: quotation_<lead-name>.docx
+    const lead = await service.getLeadById(id);
+    const leadNameRaw = `${lead.first_name || ""} ${lead.last_name || ""}`.trim();
+    const safeLeadName = (leadNameRaw || id)
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_-]/g, "");
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename=quotation_${safeLeadName}.docx`);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
   return {
+    exportQuotationDoc,
     googleLeadWebhook,
     metaLeadWebhook,
     verifyMetaWebhook,

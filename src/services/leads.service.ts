@@ -16,6 +16,9 @@ import { Between, ILike, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
 import { createLeadSchema, createMetaLeadSchema } from "../schemas/leads.schema";
 import { getValidToken } from "./page-token.service";
+import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } from "docx";
+import fs from "fs";
+import path from "path";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -1064,7 +1067,114 @@ export const LeadService = () => {
     await leadRepo.save(newLead);
   };
 
+  const generateQuotationDocService = async (leadId: string) => {
+    const lead = await leadRepo.findOne({
+      where: { id: leadId },
+      relations: ["assigned_to", "status", "type", "source"],
+    });
+  
+    if (!lead) throw new AppError(404, "Lead not found");
+  
+    // Read logo from file (support ts-node and compiled build locations)
+    const logoCandidates = [
+      path.join(__dirname, "../../public/satkar-logo.png"), // when running TS directly
+      path.join(__dirname, "../../../src/public/satkar-logo.png"), // when running from build output
+      path.join(process.cwd(), "src/public/satkar-logo.png"),
+      path.join(process.cwd(), "public/satkar-logo.png"),
+    ];
+    const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+    if (!resolvedLogoPath) {
+      throw new AppError(500, "Quotation logo not found. Ensure 'src/public/satkar-logo.png' is available.");
+    }
+    const logoBuffer = fs.readFileSync(resolvedLogoPath);
+  
+    // Build document
+    const doc = new Document({
+      sections: [
+        {
+          children: [
+            // Logo on top-left
+            new Paragraph({
+              children: [
+                new ImageRun({
+                  data: new Uint8Array(logoBuffer),
+                  transformation: { width: 120, height: 40 },
+                } as any),
+              ],
+            }),
+            // Separator line under logo
+            new Paragraph({
+              border: {
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
+              },
+            }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: {
+                top: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                bottom: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                left: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                right: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+              },
+              rows: [
+                new TableRow({
+                  children: [
+                    // Left Column (Static info)
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      children: [
+                        new Paragraph({
+                          children: [new TextRun({ text: "Quotation From:", bold: true })],
+                          spacing: { after: 120 },
+                        }),
+                        new Paragraph({ text: "Satkar Software Solutions Private Limited" }),
+                        new Paragraph({ text: "GST No: 27AAUCS490971ZW" }),
+                        new Paragraph({ text: "Udyam Reg: UDYAM-MH-26-0525073" }),
+                        new Paragraph({ text: "Email ID: manish@satkarinfotech.com" }),
+                        new Paragraph({ text: "Contact Person: " }),
+                        new Paragraph({ text: "Contact No: " }),
+                      ],
+                    }),
+  
+                    // Right Column (Client info)
+                    new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE },
+                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          children: [new TextRun({ text: "Quotation To:", bold: true })],
+                          spacing: { after: 120 },
+                        }),
+                        new Paragraph({ text: lead.company || "-", alignment: AlignmentType.RIGHT }),
+                        new Paragraph({ text: `Client GST No: -`, alignment: AlignmentType.RIGHT }),
+                        new Paragraph({
+                          text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}`,
+                          alignment: AlignmentType.RIGHT,
+                        }),
+                        new Paragraph({ text: `Client Address: ${lead.location || "-"}`, alignment: AlignmentType.RIGHT }),
+                        new Paragraph({ text: `Client Contact No: ${lead.phone || "-"}`, alignment: AlignmentType.RIGHT }),
+                        new Paragraph({ text: `Client Email ID: ${lead.email || "-"}`, alignment: AlignmentType.RIGHT }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        },
+      ],
+    });
+  
+    const buffer = await Packer.toBuffer(doc);
+    return buffer;
+  };
+
   return {
+    generateQuotationDocService,
     handleGoogleLead,
     handleMetaLead,
     verifyWebhook,

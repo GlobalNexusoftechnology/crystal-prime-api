@@ -20,5 +20,5 @@ router.delete("/:id", controller.softDeleteLead);
 router.get("/export/excel", controller.exportLeadsExcelController);
 router.get('/template/download', controller.downloadLeadTemplate);
 router.post("/upload-excel", excelUpload.single("file"), controller.uploadLeadsFromExcel);
-
+router.get("/:id/quotation", controller.exportQuotationDoc);
 export default router;
