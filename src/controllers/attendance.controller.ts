@@ -38,9 +38,64 @@ export const getAttendanceByStaff = async (req: Request, res: Response, next: Ne
 /** Admin: Get all attendance */
 export const getAllAttendance = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await attendanceService.getAllAttendance();
-    res.json({ status: true, message: "All attendance records fetched", data });
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+    const searchText = req.query.searchText as string | undefined;
+
+    const filters = {
+      page,
+      limit,
+      year,
+      month,
+      searchText
+    };
+
+    const result = await attendanceService.getAllAttendance(filters);
+    res.status(200).json({
+      status: 'success',
+      message: 'Attendance records fetched successfully',
+      data: { list: result.data, pagination: result.pagination },
+    });
   } catch (err) {
     next(err);
+  }
+};
+
+/** Export Attendance to Excel */
+export const exportAttendanceExcel = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+    const month = req.query.month ? parseInt(req.query.month as string) : undefined;
+    const searchText = req.query.searchText as string | undefined;
+
+    const filters = {
+      year,
+      month,
+      searchText
+    };
+
+    const workbook = await attendanceService.exportAttendanceToExcel(filters);
+
+    // Generate filename with month/year
+    const yearStr = year || new Date().getFullYear();
+    const monthStr = month ? new Date(yearStr, month - 1).toLocaleDateString('en-US', { month: 'long' }) : new Date().toLocaleDateString('en-US', { month: 'long' });
+    const filename = `attendance_${monthStr}_${yearStr}_${Date.now()}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${filename}"`
+    );
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Error exporting attendance:", error);
+    next(error);
   }
 };
