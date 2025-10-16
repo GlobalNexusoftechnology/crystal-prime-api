@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
-import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import { createLeadSchema, updateLeadSchema, generateQuotationSchema } from "../schemas/leads.schema";
 import { verifyMetaSignature } from "../utils";
 import { ChannelType } from "../entities/leads.entity";
 
@@ -316,7 +316,38 @@ const googleLeadWebhook = async (
   }
 };
 
+const exportQuotationDoc = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate request body
+    const validatedData = generateQuotationSchema.parse(req.body);
+    const { proposalDate, proposalNumber, proposalText } = validatedData;
+    
+    const buffer = await service.generateQuotationDocService(
+      id,
+      proposalDate?.toISOString(),
+      proposalNumber,
+      proposalText
+    );
+
+    // Build file name: quotation_<lead-name>.docx
+    const lead = await service.getLeadById(id);
+    const leadNameRaw = `${lead.first_name || ""} ${lead.last_name || ""}`.trim();
+    const safeLeadName = (leadNameRaw || id)
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_-]/g, "");
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    res.setHeader("Content-Disposition", `attachment; filename=quotation_${safeLeadName}.docx`);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
   return {
+    exportQuotationDoc,
     googleLeadWebhook,
     metaLeadWebhook,
     verifyMetaWebhook,

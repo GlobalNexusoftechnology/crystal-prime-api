@@ -72,3 +72,10 @@ export const createMetaLeadSchema = z.object({
   requirement: z.string().optional(),
   phone: z.string().optional(),
 }).passthrough();
+
+// Generate Quotation Schema
+export const generateQuotationSchema = z.object({
+  proposalDate: z.coerce.date().optional(),
+  proposalNumber: z.string().optional(), 
+  proposalText: z.string().optional(),
+});
