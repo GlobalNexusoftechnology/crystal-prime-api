@@ -8,6 +8,7 @@ import AppError from "../utils/appError";
 import { User } from "../entities";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
+import { ILike } from "typeorm";
 
 const projectRepo = AppDataSource.getRepository(Project);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
@@ -70,7 +71,7 @@ export const TaskStatusService = () => {
 
     if( (oldStatus?.toLocaleLowerCase() !== "completed") && (newStatus?.toLocaleLowerCase() === "completed")){
       const adminUsers = await userRepo.find({
-        where: { role: { role: "admin" }, deleted: false },
+        where: { role: { role: ILike("admin") }, deleted: false },
         relations: ["role"],
       });
     
