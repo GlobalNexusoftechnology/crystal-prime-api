@@ -12,7 +12,7 @@ export const createUserController = async (
 ) => {
   try {
     const validated = createUserSchema.parse({ body: req.body });
-    const { email, first_name, last_name, password, role_id, dob, phone_number } = validated.body;
+    const { email, first_name, last_name, password, role_id, dob, phone_number, employee_id } = validated.body;
 
     // Check if user already exists by email
     const existingUserByEmail = await findUserByEmail({ email });
@@ -48,6 +48,7 @@ export const createUserController = async (
       verificationCode: null,
       verified: true,
       phone_number,
+      employee_id,
     };
 
     // Create user
