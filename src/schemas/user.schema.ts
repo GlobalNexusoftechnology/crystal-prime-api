@@ -6,6 +6,8 @@ export const createUserSchema = object({
       required_error: "First name is required",
     }),
 
+    employee_id: string().optional(),
+
     last_name: string().optional(),
 
     email: string({
@@ -35,6 +37,8 @@ export const updateUserSchema = object({
     first_name: string().optional(),
 
     last_name: string().optional().optional(),
+
+    employee_id: string().optional(),
 
     email: string().email("Invalid email address").optional(),
 

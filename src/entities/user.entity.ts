@@ -33,6 +33,10 @@ export class User extends Model {
   @Column({ nullable: true })
   last_name?: string;
 
+  @Column({ type: "varchar", length: 50, nullable: true, unique: true })
+  employee_id: string | null;
+
+
   @Column({ nullable: true })
   phone_number: string;
 
