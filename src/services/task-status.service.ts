@@ -5,17 +5,22 @@ import { ProjectTasks } from "../entities/project-task.entity";
 import { ProjectMilestoneMaster } from "../entities/milestone-master.entity";
 import { Ticket } from "../entities/ticket.entity";
 import AppError from "../utils/appError";
+import { User } from "../entities";
+import { NotificationService } from "./notification.service";
+import { NotificationType } from "../entities/notification.entity";
 
 const projectRepo = AppDataSource.getRepository(Project);
 const milestoneRepo = AppDataSource.getRepository(ProjectMilestones);
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
 const milestoneMasterRepo = AppDataSource.getRepository(ProjectMilestoneMaster);
+const userRepo = AppDataSource.getRepository(User);
+const notificationService = NotificationService();
 
 export const TaskStatusService = () => {
   /**
    * Update task status and cascade to milestone and project
    */
-  const updateTaskStatus = async (taskId: string, newStatus: string, queryRunner?: any) => {
+  const updateTaskStatus = async (taskId: string, newStatus: string, user: User, queryRunner?: any) => {
     const repo = queryRunner ? queryRunner.manager.getRepository(ProjectTasks) : taskRepo;
 
     const task = await repo.findOne({
@@ -61,8 +66,31 @@ export const TaskStatusService = () => {
       }
     }
 
-    await repo.save(task);
+  const savedTask = await repo.save(task);
 
+    if( (oldStatus?.toLocaleLowerCase() !== "completed") && (newStatus?.toLocaleLowerCase() === "completed")){
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" }, deleted: false },
+        relations: ["role"],
+      });
+    
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.TASK_COMPLETED,
+          `Task "${savedTask.title}" has been marked as completed by ${user.first_name} ${user.last_name}`,
+          {
+            taskId: savedTask.id,
+            taskTitle: savedTask.title,
+            completedBy: `${user.first_name} ${user.last_name}`,
+            completedById: user.id,
+            milestoneId: savedTask.milestone?.id,
+            projectId: savedTask.milestone?.project?.id,
+            completedAt: new Date().toISOString(),
+          }
+        );
+      }
+    }
     // Update milestone status if task status changed
     if (oldStatus !== newStatus && task.milestone) {
       await updateMilestoneStatus(task.milestone.id, queryRunner);

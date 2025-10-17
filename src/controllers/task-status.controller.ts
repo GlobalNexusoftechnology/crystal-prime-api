@@ -17,8 +17,9 @@ export const TaskStatusController = () => {
     try {
       const { taskId } = req.params;
       const parsedData = updateTaskStatusSchema.parse(req.body);
-      
-      const result = await taskStatusService.updateTaskStatus(taskId, parsedData.status);
+      const user = res?.locals?.user;
+
+      const result = await taskStatusService.updateTaskStatus(taskId, parsedData.status, user);
       
       // Get updated milestone and project status after the task update
       let milestoneStatus = null;

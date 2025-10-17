@@ -1,9 +1,11 @@
 import { Router } from "express";
 import { TaskStatusController } from "../controllers/task-status.controller";
+import { deserializeUser, requireUser } from "../middleware";
 
 const router = Router();
 const controller = TaskStatusController();
 
+router.use(deserializeUser, requireUser);
 // Task status change routes
 router.put("/tasks/:taskId/status", controller.updateTaskStatus);
 
