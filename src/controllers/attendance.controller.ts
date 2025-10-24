@@ -99,3 +99,33 @@ export const exportAttendanceExcel = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+// Get today's attendance status for a staff
+export const getTodayStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const staffId = req.params.staffId;
+    const data = await attendanceService.getTodayAttendance(staffId);
+
+    if (!data) {
+      return res.json({
+        status: true,
+        message: "No attendance record found for today",
+        data: { isCheckedIn: false },
+      });
+    }
+
+    const isCheckedIn = !!data.inTime && !data.outTime;
+
+    res.json({
+      status: true,
+      message: "Today's attendance status fetched",
+      data: {
+        isCheckedIn,
+        checkInTime: data.inTime,
+        checkOutTime: data.outTime,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

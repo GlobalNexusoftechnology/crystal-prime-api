@@ -374,3 +374,16 @@ export const exportAttendanceToExcel = async (filters: any = {}): Promise<ExcelJ
 
   return workbook;
 };
+
+// Get today's attendance record
+export const getTodayAttendance = async (staffId: string) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  return await attendanceRepo.findOne({
+    where: { staffId, date: Between(today, tomorrow) },
+  });
+};
