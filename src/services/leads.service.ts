@@ -1096,6 +1096,8 @@ export const LeadService = () => {
   
     // Build document
     const doc = new Document({
+      creator: "Satkar Software Solutions",
+      title: "Quotation Document",
       sections: [
         {
           children: [
@@ -1114,15 +1116,17 @@ export const LeadService = () => {
                 bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
               },
             }),
+            // Add some spacing
+            new Paragraph({ text: "" }),
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
               borders: {
-                top: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
-                bottom: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
-                left: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
-                right: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 4, color: "D0D0D0" },
+                top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
               },
               rows: [
                 new TableRow({
@@ -1130,32 +1134,37 @@ export const LeadService = () => {
                     // Left Column (Static info)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       children: [
                         new Paragraph({
-                          children: [new TextRun({ text: "Quotation From:", bold: true })],
-                          spacing: { after: 120 },
+                          children: [new TextRun({ text: "Quotation From:", font: "Arial" })],
+                          spacing: { after: 200 },
                         }),
-                        new Paragraph({ text: "Satkar Software Solutions Private Limited" }),
-                        new Paragraph({ text: "GST No: 27AAUCS490971ZW" }),
-                        new Paragraph({ text: "Udyam Reg: UDYAM-MH-26-0525073" }),
-                        new Paragraph({ text: "Email ID: manish@satkarinfotech.com" }),
-                        new Paragraph({ text: "Contact Person: " }),
-                        new Paragraph({ text: "Contact No: " }),
+                        new Paragraph({ 
+                          children: [new TextRun({ text: "Satkar Software Solutions Private Limited", bold: true, font: "Arial" })]
+                        }),
+                        new Paragraph({ children: [new TextRun({ text: "GST No: 27AAUCS490971ZW", font: "Arial" })] }),
+                        new Paragraph({ children: [new TextRun({ text: "Udyam Reg: UDYAM-MH-26-0525073", font: "Arial" })] }),
+                        new Paragraph({ children: [new TextRun({ text: "Email ID: manish@satkarinfotech.com", font: "Arial" })] }),
+                        new Paragraph({ children: [new TextRun({ text: "Contact Person: ", font: "Arial" })] }),
+                        new Paragraph({ children: [new TextRun({ text: "Contact No: ", font: "Arial" })] }),
                       ],
                     }),
   
                     // Right Column (Client info)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       children: [
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          children: [new TextRun({ text: "Quotation To:", bold: true })],
-                          spacing: { after: 120 },
+                          children: [new TextRun({ text: "Quotation To:" })],
+                          spacing: { after: 200 },
                         }),
-                        new Paragraph({ text: lead.company || "-", alignment: AlignmentType.RIGHT }),
+                        new Paragraph({ 
+                          children: [new TextRun({ text: lead.company || "-", bold: true })],
+                          alignment: AlignmentType.RIGHT 
+                        }),
                         new Paragraph({ text: `Client GST No: -`, alignment: AlignmentType.RIGHT }),
                         new Paragraph({
                           text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}`,
@@ -1181,12 +1190,12 @@ export const LeadService = () => {
                     // Proposal Date field
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       borders: {
-                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
                       },
                       children: [
                         new Paragraph({
@@ -1204,12 +1213,12 @@ export const LeadService = () => {
                     // Proposal Number field
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 120, bottom: 120, left: 120, right: 120 },
+                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       borders: {
-                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
                       },
                       children: [
                         new Paragraph({
@@ -1239,10 +1248,10 @@ export const LeadService = () => {
                       width: { size: 100, type: WidthType.PERCENTAGE },
                       margins: { top: 200, bottom: 200, left: 120, right: 120 },
                       borders: {
-                        top: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 4, color: "000000" },
+                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
                       },
                       children: [
                         new Paragraph({
