@@ -1017,13 +1017,6 @@ export const LeadService = () => {
 
   await leadRepo.save(newLead);
 
-  console.log(
-    "\n\n\n✅ Lead saved with campaign type:",
-    campaignName,
-    "->",
-    leadType?.name || "null",
-    "\n\n\n"
-  );
 };
 
   const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
@@ -1141,7 +1134,7 @@ export const LeadService = () => {
                           spacing: { after: 200 },
                         }),
                         new Paragraph({ 
-                          children: [new TextRun({ text: "Satkar Software Solutions Private Limited", bold: true, font: "Arial" })]
+                          children: [new TextRun({ text: "Satkar Software Solutions Private Limited", bold: true, font: "Arial", size: 22 })]
                         }),
                         new Paragraph({ children: [new TextRun({ text: "GST No: 27AAUCS490971ZW", font: "Arial" })] }),
                         new Paragraph({ children: [new TextRun({ text: "Udyam Reg: UDYAM-MH-26-0525073", font: "Arial" })] }),
@@ -1162,7 +1155,7 @@ export const LeadService = () => {
                           spacing: { after: 200 },
                         }),
                         new Paragraph({ 
-                          children: [new TextRun({ text: lead.company || "-", bold: true })],
+                          children: [new TextRun({ text: lead.company || "-", bold: true, font: "Arial", size: 22 })],
                           alignment: AlignmentType.RIGHT 
                         }),
                         new Paragraph({ text: `Client GST No: -`, alignment: AlignmentType.RIGHT }),
