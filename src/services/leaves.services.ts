@@ -21,9 +21,25 @@ const validateAndFormatDates = (fromDate: Date, toDate: Date): { startDate: Date
 };
 
 // Function to calculate total leave days (excluding weekends)
-const calculateLeaveDays = (fromDate: Date, toDate: Date): number => {
+const calculateLeaveDays = (fromDate: Date, toDate: Date, leaveType?: string): number => {
   const { startDate, endDate } = validateAndFormatDates(fromDate, toDate);
   
+  // Handle half-day leaves
+  if (leaveType === "Half Day") {
+    return 0.5;
+  }
+  
+  // Handle single day leaves (when fromDate and toDate are the same)
+  if (startDate.getTime() === endDate.getTime()) {
+    // Check if it's a weekend
+    const dayOfWeek = startDate.getDay();
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return 0; // Weekend, no leave days
+    }
+    return 1; // Single working day
+  }
+  
+  // Handle multi-day leaves
   let leaveDays = 0;
   const currentDate = new Date(startDate);
   
@@ -163,7 +179,7 @@ export const getAllLeaves = async () => {
       new Date(leave.toDate)
     );
     
-    const leaveDays = calculateLeaveDays(startDate, endDate);
+    const leaveDays = calculateLeaveDays(startDate, endDate, leave.leaveType);
     
     return {
       ...leave,
@@ -176,5 +192,27 @@ export const getAllLeaves = async () => {
 };
 
 export const getLeavesByStaff = async (staffId: string) => {
-  return await leaveRepo.find({ where: { staffId }, order: { appliedDate: "DESC" } });
+  const leaves = await leaveRepo.find({ 
+    where: { staffId }, 
+    order: { appliedDate: "DESC" },
+    relations: ["staff"]
+  });
+
+  // Calculate leave days for each leave
+  const leavesWithDays = leaves.map(leave => {
+    const { startDate, endDate } = validateAndFormatDates(
+      new Date(leave.fromDate), 
+      new Date(leave.toDate)
+    );
+    
+    const leaveDays = calculateLeaveDays(startDate, endDate, leave.leaveType);
+    
+    return {
+      ...leave,
+      leaveDays,
+      hasDateError: leave.fromDate > leave.toDate
+    };
+  });
+
+  return leavesWithDays;
 };
