@@ -6,6 +6,14 @@ export const createLeaveSchema = z.object({
   fromDate: z.string(),
   toDate: z.string(),
   leaveType: z.enum(["Half Day", "Full Day", "Sick Leave", "EL"]),
+  leaveCategory: z.enum([
+    "Sick Leave",
+    "Casual Leave",
+    "Earned Leave",
+    "Maternity Leave",
+    "Paternity Leave",
+    "Other",
+  ]),
   description: z.string().optional(),
 });
 

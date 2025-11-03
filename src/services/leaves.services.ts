@@ -74,6 +74,7 @@ export const applyLeave = async (data: LeaveCreateInput) => {
       appliedDate: true,
       fromDate: true,
       toDate: true,
+      leaveCategory: true,
       leaveType: true,
       description: true,
       status: true,
@@ -153,6 +154,7 @@ export const updateLeaveStatus = async (id: string, data: LeaveUpdateInput) => {
   {
     leaveId: updatedLeave.id,
     leaveType: updatedLeave.leaveType,
+    leaveCategory: updatedLeave.leaveCategory,
     fromDate: updatedLeave.fromDate,
     toDate: updatedLeave.toDate,
     description: updatedLeave.description,

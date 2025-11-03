@@ -24,6 +24,9 @@ export class Leave extends Model {
   leaveType: string; // Half Day / Full Day / Sick Leave / EL
 
   @Column({ nullable: true })
+  leaveCategory: string;
+  
+  @Column({ nullable: true })
   description: string;
 
   @Column({ default: "Pending" })
