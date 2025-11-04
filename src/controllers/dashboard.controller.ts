@@ -68,11 +68,11 @@ export const dashboardController = () => {
             title: "Converted Leads",
             subtitle: "Weekly Leads"
           },
-          {
-            count: String(leadStats.lostLeads || 0),
-            title: "Lost Leads",
-            subtitle: "Weekly Leads"
-          },
+          // {
+          //   count: String(leadStats.lostLeads || 0),
+          //   title: "Lost Leads",
+          //   subtitle: "Weekly Leads"
+          // },
           {
             count: leadStats.totalLeads
               ? `${Math.round((leadStats.convertedLeads / leadStats.totalLeads) * 100)}%`
