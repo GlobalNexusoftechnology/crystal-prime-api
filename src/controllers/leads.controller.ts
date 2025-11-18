@@ -262,13 +262,6 @@ const metaLeadWebhook = async (
 ) => {
   try {
     const body = req.body;
-
-    console.log("\n\n\n\n\n\n");
-    console.log("=================================\n\n");
-    console.log("Lead body : ", body);
-    console.log("\n\n=================================");
-    console.log("\n\n\n\n\n\n");
-
     if (
       (body.object === "page" || body.object === "instagram") &&
       body.entry &&
