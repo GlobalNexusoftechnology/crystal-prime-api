@@ -13,4 +13,5 @@ export * from './holiday.entity';
 export * from './leaves.entity';
 export * from './attendance.entity';
 export * from './announcement-job.entity';
+export * from './work-request.entity';
 

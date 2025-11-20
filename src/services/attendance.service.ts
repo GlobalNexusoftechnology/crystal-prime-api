@@ -3,12 +3,43 @@ import { Attendance } from "../entities/attendance.entity";
 import { Between } from "typeorm";
 import ExcelJS from "exceljs";
 
+import { WorkRequest } from "../entities/work-request.entity";
+import { Holiday } from "../entities/holiday.entity";
+
 const attendanceRepo = AppDataSource.getRepository(Attendance);
+const workRequestRepo = AppDataSource.getRepository(WorkRequest);
+const holidayRepo = AppDataSource.getRepository(Holiday);
 
 // Staff check-in
 export const checkIn = async (staffId: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
+    // Check for Sunday
+    const isSunday = today.getDay() === 0;
+
+    // Check for Holiday
+    const holiday = await holidayRepo.findOne({
+      where: { date: today },
+    });
+
+    if (isSunday || holiday) {
+      const approvedRequest = await workRequestRepo.findOne({
+        where: {
+          staffId,
+          requestDate: today,
+          status: "Approved",
+        },
+      });
+
+      if (!approvedRequest) {
+        throw new Error(
+          `You need admin approval to work on ${
+            isSunday ? "Sundays" : "Holidays"
+          }.`
+        );
+      }
+    }
   
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
