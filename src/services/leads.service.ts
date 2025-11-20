@@ -466,6 +466,30 @@ export const LeadService = () => {
         if (data.escalate_to === true) {
           lead.escalate_to = true;
 
+          // Create a duplicate lead
+          const duplicateLead = leadRepo.create({
+            first_name: lead.first_name,
+            last_name: lead.last_name,
+            company: lead.company,
+            phone: lead.phone,
+            other_contact: lead.other_contact,
+            email: lead.email,
+            location: lead.location,
+            budget: lead.budget,
+            requirement: lead.requirement,
+            possibility_of_conversion: lead.possibility_of_conversion,
+            channel: lead.channel,
+            source: lead.source,
+            type: lead.type,
+            status: lead.status,
+            assigned_to: null, // Unassigned initially
+            created_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
+            updated_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
+            escalate_to: false, // Reset escalation flag for duplicate
+          });
+
+          await leadRepo.save(duplicateLead);
+
           // Notify all admins about the escalated lead
           const adminUsers = await userRepo.find({
             where: { role: { role: "admin" }, deleted: false },
@@ -478,9 +502,10 @@ export const LeadService = () => {
               NotificationType.LEAD_ESCALATED,
               `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
                 lead.phone || lead.email
-              })`,
+              }) - Duplicate created`,
               {
                 leadId: lead.id,
+                duplicateLeadId: duplicateLead.id,
                 leadName: `${lead.first_name} ${lead.last_name}`,
                 leadContact: lead.phone || lead.email,
                 escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
