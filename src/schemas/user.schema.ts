@@ -29,6 +29,8 @@ export const createUserSchema = object({
     }),
 
     dob: z.coerce.date().optional(),
+
+    team_lead_id: string().optional(),
   }),
 });
 
@@ -51,6 +53,8 @@ export const updateUserSchema = object({
     role_id: string().optional(),
 
     dob: z.coerce.date().optional(),
+
+    team_lead_id: string().optional(),
   }),
 });
 

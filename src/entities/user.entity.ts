@@ -47,6 +47,10 @@ export class User extends Model {
   @Column({ type: "timestamp", nullable: true })
   dob: Date;
 
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: "team_lead_id" })
+  team_lead: User | null;
+
   @Column({ type: "varchar", length: 6, nullable: true })
   otp: string | null;
 

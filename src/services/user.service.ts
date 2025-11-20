@@ -17,7 +17,7 @@ const clientRepository = AppDataSource.getRepository(Clients);
 
 
 // Create user
-export const createUser = async (input: Partial<User> & { role_id?: string }) => {
+export const createUser = async (input: Partial<User> & { role_id?: string; team_lead_id?: string }) => {
   const role = await roleRepository.findOne({
     where: { id: input.role_id, deleted: false },
   });
@@ -29,6 +29,20 @@ export const createUser = async (input: Partial<User> & { role_id?: string }) =>
   delete input.role_id;
 
   input.role = role;
+
+  // Handle team_lead_id
+  if (input.team_lead_id) {
+    const teamLead = await userRepository.findOne({
+      where: { id: input.team_lead_id, deleted: false },
+    });
+
+    if (!teamLead) {
+      throw new AppError(404, "Team lead not found.");
+    }
+
+    input.team_lead = teamLead;
+    delete input.team_lead_id;
+  }
 
   return await userRepository.save(input);
 };
@@ -45,7 +59,7 @@ export const findUserByEmail = async ({ email }: { email: string }) => {
 export const findUserById = async (userId: string) => {
   const user = await userRepository.findOne({
     where: { id: userId, deleted: false },
-    relations: ["role"]
+    relations: ["role", "team_lead"]
   });
 
   if (!user) {
@@ -69,6 +83,7 @@ export const findAllUsers = async (filters: any = {}) => {
 
   const query = userRepository.createQueryBuilder("user")
     .leftJoinAndSelect("user.role", "role")
+    .leftJoinAndSelect("user.team_lead", "team_lead")
     .where("user.deleted = false")
     .andWhere("LOWER(role.role) != LOWER(:clientRole)", { clientRole: "client" });
 
@@ -122,11 +137,11 @@ export const signTokens = async (
 // Update user
 export const updateUser = async (
   userId: string,
-  payload: Partial<User> & { role_id?: string }
+  payload: Partial<User> & { role_id?: string; team_lead_id?: string }
 ): Promise<User | null> => {
   const user = await userRepository.findOne({
     where: { id: userId },
-    relations: ['role'], // optional, but useful if you want to update role properly
+    relations: ['role', 'team_lead'], // Load team_lead relation
   });
 
   if (!user) {
@@ -146,6 +161,23 @@ export const updateUser = async (
     user.role = role;
   }
 
+  // Handle team_lead_id
+  if (payload.team_lead_id !== undefined) {
+    if (payload.team_lead_id === null) {
+      user.team_lead = null;
+    } else {
+      const teamLead = await userRepository.findOne({
+        where: { id: payload.team_lead_id, deleted: false },
+      });
+
+      if (!teamLead) {
+        throw new AppError(404, "Team lead not found.");
+      }
+
+      user.team_lead = teamLead;
+    }
+  }
+
   // Check for unique email before updating
   if (payload.email && payload.email !== user.email) {
     const existing = await userRepository.findOne({ where: { email: payload.email, deleted: false } });
@@ -154,8 +186,8 @@ export const updateUser = async (
     }
   }
 
-  // Remove roleId from payload to avoid conflict with entity
-  const { role_id, ...restPayload } = payload;
+  // Remove roleId and team_lead_id from payload to avoid conflict with entity
+  const { role_id, team_lead_id, ...restPayload } = payload;
 
   Object.assign(user, restPayload);
 
