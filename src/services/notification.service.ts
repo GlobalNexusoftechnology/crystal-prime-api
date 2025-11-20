@@ -46,11 +46,7 @@ export const NotificationService = () => {
 
     let notifications;
     
-    if (user.role?.role === 'admin') {
-      // For admin users, show:
-      // 1. Quotation sent notifications
-      // 2. Business done notifications
-      // 3. Lead escalation notifications
+    if (user.role?.role.toLowerCase() === 'admin') {
       notifications = await notificationRepo.find({
         where: [
           {
@@ -64,16 +60,16 @@ export const NotificationService = () => {
           {
             type: NotificationType.LEAD_ESCALATED,
             deleted: false
+          },
+          {
+            type: NotificationType.WORK_REQUEST_CREATED,
+            deleted: false
           }
         ],
         order: { created_at: 'DESC' },
         relations: ['user', 'user.role']
       });
-    } else if (user.role?.role === 'staff') {
-      // For staff users, show:
-      // 1. Lead assigned notifications
-      // 2. Lead escalated notifications
-      // 3. Followup reminder notifications
+    } else if (user.role?.role.toLowerCase() === 'staff') {
       notifications = await notificationRepo.find({
         where: [
           {
@@ -86,6 +82,16 @@ export const NotificationService = () => {
           },
           {
             type: NotificationType.FOLLOWUP_REMINDER,
+            userId: userId,
+            deleted: false
+          },
+          {
+            type: NotificationType.WORK_REQUEST_APPROVED,
+            userId: userId,
+            deleted: false
+          },
+          {
+            type: NotificationType.WORK_REQUEST_REJECTED,
             userId: userId,
             deleted: false
           }

@@ -16,7 +16,6 @@ router.post("/", createWorkRequest);
 
 router.get(
   "/",
-  restrictTo("admin", "staff"),
   getAllWorkRequests
 );
 
