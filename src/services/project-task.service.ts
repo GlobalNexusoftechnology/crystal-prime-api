@@ -1,3 +1,4 @@
+import { In } from "typeorm";
 import { AppDataSource } from "../utils/data-source";
 import { ProjectTasks } from "../entities/project-task.entity";
 import { ProjectMilestones } from "../entities/project-milestone.entity";
@@ -88,23 +89,71 @@ export const ProjectTaskService = () => {
   const getAllTasks = async (userId?: string, role?: string) => {
     const isAdmin = (role || "").toLowerCase() === "admin";
     const where: any = { deleted: false };
+    
     if (!isAdmin && userId) {
-      // Restrict to only tasks assigned to the logged-in staff
-      where.assigned_to = userId;
+      // Check if user is a team lead by finding team members
+      const teamMembers = await userRepo.find({
+        where: { team_lead: { id: userId }, deleted: false }
+      });
+
+      if (teamMembers.length > 0) {
+        // User is a team lead - show their tasks + team members' tasks
+        const teamMemberIds = teamMembers.map(member => member.id);
+        where.assigned_to = In([userId, ...teamMemberIds]);
+      } else {
+        // Regular staff - show only their tasks
+        where.assigned_to = userId;
+      }
     }
+
     const tasks = await taskRepo.find({
       where,
       relations: ["milestone", "milestone.project", "milestone.project.client", "assigned_by"],
       order: { created_at: "DESC" }
     });
-    const data = tasks.map((t) => ({ ...t, delay_days: calculateTaskDelayDays(t) }));
+
+    // Fetch assigned users with team_lead for all tasks
+    const assignedUserIds = [...new Set(tasks.map(t => t.assigned_to).filter(Boolean))];
+    const assignedUsers = assignedUserIds.length > 0 
+      ? await userRepo.find({
+          where: assignedUserIds.map(id => ({ id, deleted: false })),
+          relations: ["team_lead"]
+        })
+      : [];
+    
+    const userMap = new Map(assignedUsers.map(u => [u.id, u]));
+
+    const data = tasks.map((t) => ({
+      ...t,
+      delay_days: calculateTaskDelayDays(t),
+      team_lead: t.assigned_to ? userMap.get(t.assigned_to)?.team_lead || null : null
+    }));
+    
     return { data, total: data.length };
   };
 
   const getTaskById = async (id: string) => {
-    const task = await taskRepo.findOne({ where: { id, deleted: false }, relations: ["milestone", "milestone.project", "milestone.project.client", "assigned_by"] });
+    const task = await taskRepo.findOne({ 
+      where: { id, deleted: false }, 
+      relations: ["milestone", "milestone.project", "milestone.project.client", "assigned_by"] 
+    });
     if (!task) throw new AppError(404, "Task not found");
-    return { ...task, delay_days: calculateTaskDelayDays(task) } as any;
+
+    // Fetch assigned user with team_lead if task is assigned
+    let team_lead = null;
+    if (task.assigned_to) {
+      const assignedUser = await userRepo.findOne({
+        where: { id: task.assigned_to, deleted: false },
+        relations: ["team_lead"]
+      });
+      team_lead = assignedUser?.team_lead || null;
+    }
+
+    return { 
+      ...task, 
+      delay_days: calculateTaskDelayDays(task),
+      team_lead 
+    } as any;
   };
 
   const updateTask = async (id: string, data: Partial<TaskInput>, user: User, queryRunner?: any) => {
