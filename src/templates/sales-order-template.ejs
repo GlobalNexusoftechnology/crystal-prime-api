@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sales Order - Crystal Prime</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: white;
+        color: #333;
+        line-height: 1.6;
+        padding: 40px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+      }
+      .boq-block {
+        background: #1e3a8a;
+        color: white;
+        padding: 20px 25px;
+        text-align: center;
+        border-radius: 0 0 8px 8px;
+        min-width: 120px;
+      }
+
+      .boq-title {
+        font-size: 36px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+
+      .boq-date {
+        font-size: 16px;
+      }
+
+      .header-left h2 {
+        font-size: 18px;
+        margin-bottom: 5px;
+      }
+
+      .header-left p {
+        font-size: 14px;
+        line-height: 1.4;
+      }
+
+      .header-right {
+        text-align: right;
+      }
+
+      .header-right h1 {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+
+      .header-table {
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-top: 10px;
+      }
+
+      .header-table th,
+      .header-table td {
+        border: 1px solid #000;
+        text-align: left;
+        height: fit-content;
+        padding: 6px 10px;
+      }
+
+      .address-section {
+        display: flex;
+        justify-content: space-between;
+        border: 1px solid #000;
+        margin-top: 30px;
+        padding: 10px;
+        font-size: 14px;
+      }
+      .address {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+        padding: 10px;
+        font-size: 14px;
+      }
+
+      .address-section > div {
+        width: 48%;
+      }
+
+      .address-left {
+        border-right: 1px solid #000;
+      }
+
+      .info-table {
+        margin-top: 20px;
+        width: 100%;
+        font-size: 14px;
+        border-collapse: collapse;
+      }
+
+      .info-table th,
+      .info-table td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+      }
+
+      .info-table th {
+        background-color: #f2f2f2;
+      }
+
+      .summary {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+
+      .summary th,
+      .summary td {
+        border: 1px solid #000;
+        border-top: 0px;
+        text-align: left;
+        padding: 8px;
+      }
+
+      .summary td {
+        text-align: right;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header">
+      <div class="header-left">
+        <img
+          src="<%= logoDataUrl %>"
+          alt="Company Logo"
+          style="height: 50px; width: auto; margin-right: 10px"
+        />
+      </div>
+      <div class="header-right">
+        <div class="boq-block">
+          <div class="boq-title">Sales Order</div>
+          <div class="boq-date">
+            <%= new Date().toLocaleDateString("en-GB") %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="address">
+      <p>
+        Sector No.B, Flat No. A5/1, Shree Nagari<br />
+        Sr.No.24/A, Nr. Appu Ghar, Nigdi,<br />
+        Pune, Maharashtra, India<br />
+        GST#: 27AEFPB6341G1ZT / PAN#: AEFPB6341G
+      </p>
+      <table class="header-table">
+        <tr>
+          <th>S.O. No.</th>
+          <td><%= salesOrder.salesOrderNumber || "N/A" %></td>
+        </tr>
+      </table>
+    </div>
+    <div class="address-section">
+      <div class="address-left">
+        <strong>Name / Address:</strong><br />
+        <%= salesOrder.boq.lead.company %><br />
+        <%= salesOrder.boq.lead.location %>
+      </div>
+      <div>
+        <strong>Ship To:</strong><br />
+        <%= salesOrder.client && salesOrder.client.ship_to ?
+        salesOrder.client.ship_to : "N/A" %>
+      </div>
+    </div>
+
+    <table class="header-table" style="margin-top: 20px">
+      <tr>
+        <th>P.O. No.</th>
+        <td><%= salesOrder.purchaseOrderNumber || "N/A" %></td>
+        <th>Project</th>
+        <td>-</td>
+      </tr>
+    </table>
+
+    <table class="info-table">
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Size</th>
+          <th>UOM</th>
+          <th>Ordered</th>
+          <th>Rate</th>
+          <th>Discount</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% let grandTotal=0; %> <% salesOrder.boq.items.forEach(item=> { const
+        baseTotal = item.qty * parseFloat(item.rate); const hasDiscount =
+        item.discount && parseFloat(item.discount) > 0; const discountAmount =
+        hasDiscount ? (baseTotal * parseFloat(item.discount) / 100) : 0; const
+        finalTotal = baseTotal - discountAmount; grandTotal += finalTotal; %>
+        <tr>
+          <td><%= item.materialName %></td>
+          <td><%= item.size || 'N/A' %></td>
+          <td><%= item.uom || 'N/A' %></td>
+          <td><%= item.qty %></td>
+          <td><%= parseFloat(item.rate).toFixed(2) %></td>
+          <td><%= hasDiscount ? item.discount + "%" : "0%" %></td>
+          <td><%= finalTotal.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <table class="summary">
+      <tr>
+        <th>Total Amount</th>
+        <td>₹ <%= grandTotal.toFixed(2) %></td>
+      </tr>
+    </table>
+  </body>
+</html>

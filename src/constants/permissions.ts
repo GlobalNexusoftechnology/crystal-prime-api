@@ -37,6 +37,7 @@ export const MODULES: TOptionItem[] = [
   { key: "LEAVE", label: "Leave Module", value: "39" },
   { key: "APPLY_LEAVE", label: "Apply Leave Module", value: "40" },
   { key: "HOLIDAYS", label: "Holidays Module", value: "41" },
+  { key: "MATERIAL_MANAGEMENT", label: "Material Management", value: "32"},
   
 ];
 

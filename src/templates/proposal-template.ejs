@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proposal - Crystal Prime</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Arial", sans-serif;
+        background: white;
+        color: #333;
+        line-height: 1.6;
+        padding: 40px;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 20px;
+      }
+      .company-info {
+        padding: 1rem 0;
+      }
+      .boq-block {
+        background: #1e3a8a;
+        color: white;
+        padding: 20px 25px;
+        text-align: center;
+        border-radius: 0 0 8px 8px;
+        min-width: 120px;
+      }
+      .boq-title {
+        font-size: 36px;
+        font-weight: bold;
+        margin-bottom: 8px;
+      }
+      .boq-date {
+        font-size: 16px;
+      }
+      .bill-to {
+        border: 1px solid #000;
+        width: fit-content;
+        margin-bottom: 20px;
+      }
+      .bill-to h1 {
+        margin: 0;
+        padding: 10px;
+        font-size: 16px;
+        border-bottom: 1px solid #000;
+      }
+      .bill-to p {
+        padding: 0 10px;
+      }
+      .bill-to-container {
+        display: flex;
+        justify-content: space-between;
+      }
+      .header-table {
+        width: fit-content;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .header-table th,
+      .header-table td {
+        border: 1px solid #000;
+        text-align: left;
+        padding: 8px;
+      }
+      .header-table tr:nth-child(4n) th,
+      .header-table tr:nth-child(4n) td {
+        border-bottom: 0px;
+      }
+      .item-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .item-table th,
+      .item-table td {
+        border: 1px solid #000;
+        text-align: left;
+        padding: 8px;
+      }
+      .item-table th {
+        background-color: #f2f2f2;
+      }
+      .summary {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .summary th,
+      .summary td {
+        border: 1px solid #000;
+        border-top: 0px;
+        text-align: left;
+        padding: 8px;
+      }
+      .summary td {
+        text-align: right;
+      }
+      .signature-container {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .signature-container th,
+      .signature-container td {
+        border: 1px solid #000;
+        border-top: 0px;
+        border-right: 0px;
+        text-align: left;
+        padding: 8px;
+        font-weight: 600;
+        font-size: 18px;
+      }
+      .signature-container th p span {
+        font-weight: 500;
+      }
+      .signature-container td {
+        border-right: 1px solid #000;
+        text-align: center;
+      }
+      .signature-container td p:nth-child(1) {
+        padding-bottom: 100px;
+      }
+      .terms {
+        margin-top: 20px;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <div>
+        <img
+          src="<%= logoDataUrl %>"
+          alt="Company Logo"
+          style="height: 50px; width: auto; margin-right: 10px"
+        />
+      </div>
+      <div class="boq-block">
+        <div class="boq-title">Proposal</div>
+        <div class="boq-date"><%= proposalDate %></div>
+      </div>
+    </div>
+
+    <p class="company-info">
+      <strong>TAG Solutions India Pvt Ltd</strong><br />
+      Sector No.B, Flat No. A5/1, Shree Nagari<br />
+      Sr.No.24/A, Nr. Appu Ghar, Nigdi, Pune<br />
+      GST: 27AEFPB6341G1ZT | PAN: AEFPB6341G<br />
+      Phone: +91 8799848694<br />
+      Email: support@tagsolutionsindia.com<br />
+      www.tagsolutionsindia.com
+    </p>
+
+    <div class="bill-to-container">
+      <div class="bill-to">
+        <h1>Bill To:</h1>
+        <p><%= businessName %></p>
+      </div>
+      <table class="header-table">
+        <tr>
+          <th>Proposal Date:</th>
+          <td><%= proposalDate %></td>
+        </tr>
+        <tr>
+          <th>Proposal #:</th>
+          <td><%= proposalCode %></td>
+        </tr>
+        <tr>
+          <th>Project:</th>
+          <td>project</td>
+        </tr>
+        <tr>
+          <th>Rep.:</th>
+          <td>Rep</td>
+        </tr>
+      </table>
+    </div>
+
+    <%
+      // Check if at least one Alliance Material Name is valid
+      const showAllianceColumn = items.some(
+        item => item.allianceMaterialName && item.allianceMaterialName !== 'N/A'
+      );
+
+      let grandTotal = 0;
+    %>
+
+    <table class="item-table">
+      <thead>
+        <tr>
+          <th>Material Name</th>
+          <% if (showAllianceColumn) { %>
+            <th>Alliance Material Name</th>
+          <% } %>
+          <th>HSN / SAC</th>
+          <th>Qty</th>
+          <th>Size</th>
+          <th>UOM</th>
+          <th>Rate</th>
+          <th>Discount</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% 
+          items.forEach(item => {
+            let baseTotal = item.qty * item.rate;
+            let discountAmount = (item.discount && item.discount > 0)
+              ? (baseTotal * item.discount / 100)
+              : 0;
+            let finalTotal = baseTotal - discountAmount;
+            finalTotal = Math.round(finalTotal * 100) / 100;
+            grandTotal += finalTotal;
+        %>
+        <tr>
+          <td><%= item.materialName %></td>
+          <% if (showAllianceColumn) { %>
+            <td><%= item.allianceMaterialName || 'N/A' %></td>
+          <% } %>
+          <td><%= item.hsn || 'N/A' %></td>
+          <td><%= item.qty %></td>
+          <td><%= item.size || 'N/A' %></td>
+          <td><%= item.uom || 'N/A' %></td>
+          <td><%= item.rate.toFixed(2) %></td>
+          <td><%= (item.discount && item.discount > 0) ? item.discount + '%' : '0%' %></td>
+          <td><%= finalTotal.toFixed(2) %></td>
+        </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <table class="summary">
+      <tr>
+        <th>We look forward to receiving your valued orders.</th>
+        <td class="total">Total Amount: ₹ <%= grandTotal.toFixed(2) %></td>
+      </tr>
+    </table>
+
+    <table class="signature-container">
+      <tr>
+        <th>
+          <p>Company Pan: <span>AEFPB6341G</span></p>
+          <p>Company Bank Details: <span></span></p>
+          <p>Bank Name: <span>HDFC Bank, Pradhikaran, Nigdi.</span></p>
+          <p>A/c No.: <span>50200057663916</span></p>
+          <p>IFS Code: <span>HDFC0000185</span></p>
+        </th>
+        <td class="signature">
+          <p>For TAG Solutions India</p>
+          <p>Authorised Signatory</p>
+        </td>
+      </tr>
+    </table>
+
+    <div class="terms">
+      <h3>Terms and Conditions:</h3>
+      . Price Basis: Ex-Godown, Chakan<br />
+      . GST: Extra as applicable @ 18%<br />
+      . Payment: 50% advance along with order, balance along with taxes before dispatch.<br />
+      . Warranty: 10 Yrs. on PPCH Pipeline from the date of installation, against manufacturing defects only. 6 months for the ball valves from the date of installation, against manufacturing defects only.<br />
+      . Delivery: Within 2 weeks from the date of receipt of your technically and commercially clear order.<br />
+      . Installation: Within 3-4 days for completion of job from the date of supply of material at site.<br />
+      . Offer Validity: 30 days<br />
+      . The above material is an estimated qty. Invoice will be raised based on the actual running meters as measured after completion.
+    </div>
+  </body>
+</html>
