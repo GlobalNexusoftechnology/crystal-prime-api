@@ -61,21 +61,24 @@ export const excelLeadSchema = z.object({
 });
 
 // Create Lead Schema
-export const createMetaLeadSchema = z.object({
-  first_name: z.string().optional(),
-  phone_number: z.string().optional(),
-  last_name: z.string().optional(),
-  company: z.string().optional(),
-  email: z.string().optional(),
-  address: z.string().optional(),
-  budget: z.union([z.string(), z.number()]).optional(),
-  requirement: z.string().optional(),
-  phone: z.string().optional(),
-}).passthrough();
+export const createMetaLeadSchema = z
+  .object({
+    first_name: z.string().optional(),
+    phone_number: z.string().optional(),
+    last_name: z.string().optional(),
+    company: z.string().optional(),
+    email: z.string().optional(),
+    address: z.string().optional(),
+    budget: z.union([z.string(), z.number()]).optional(),
+    requirement: z.string().optional(),
+    phone: z.string().optional(),
+  })
+  .passthrough();
 
 // Generate Quotation Schema
 export const generateQuotationSchema = z.object({
   proposalDate: z.coerce.date().optional(),
-  proposalNumber: z.string().optional(), 
+  proposalNumber: z.string().optional(),
   proposalText: z.string().optional(),
+  products: z.array().optional(),
 });
