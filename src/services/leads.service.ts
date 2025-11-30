@@ -1190,7 +1190,7 @@ export const LeadService = () => {
                         new Paragraph({
                           children: [
                             new TextRun({
-                              text: "Satkar Software Solutions Private Limited",
+                              text: "Crystal Prime",
                               bold: true,
                               size: 22,
                             }),
