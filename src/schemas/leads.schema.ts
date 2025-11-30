@@ -76,9 +76,16 @@ export const createMetaLeadSchema = z
   .passthrough();
 
 // Generate Quotation Schema
-// export const generateQuotationSchema = z.object({
-//   proposalDate: z.coerce.date().optional(),
-//   proposalNumber: z.string().optional(),
-//   proposalText: z.string().optional(),
-//   products: z.array().optional(),
-// });
+export const generateQuotationSchema = z.object({
+  proposalDate: z.coerce.date().optional(),
+  proposalNumber: z.string().optional(),
+  proposalText: z.string().optional(),
+  products: z
+    .array(
+      z.object({
+        name: z.string().min(1, "Product name is required"),
+        sale_price: z.number(),
+      })
+    )
+    .optional(),
+});
