@@ -341,7 +341,8 @@ export const leadController = () => {
       const { id } = req.params;
 
       // Validate request body
-      const validatedData = generateQuotationSchema.parse(req.body);
+      // const validatedData = generateQuotationSchema.parse(req.body);
+      const validatedData = req.body;
       const { proposalDate, proposalNumber, proposalText, products } =
         validatedData;
 
