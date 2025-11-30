@@ -14,9 +14,24 @@ import {
 } from "../entities/lead-followups.entity";
 import { Between, ILike, Not } from "typeorm";
 import { Clients } from "../entities/clients.entity";
-import { createLeadSchema, createMetaLeadSchema } from "../schemas/leads.schema";
+import {
+  createLeadSchema,
+  createMetaLeadSchema,
+} from "../schemas/leads.schema";
 import { getValidToken } from "./page-token.service";
-import { Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle } from "docx";
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  ImageRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  AlignmentType,
+  BorderStyle,
+} from "docx";
 import fs from "fs";
 import path from "path";
 import { formatQuotationDate } from "../utils/formatQuotationDate";
@@ -74,7 +89,10 @@ export const LeadService = () => {
     // Handle numeric fields properly
     lead.budget = budget && budget !== "" ? Number(budget) : null;
     lead.requirement = requirement ?? "";
-    lead.possibility_of_conversion = possibility_of_conversion && possibility_of_conversion !== "" ? Number(possibility_of_conversion) : null;
+    lead.possibility_of_conversion =
+      possibility_of_conversion && possibility_of_conversion !== ""
+        ? Number(possibility_of_conversion)
+        : null;
     lead.other_contact = other_contact ?? "";
     lead.created_by = `${userData?.first_name} ${userData?.last_name}`.trim();
     lead.updated_by = `${userData?.first_name} ${userData?.last_name}`.trim();
@@ -354,7 +372,9 @@ export const LeadService = () => {
         .leftJoin("f.user", "u")
         .where("f.deleted = :deleted", { deleted: false })
         .andWhere("DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE")
-        .andWhere("(f.status IS NULL OR f.status != :completed)", { completed: FollowupStatus.COMPLETED })
+        .andWhere("(f.status IS NULL OR f.status != :completed)", {
+          completed: FollowupStatus.COMPLETED,
+        })
         .andWhere(isAdmin ? "1=1" : "u.id = :userId", { userId })
         .getCount(),
     ]);
@@ -388,9 +408,10 @@ export const LeadService = () => {
       assigned_to,
     } = data;
 
-    const lead = await leadRepo.findOne({ where: { id, deleted: false },
-    relations: ["assigned_to"],
-   });
+    const lead = await leadRepo.findOne({
+      where: { id, deleted: false },
+      relations: ["assigned_to"],
+    });
     if (!lead) throw new AppError(400, "Lead not found");
 
     if (email) {
@@ -462,58 +483,58 @@ export const LeadService = () => {
           : await leadTypeRepo.findOne({ where: { id: type_id } });
     }
 
-        // Handle lead escalation
-        if (data.escalate_to === true) {
-          lead.escalate_to = true;
+    // Handle lead escalation
+    if (data.escalate_to === true) {
+      lead.escalate_to = true;
 
-          // Create a duplicate lead
-          const duplicateLead = leadRepo.create({
-            first_name: lead.first_name,
-            last_name: lead.last_name,
-            company: lead.company,
-            phone: lead.phone,
-            other_contact: lead.other_contact,
-            email: lead.email,
-            location: lead.location,
-            budget: lead.budget,
+      // Create a duplicate lead
+      const duplicateLead = leadRepo.create({
+        first_name: lead.first_name,
+        last_name: lead.last_name,
+        company: lead.company,
+        phone: lead.phone,
+        other_contact: lead.other_contact,
+        email: lead.email,
+        location: lead.location,
+        budget: lead.budget,
+        requirement: lead.requirement,
+        possibility_of_conversion: lead.possibility_of_conversion,
+        channel: lead.channel,
+        source: lead.source,
+        type: lead.type,
+        status: lead.status,
+        assigned_to: null, // Unassigned initially
+        created_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
+        updated_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
+        escalate_to: false, // Reset escalation flag for duplicate
+      });
+
+      await leadRepo.save(duplicateLead);
+
+      // Notify all admins about the escalated lead
+      const adminUsers = await userRepo.find({
+        where: { role: { role: "admin" }, deleted: false },
+        relations: ["role"],
+      });
+
+      for (const admin of adminUsers) {
+        await notificationService.createNotification(
+          admin.id,
+          NotificationType.LEAD_ESCALATED,
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
+            lead.phone || lead.email
+          }) - Duplicate created`,
+          {
+            leadId: lead.id,
+            duplicateLeadId: duplicateLead.id,
+            leadName: `${lead.first_name} ${lead.last_name}`,
+            leadContact: lead.phone || lead.email,
+            escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
             requirement: lead.requirement,
-            possibility_of_conversion: lead.possibility_of_conversion,
-            channel: lead.channel,
-            source: lead.source,
-            type: lead.type,
-            status: lead.status,
-            assigned_to: null, // Unassigned initially
-            created_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
-            updated_by: `${userData?.first_name} ${userData?.last_name}`.trim(),
-            escalate_to: false, // Reset escalation flag for duplicate
-          });
-
-          await leadRepo.save(duplicateLead);
-
-          // Notify all admins about the escalated lead
-          const adminUsers = await userRepo.find({
-            where: { role: { role: "admin" }, deleted: false },
-            relations: ["role"],
-          });
-    
-          for (const admin of adminUsers) {
-            await notificationService.createNotification(
-              admin.id,
-              NotificationType.LEAD_ESCALATED,
-              `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
-                lead.phone || lead.email
-              }) - Duplicate created`,
-              {
-                leadId: lead.id,
-                duplicateLeadId: duplicateLead.id,
-                leadName: `${lead.first_name} ${lead.last_name}`,
-                leadContact: lead.phone || lead.email,
-                escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
-                requirement: lead.requirement,
-              }
-            );
           }
-        }
+        );
+      }
+    }
 
     if (assigned_to !== undefined && assigned_to !== lead.assigned_to?.id) {
       lead.assigned_to =
@@ -521,16 +542,16 @@ export const LeadService = () => {
           ? null
           : await userRepo.findOne({ where: { id: assigned_to } });
 
-          await notificationService.createNotification(
-            assigned_to,
-            NotificationType.LEAD_ASSIGNED,
-            `You have been assigned a new lead: ${lead.first_name} ${lead.last_name}`,
-            {
-              leadId: lead.id,
-              leadName: `${lead.first_name} ${lead.last_name}`,
-              assignedBy: `${userData?.first_name} ${userData?.last_name}`,
-            }
-          );
+      await notificationService.createNotification(
+        assigned_to,
+        NotificationType.LEAD_ASSIGNED,
+        `You have been assigned a new lead: ${lead.first_name} ${lead.last_name}`,
+        {
+          leadId: lead.id,
+          leadName: `${lead.first_name} ${lead.last_name}`,
+          assignedBy: `${userData?.first_name} ${userData?.last_name}`,
+        }
+      );
     }
 
     const savedLead = await leadRepo.save(lead);
@@ -946,103 +967,106 @@ export const LeadService = () => {
   };
 
   const handleMetaLead = async (leadId: string, channel: ChannelType) => {
-  const PAGE_ACCESS_TOKEN = await getValidToken();
-  const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT!;
+    const PAGE_ACCESS_TOKEN = await getValidToken();
+    const META_DATA_SOURCE_ENDPOINT = process.env.META_DATA_SOURCE_ENDPOINT!;
 
+    // Step 1: Fetch the lead details
+    const url = `${META_DATA_SOURCE_ENDPOINT}/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`;
+    const response = await fetch(url);
 
-  // Step 1: Fetch the lead details
-  const url = `${META_DATA_SOURCE_ENDPOINT}/${leadId}?access_token=${PAGE_ACCESS_TOKEN}`;
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new AppError(400, "Failed to fetch lead from Meta");
-  }
-
-  const data = await response.json();
-  const fieldData = data.field_data;
-
-  console.log("\n\n\n\n\nMeta Lead Data:", data, "\n\n\n");
-
-  const mapped: Record<string, any> = {};
-
-  for (const item of fieldData) {
-    const value = item.values?.[0];
-    switch (item.name) {
-      case "email":
-        mapped.email = value;
-        break;
-      case "attachments":
-        mapped.attachments = item.values;
-        break;
-      default:
-        mapped[item.name] = value;
-        break;
+    if (!response.ok) {
+      throw new AppError(400, "Failed to fetch lead from Meta");
     }
-  }
 
-  createMetaLeadSchema.parse(mapped);
+    const data = await response.json();
+    const fieldData = data.field_data;
 
-  // Step 2: Fetch Campaign Name
-  let campaignName: string | null = null;
-  try {
-    const adId = data.ad_id;
-    if (adId) {
-      const adUrl = `${META_DATA_SOURCE_ENDPOINT}/${adId}?fields=adset{campaign{name}}&access_token=${PAGE_ACCESS_TOKEN}`;
-      const adResp = await fetch(adUrl);
+    console.log("\n\n\n\n\nMeta Lead Data:", data, "\n\n\n");
 
-      if (adResp.ok) {
-        const adData = await adResp.json();
-        campaignName = adData?.adset?.campaign?.name || null;
-        console.log("\n\n\n\nCampaign Name:", campaignName, "\n\n\n");
+    const mapped: Record<string, any> = {};
+
+    for (const item of fieldData) {
+      const value = item.values?.[0];
+      switch (item.name) {
+        case "email":
+          mapped.email = value;
+          break;
+        case "attachments":
+          mapped.attachments = item.values;
+          break;
+        default:
+          mapped[item.name] = value;
+          break;
       }
     }
-  } catch (err) {
-    console.error("\n\nFailed to fetch campaign info: ", err, "\n\n");
-  }
 
-  // Step 3: Find Type in DB (optional)
-  let leadType: LeadTypes | null = null;
-  
-  try {
-    if (campaignName) {
-      leadType = await leadTypeRepo.findOne({ where: { name: ILike(campaignName) } });
+    createMetaLeadSchema.parse(mapped);
 
-      if (!leadType) {
-        console.log("\n\n\nNo matching Campaign name\n\n\n");
-        return;
+    // Step 2: Fetch Campaign Name
+    let campaignName: string | null = null;
+    try {
+      const adId = data.ad_id;
+      if (adId) {
+        const adUrl = `${META_DATA_SOURCE_ENDPOINT}/${adId}?fields=adset{campaign{name}}&access_token=${PAGE_ACCESS_TOKEN}`;
+        const adResp = await fetch(adUrl);
+
+        if (adResp.ok) {
+          const adData = await adResp.json();
+          campaignName = adData?.adset?.campaign?.name || null;
+          console.log("\n\n\n\nCampaign Name:", campaignName, "\n\n\n");
+        }
       }
+    } catch (err) {
+      console.error("\n\nFailed to fetch campaign info: ", err, "\n\n");
     }
-  } catch (e) {
-    console.log("\n\n\nError while fetching lead types", e, "\n\n\n");
-  }
 
-  let phoneNumber = null;
+    // Step 3: Find Type in DB (optional)
+    let leadType: LeadTypes | null = null;
 
-  if(mapped?.phone_number){
-    phoneNumber = mapped.phone_number;
-  }else if(mapped?.phone){
-    phoneNumber = mapped.phone;
-  }
-  
-  // Step 4: Save lead
-  const newLead = leadRepo.create({
-    first_name: mapped.first_name,
-    last_name: mapped.last_name,
-    company: mapped.company,
-    phone: phoneNumber,
-    other_contact: mapped.other_contact ?? null,
-    email: mapped.email || "",
-    location: mapped.address,
-    budget: mapped.budget && mapped.budget !== "" ? parseFloat(mapped.budget) : null,
-    requirement: mapped.requirement,
-    attachments: mapped.attachments || [],
-    channel,
-    type: leadType || null,
-  });
+    try {
+      if (campaignName) {
+        leadType = await leadTypeRepo.findOne({
+          where: { name: ILike(campaignName) },
+        });
 
-  await leadRepo.save(newLead);
+        if (!leadType) {
+          console.log("\n\n\nNo matching Campaign name\n\n\n");
+          return;
+        }
+      }
+    } catch (e) {
+      console.log("\n\n\nError while fetching lead types", e, "\n\n\n");
+    }
 
-};
+    let phoneNumber = null;
+
+    if (mapped?.phone_number) {
+      phoneNumber = mapped.phone_number;
+    } else if (mapped?.phone) {
+      phoneNumber = mapped.phone;
+    }
+
+    // Step 4: Save lead
+    const newLead = leadRepo.create({
+      first_name: mapped.first_name,
+      last_name: mapped.last_name,
+      company: mapped.company,
+      phone: phoneNumber,
+      other_contact: mapped.other_contact ?? null,
+      email: mapped.email || "",
+      location: mapped.address,
+      budget:
+        mapped.budget && mapped.budget !== ""
+          ? parseFloat(mapped.budget)
+          : null,
+      requirement: mapped.requirement,
+      attachments: mapped.attachments || [],
+      channel,
+      type: leadType || null,
+    });
+
+    await leadRepo.save(newLead);
+  };
 
   const handleGoogleLead = async (payload: any, receivedApiKey: string) => {
     const expectedApiKey = process.env.GOOGLE_SECRETE_KEY;
@@ -1058,7 +1082,10 @@ export const LeadService = () => {
     const prepData = {
       ...payload,
       email: payload.email || "",
-      budget: payload.budget && payload.budget !== "" ? parseInt(payload.budget) : null,
+      budget:
+        payload.budget && payload.budget !== ""
+          ? parseInt(payload.budget)
+          : null,
 
       attachments: Array.isArray(payload.attachments)
         ? payload.attachments
@@ -1090,86 +1117,115 @@ export const LeadService = () => {
     leadId: string,
     proposalDate?: string,
     proposalNumber?: string,
-    proposalText?: string
+    proposalText?: string,
+    products: any[] = [] // default safe array
   ) => {
     const lead = await leadRepo.findOne({
       where: { id: leadId },
       relations: ["assigned_to", "status", "type", "source"],
     });
-  
+
     if (!lead) throw new AppError(404, "Lead not found");
-  
-    // Read logo from file (support ts-node and compiled build locations)
+
+    // Read logo
     const logoCandidates = [
-      path.join(__dirname, "../../public/satkar-logo.png"), // when running TS directly
-      path.join(__dirname, "../../../src/public/satkar-logo.png"), // when running from build output
+      path.join(__dirname, "../../public/satkar-logo.png"),
+      path.join(__dirname, "../../../src/public/satkar-logo.png"),
       path.join(process.cwd(), "src/public/satkar-logo.png"),
       path.join(process.cwd(), "public/satkar-logo.png"),
     ];
     const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+
     if (!resolvedLogoPath) {
-      throw new AppError(500, "Quotation logo not found. Ensure 'src/public/satkar-logo.png' is available.");
+      throw new AppError(
+        500,
+        "Quotation logo not found. Ensure 'src/public/satkar-logo.png' is available."
+      );
     }
+
     const logoBuffer = fs.readFileSync(resolvedLogoPath);
-  
-    // Build document
+
     const doc = new Document({
-      creator: "Satkar Software Solutions",
+      creator: "Crystal Prime",
       title: "Quotation Document",
       sections: [
         {
           children: [
-            // Logo on top-left
+            // LOGO
             new Paragraph({
               children: [
                 new ImageRun({
-                  data: new Uint8Array(logoBuffer),
+                  data: logoBuffer,
+                  type: "png",
                   transformation: { width: 120, height: 40 },
-                } as any),
+                }),
               ],
             }),
-            // Separator line under logo
+
+            // LINE BELOW LOGO
             new Paragraph({
               border: {
                 bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
               },
             }),
-            // Add some spacing
+
             new Paragraph({ text: "" }),
+
+            // QUOTATION FROM / TO TABLE
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-              },
+              borders: FULL_TABLE_BORDER(),
               rows: [
                 new TableRow({
                   children: [
-                    // Left Column (Static info)
+                    // LEFT SIDE (COMPANY INFO)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
                       margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       children: [
                         new Paragraph({
-                          children: [new TextRun({ text: "Quotation From:", font: "Arial" })],
-                          spacing: { after: 200 },
+                          children: [new TextRun({ text: "Quotation From:" })],
                         }),
-                        new Paragraph({ 
-                          children: [new TextRun({ text: "Satkar Software Solutions Private Limited", bold: true, font: "Arial", size: 22 })]
+
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: "Crystal Prime",
+                              bold: true,
+                              size: 22,
+                            }),
+                          ],
                         }),
-                        new Paragraph({ children: [new TextRun({ text: "GST No: 27AAUCS490971ZW", font: "Arial" })] }),
-                        new Paragraph({ children: [new TextRun({ text: "Udyam Reg: UDYAM-MH-26-0525073", font: "Arial" })] }),
-                        new Paragraph({ children: [new TextRun({ text: "Email ID: manish@satkarinfotech.com", font: "Arial" })] }),
-                        new Paragraph({ children: [new TextRun({ text: "Contact Person: ", font: "Arial" })] }),
-                        new Paragraph({ children: [new TextRun({ text: "Contact No: ", font: "Arial" })] }),
+
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "GST No: 27AAUCS490971ZW" }),
+                          ],
+                        }),
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: "Udyam Reg: UDYAM-MH-26-0525073",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: "Email ID: manish@satkarinfotech.com",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          children: [new TextRun({ text: "Contact Person:" })],
+                        }),
+                        new Paragraph({
+                          children: [new TextRun({ text: "Contact No:" })],
+                        }),
                       ],
                     }),
-  
-                    // Right Column (Client info)
+
+                    // RIGHT SIDE (CLIENT INFO)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
                       margins: { top: 400, bottom: 400, left: 400, right: 400 },
@@ -1177,76 +1233,60 @@ export const LeadService = () => {
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
                           children: [new TextRun({ text: "Quotation To:" })],
-                          spacing: { after: 200 },
                         }),
-                        new Paragraph({ 
-                          children: [new TextRun({ text: lead.company || "-", bold: true, font: "Arial", size: 22 })],
-                          alignment: AlignmentType.RIGHT 
-                        }),
-                        new Paragraph({ text: `Client GST No: -`, alignment: AlignmentType.RIGHT }),
+
                         new Paragraph({
-                          text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}`,
                           alignment: AlignmentType.RIGHT,
-                        }),
-                        new Paragraph({ text: `Client Address: ${lead.location || "-"}`, alignment: AlignmentType.RIGHT }),
-                        new Paragraph({ text: `Client Contact No: ${lead.phone || "-"}`, alignment: AlignmentType.RIGHT }),
-                        new Paragraph({ text: `Client Email ID: ${lead.email || "-"}`, alignment: AlignmentType.RIGHT }),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-            
-            // Proposal Date and Number section
-            new Paragraph({ text: "", spacing: { after: 200 } }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
-                new TableRow({
-                  children: [
-                    // Proposal Date field
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
-                      borders: {
-                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                      },
-                      children: [
-                        new Paragraph({
                           children: [
-                            new TextRun({ text: "Proposal Date:", bold: true }),
-                            new TextRun({ text: " " }),
-                            new TextRun({ text: formatQuotationDate(proposalDate) || "_____________" }),
+                            new TextRun({
+                              text: lead.company || "-",
+                              bold: true,
+                              size: 22,
+                            }),
                           ],
-                          alignment: AlignmentType.CENTER,
-                          spacing: { after: 100, before: 100 },
                         }),
-                      ],
-                    }),
-                    
-                    // Proposal Number field
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
-                      borders: {
-                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                      },
-                      children: [
+
                         new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          children: [new TextRun({ text: "Client GST No: -" })],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
                           children: [
-                            new TextRun({ text: "Proposal Number:", bold: true }),
-                            new TextRun({ text: " " }),
-                            new TextRun({ text: proposalNumber || "_____________" }),
+                            new TextRun({
+                              text: `Client Name: ${lead.first_name || ""} ${
+                                lead.last_name || ""
+                              }`,
+                            }),
                           ],
-                          alignment: AlignmentType.CENTER,
-                          spacing: { after: 100, before: 100 },
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          children: [
+                            new TextRun({
+                              text: `Client Address: ${lead.location || "-"}`,
+                            }),
+                          ],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          children: [
+                            new TextRun({
+                              text: `Client Contact No: ${lead.phone || "-"}`,
+                            }),
+                          ],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          children: [
+                            new TextRun({
+                              text: `Client Email ID: ${lead.email || "-"}`,
+                            }),
+                          ],
                         }),
                       ],
                     }),
@@ -1254,50 +1294,202 @@ export const LeadService = () => {
                 }),
               ],
             }),
-            
-            // Large text area section
+
             new Paragraph({ text: "", spacing: { after: 200 } }),
+
+            // DATE & PROPOSAL NUMBER TABLE
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    // PROPOSAL DATE
+                    new TableCell({
+                      borders: BORDER_BOX(),
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: "Proposal Date: ",
+                              bold: true,
+                            }),
+                            new TextRun({
+                              text:
+                                formatQuotationDate(proposalDate) ||
+                                "_____________",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+
+                    // PROPOSAL NUMBER
+                    new TableCell({
+                      borders: BORDER_BOX(),
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: "Proposal Number: ",
+                              bold: true,
+                            }),
+                            new TextRun({
+                              text: proposalNumber || "_____________",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+
+            new Paragraph({ text: "", spacing: { after: 200 } }),
+
+            // PROPOSAL DETAILS
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
               rows: [
                 new TableRow({
                   children: [
                     new TableCell({
-                      width: { size: 100, type: WidthType.PERCENTAGE },
-                      margins: { top: 200, bottom: 200, left: 120, right: 120 },
-                      borders: {
-                        top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                        right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                      },
+                      borders: BORDER_BOX(),
                       children: [
                         new Paragraph({
                           children: [
-                            new TextRun({ text: "Proposal Details:", bold: true }),
+                            new TextRun({
+                              text: "Proposal Details:",
+                              bold: true,
+                            }),
                           ],
-                          alignment: AlignmentType.LEFT,
-                          spacing: { after: 120, before: 120 },
                         }),
+
                         new Paragraph({
-                          text: proposalText || "_________________________________________________________",
-                          alignment: AlignmentType.LEFT,
-                          spacing: { after: 120, before: 0 },
+                          text:
+                            proposalText ||
+                            "_________________________________________________________",
                         }),
                       ],
                     }),
                   ],
                 }),
+              ],
+            }),
+
+            new Paragraph({ text: "", spacing: { after: 200 } }),
+
+            // PRODUCT TABLE
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              borders: FULL_TABLE_BORDER(),
+              rows: [
+                // HEADER ROW
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Product Name", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Sale Price (₹)", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+
+                // DYNAMIC PRODUCT ROWS
+                ...(Array.isArray(products)
+                  ? products.map(
+                      (item) =>
+                        new TableRow({
+                          children: [
+                            new TableCell({
+                              children: [
+                                new Paragraph({
+                                  children: [
+                                    new TextRun({ text: item.name || "-" }),
+                                  ],
+                                }),
+                              ],
+                            }),
+
+                            new TableCell({
+                              children: [
+                                new Paragraph({
+                                  children: [
+                                    new TextRun({
+                                      text: String(item.sale_price || "0"),
+                                    }),
+                                  ],
+                                }),
+                              ],
+                            }),
+                          ],
+                        })
+                    )
+                  : []),
               ],
             }),
           ],
         },
       ],
     });
-  
+
     const buffer = await Packer.toBuffer(doc);
     return buffer;
   };
+
+  // Helper for borders
+  function FULL_TABLE_BORDER() {
+    return {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      insideHorizontal: {
+        style: BorderStyle.SINGLE,
+        size: 1,
+        color: "000000",
+      },
+      insideVertical: {
+        style: BorderStyle.SINGLE,
+        size: 1,
+        color: "000000",
+      },
+    };
+  }
+
+  function BORDER_BOX() {
+    return {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+    };
+  }
+
+  // Helper
+  function ALL_BORDERS() {
+    return {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+    };
+  }
 
   return {
     generateQuotationDocService,
