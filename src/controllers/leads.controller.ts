@@ -1,10 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ChannelType } from "../entities/leads.entity";
-import {
-  createLeadSchema,
-  generateQuotationSchema,
-  updateLeadSchema,
-} from "../schemas/leads.schema";
+import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 
