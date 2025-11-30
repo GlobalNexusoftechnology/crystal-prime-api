@@ -1118,7 +1118,7 @@ export const LeadService = () => {
     proposalDate?: string,
     proposalNumber?: string,
     proposalText?: string,
-    products: any[] = [] // DEFAULT EMPTY ARRAY
+    products: any[] = [] // default safe array
   ) => {
     const lead = await leadRepo.findOne({
       where: { id: leadId },
@@ -1135,32 +1135,34 @@ export const LeadService = () => {
       path.join(process.cwd(), "public/satkar-logo.png"),
     ];
     const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+
     if (!resolvedLogoPath) {
       throw new AppError(
         500,
         "Quotation logo not found. Ensure 'src/public/satkar-logo.png' is available."
       );
     }
+
     const logoBuffer = fs.readFileSync(resolvedLogoPath);
 
-    // Build document
     const doc = new Document({
       creator: "Crystal Prime",
       title: "Quotation Document",
       sections: [
         {
           children: [
-            // Logo
+            // LOGO
             new Paragraph({
               children: [
                 new ImageRun({
-                  data: new Uint8Array(logoBuffer),
+                  data: logoBuffer,
+                  type: "png",
                   transformation: { width: 120, height: 40 },
                 }),
               ],
             }),
 
-            // Line
+            // LINE BELOW LOGO
             new Paragraph({
               border: {
                 bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
@@ -1169,41 +1171,22 @@ export const LeadService = () => {
 
             new Paragraph({ text: "" }),
 
-            // Quotation From / To Table
+            // QUOTATION FROM / TO TABLE
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: {
-                top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-                insideHorizontal: {
-                  style: BorderStyle.SINGLE,
-                  size: 1,
-                  color: "000000",
-                },
-                insideVertical: {
-                  style: BorderStyle.SINGLE,
-                  size: 1,
-                  color: "000000",
-                },
-              },
+              borders: FULL_TABLE_BORDER(),
               rows: [
                 new TableRow({
                   children: [
-                    // LEFT COLUMN
+                    // LEFT SIDE (COMPANY INFO)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
                       margins: { top: 400, bottom: 400, left: 400, right: 400 },
                       children: [
                         new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: "Quotation From:",
-                              font: "Arial",
-                            }),
-                          ],
+                          children: [new TextRun({ text: "Quotation From:" })],
                         }),
+
                         new Paragraph({
                           children: [
                             new TextRun({
@@ -1213,6 +1196,7 @@ export const LeadService = () => {
                             }),
                           ],
                         }),
+
                         new Paragraph({
                           children: [
                             new TextRun({ text: "GST No: 27AAUCS490971ZW" }),
@@ -1241,7 +1225,7 @@ export const LeadService = () => {
                       ],
                     }),
 
-                    // RIGHT COLUMN
+                    // RIGHT SIDE (CLIENT INFO)
                     new TableCell({
                       width: { size: 50, type: WidthType.PERCENTAGE },
                       margins: { top: 400, bottom: 400, left: 400, right: 400 },
@@ -1250,6 +1234,7 @@ export const LeadService = () => {
                           alignment: AlignmentType.RIGHT,
                           children: [new TextRun({ text: "Quotation To:" })],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
                           children: [
@@ -1260,27 +1245,48 @@ export const LeadService = () => {
                             }),
                           ],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          text: `Client GST No: -`,
+                          children: [new TextRun({ text: "Client GST No: -" })],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          text: `Client Name: ${lead.first_name || ""} ${
-                            lead.last_name || ""
-                          }`,
+                          children: [
+                            new TextRun({
+                              text: `Client Name: ${lead.first_name || ""} ${
+                                lead.last_name || ""
+                              }`,
+                            }),
+                          ],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          text: `Client Address: ${lead.location || "-"}`,
+                          children: [
+                            new TextRun({
+                              text: `Client Address: ${lead.location || "-"}`,
+                            }),
+                          ],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          text: `Client Contact No: ${lead.phone || "-"}`,
+                          children: [
+                            new TextRun({
+                              text: `Client Contact No: ${lead.phone || "-"}`,
+                            }),
+                          ],
                         }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
-                          text: `Client Email ID: ${lead.email || "-"}`,
+                          children: [
+                            new TextRun({
+                              text: `Client Email ID: ${lead.email || "-"}`,
+                            }),
+                          ],
                         }),
                       ],
                     }),
@@ -1291,42 +1297,46 @@ export const LeadService = () => {
 
             new Paragraph({ text: "", spacing: { after: 200 } }),
 
-            // DATE + NUMBER TABLE
+            // DATE & PROPOSAL NUMBER TABLE
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
               rows: [
                 new TableRow({
                   children: [
+                    // PROPOSAL DATE
                     new TableCell({
-                      borders: ALL_BORDERS(),
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          children: [
-                            new TextRun({ text: "Proposal Date:", bold: true }),
-                            new TextRun({
-                              text:
-                                " " +
-                                (formatQuotationDate(proposalDate) ||
-                                  "_____________"),
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-
-                    new TableCell({
-                      borders: ALL_BORDERS(),
+                      borders: BORDER_BOX(),
                       children: [
                         new Paragraph({
                           alignment: AlignmentType.CENTER,
                           children: [
                             new TextRun({
-                              text: "Proposal Number:",
+                              text: "Proposal Date: ",
                               bold: true,
                             }),
                             new TextRun({
-                              text: " " + (proposalNumber || "_____________"),
+                              text:
+                                formatQuotationDate(proposalDate) ||
+                                "_____________",
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+
+                    // PROPOSAL NUMBER
+                    new TableCell({
+                      borders: BORDER_BOX(),
+                      children: [
+                        new Paragraph({
+                          alignment: AlignmentType.CENTER,
+                          children: [
+                            new TextRun({
+                              text: "Proposal Number: ",
+                              bold: true,
+                            }),
+                            new TextRun({
+                              text: proposalNumber || "_____________",
                             }),
                           ],
                         }),
@@ -1339,14 +1349,14 @@ export const LeadService = () => {
 
             new Paragraph({ text: "", spacing: { after: 200 } }),
 
-            // DETAILS BOX
+            // PROPOSAL DETAILS
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
               rows: [
                 new TableRow({
                   children: [
                     new TableCell({
-                      borders: ALL_BORDERS(),
+                      borders: BORDER_BOX(),
                       children: [
                         new Paragraph({
                           children: [
@@ -1356,6 +1366,7 @@ export const LeadService = () => {
                             }),
                           ],
                         }),
+
                         new Paragraph({
                           text:
                             proposalText ||
@@ -1373,36 +1384,57 @@ export const LeadService = () => {
             // PRODUCT TABLE
             new Table({
               width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: ALL_BORDERS(),
+              borders: FULL_TABLE_BORDER(),
               rows: [
-                // HEADER
+                // HEADER ROW
                 new TableRow({
                   children: [
                     new TableCell({
                       children: [
-                        new Paragraph({ text: "Product Name", bold: true }),
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Product Name", bold: true }),
+                          ],
+                        }),
                       ],
                     }),
                     new TableCell({
                       children: [
-                        new Paragraph({ text: "Sale Price (₹)", bold: true }),
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Sale Price (₹)", bold: true }),
+                          ],
+                        }),
                       ],
                     }),
                   ],
                 }),
 
-                // PRODUCT ROWS (SAFE)
+                // DYNAMIC PRODUCT ROWS
                 ...(Array.isArray(products)
                   ? products.map(
                       (item) =>
                         new TableRow({
                           children: [
                             new TableCell({
-                              children: [new Paragraph(item.name || "-")],
+                              children: [
+                                new Paragraph({
+                                  children: [
+                                    new TextRun({ text: item.name || "-" }),
+                                  ],
+                                }),
+                              ],
                             }),
+
                             new TableCell({
                               children: [
-                                new Paragraph(String(item.sale_price || "0")),
+                                new Paragraph({
+                                  children: [
+                                    new TextRun({
+                                      text: String(item.sale_price || "0"),
+                                    }),
+                                  ],
+                                }),
                               ],
                             }),
                           ],
@@ -1419,6 +1451,35 @@ export const LeadService = () => {
     const buffer = await Packer.toBuffer(doc);
     return buffer;
   };
+
+  // Helper for borders
+  function FULL_TABLE_BORDER() {
+    return {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      insideHorizontal: {
+        style: BorderStyle.SINGLE,
+        size: 1,
+        color: "000",
+      },
+      insideVertical: {
+        style: BorderStyle.SINGLE,
+        size: 1,
+        color: "000",
+      },
+    };
+  }
+
+  function BORDER_BOX() {
+    return {
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+    };
+  }
 
   // Helper
   function ALL_BORDERS() {
