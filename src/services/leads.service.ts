@@ -1455,29 +1455,29 @@ export const LeadService = () => {
   // Helper for borders
   function FULL_TABLE_BORDER() {
     return {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
       insideHorizontal: {
         style: BorderStyle.SINGLE,
         size: 1,
-        color: "000",
+        color: "000000",
       },
       insideVertical: {
         style: BorderStyle.SINGLE,
         size: 1,
-        color: "000",
+        color: "000000",
       },
     };
   }
 
   function BORDER_BOX() {
     return {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "000" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "000" },
+      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
+      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
     };
   }
 
