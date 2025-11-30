@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
-import { createLeadSchema, updateLeadSchema, generateQuotationSchema } from "../schemas/leads.schema";
+import {
+  createLeadSchema,
+  updateLeadSchema,
+  generateQuotationSchema,
+} from "../schemas/leads.schema";
 import { verifyMetaSignature } from "../utils";
 import { ChannelType } from "../entities/leads.entity";
 
@@ -46,10 +50,18 @@ export const leadController = () => {
       const searchText = req.query.searchText as string | undefined;
       const statusId = req.query.statusId as string | undefined;
       const typeId = req.query.typeId as string | undefined;
-      const dateRange = req.query.dateRange as ("All" | "Daily" | "Weekly" | "Monthly") | undefined;
-      const referenceDate = req.query.referenceDate ? new Date(req.query.referenceDate as string) : undefined;
-      const followupFrom = req.query.followupFrom ? new Date(req.query.followupFrom as string) : undefined;
-      const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
+      const dateRange = req.query.dateRange as
+        | ("All" | "Daily" | "Weekly" | "Monthly")
+        | undefined;
+      const referenceDate = req.query.referenceDate
+        ? new Date(req.query.referenceDate as string)
+        : undefined;
+      const followupFrom = req.query.followupFrom
+        ? new Date(req.query.followupFrom as string)
+        : undefined;
+      const followupTo = req.query.followupTo
+        ? new Date(req.query.followupTo as string)
+        : undefined;
       const sourceId = req.query.sourceId as string | undefined;
       const assignedToId = req.query.assignedToId as string | undefined;
       const page = req.query.page ? parseInt(req.query.page as string) : 1;
@@ -66,7 +78,7 @@ export const leadController = () => {
         sourceId,
         assignedToId,
         page,
-        limit
+        limit,
       };
 
       const result = await service.getAllLeads(filters, userId, role);
@@ -75,7 +87,11 @@ export const leadController = () => {
       res.status(200).json({
         status: "success",
         message: "All Leads fetched",
-        data: { list: result.data, pagination: result.pagination, stats: leadStats },
+        data: {
+          list: result.data,
+          pagination: result.pagination,
+          stats: leadStats,
+        },
       });
     } catch (error) {
       next(error);
@@ -153,10 +169,18 @@ export const leadController = () => {
       const searchText = req.query.searchText as string | undefined;
       const statusId = req.query.statusId as string | undefined;
       const typeId = req.query.typeId as string | undefined;
-      const dateRange = req.query.dateRange as ("All" | "Daily" | "Weekly" | "Monthly") | undefined;
-      const referenceDate = req.query.referenceDate ? new Date(req.query.referenceDate as string) : undefined;
-      const followupFrom = req.query.followupFrom ? new Date(req.query.followupFrom as string) : undefined;
-      const followupTo = req.query.followupTo ? new Date(req.query.followupTo as string) : undefined;
+      const dateRange = req.query.dateRange as
+        | ("All" | "Daily" | "Weekly" | "Monthly")
+        | undefined;
+      const referenceDate = req.query.referenceDate
+        ? new Date(req.query.referenceDate as string)
+        : undefined;
+      const followupFrom = req.query.followupFrom
+        ? new Date(req.query.followupFrom as string)
+        : undefined;
+      const followupTo = req.query.followupTo
+        ? new Date(req.query.followupTo as string)
+        : undefined;
       const sourceId = req.query.sourceId as string | undefined;
       const assignedToId = req.query.assignedToId as string | undefined;
 
@@ -241,103 +265,117 @@ export const leadController = () => {
     }
   };
 
- const verifyMetaWebhook = (req: Request, res: Response) => {
-  const mode = req.query["hub.mode"];
-  const token = req.query["hub.verify_token"];
-  const challenge = req.query["hub.challenge"];
+  const verifyMetaWebhook = (req: Request, res: Response) => {
+    const mode = req.query["hub.mode"];
+    const token = req.query["hub.verify_token"];
+    const challenge = req.query["hub.challenge"];
 
-  const verified = service.verifyWebhook(mode, token);
+    const verified = service.verifyWebhook(mode, token);
 
-  if (verified) {
-    res.status(200).send(challenge);
-  } else {
-    res.status(403).send("Forbidden");
-  }
-};
-
-const metaLeadWebhook = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const body = req.body;
-    if (
-      (body.object === "page" || body.object === "instagram") &&
-      body.entry &&
-      body.entry[0]?.changes &&
-      body.entry[0].changes[0]?.field === "leadgen"
-    ) {
-      const leadgenData = body.entry[0].changes[0].value;
-      const leadId = leadgenData.leadgen_id;
-
-      let channel = ChannelType.FACEBOOK;
-
-      if (body.object === "instagram") {
-        channel = ChannelType.INSTAGRAM;
-      }
-      await service.handleMetaLead(leadId, channel);
-      res.status(200).json({ status: "success", message: "Lead processed" });
+    if (verified) {
+      res.status(200).send(challenge);
     } else {
-      res
-        .status(400)
-        .json({ status: "error", message: "Invalid webhook payload" });
+      res.status(403).send("Forbidden");
     }
-  } catch (error) {
-    console.log("Lead webhook error: ", error);
-    next(error);
-  }
-};
+  };
 
-const googleLeadWebhook = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const receivedApiKey = req.headers["x-api-key"] as string;
-    const payload = req.body;
+  const metaLeadWebhook = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const body = req.body;
+      if (
+        (body.object === "page" || body.object === "instagram") &&
+        body.entry &&
+        body.entry[0]?.changes &&
+        body.entry[0].changes[0]?.field === "leadgen"
+      ) {
+        const leadgenData = body.entry[0].changes[0].value;
+        const leadId = leadgenData.leadgen_id;
 
-    await service.handleGoogleLead(payload, receivedApiKey);
+        let channel = ChannelType.FACEBOOK;
 
-    res.status(200).json({
-      status: "success",
-      message: "Google lead processed successfully",
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+        if (body.object === "instagram") {
+          channel = ChannelType.INSTAGRAM;
+        }
+        await service.handleMetaLead(leadId, channel);
+        res.status(200).json({ status: "success", message: "Lead processed" });
+      } else {
+        res
+          .status(400)
+          .json({ status: "error", message: "Invalid webhook payload" });
+      }
+    } catch (error) {
+      console.log("Lead webhook error: ", error);
+      next(error);
+    }
+  };
 
-const exportQuotationDoc = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    
-    // Validate request body
-    const validatedData = generateQuotationSchema.parse(req.body);
-    const { proposalDate, proposalNumber, proposalText } = validatedData;
-    
-    const buffer = await service.generateQuotationDocService(
-      id,
-      proposalDate?.toISOString(),
-      proposalNumber,
-      proposalText
-    );
+  const googleLeadWebhook = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const receivedApiKey = req.headers["x-api-key"] as string;
+      const payload = req.body;
 
-    // Build file name: quotation_<lead-name>.docx
-    const lead = await service.getLeadById(id);
-    const leadNameRaw = `${lead.first_name || ""} ${lead.last_name || ""}`.trim();
-    const safeLeadName = (leadNameRaw || id)
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9_-]/g, "");
+      await service.handleGoogleLead(payload, receivedApiKey);
 
-    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
-    res.setHeader("Content-Disposition", `attachment; filename=quotation_${safeLeadName}.docx`);
-    res.send(buffer);
-  } catch (error) {
-    next(error);
-  }
-};
+      res.status(200).json({
+        status: "success",
+        message: "Google lead processed successfully",
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  const exportQuotationDoc = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const { id } = req.params;
+
+      // Validate request body
+      const validatedData = generateQuotationSchema.parse(req.body);
+      const { proposalDate, proposalNumber, proposalText, products } =
+        validatedData;
+
+      const buffer = await service.generateQuotationDocService(
+        id,
+        proposalDate?.toISOString(),
+        proposalNumber,
+        proposalText,
+        products
+      );
+
+      // Build file name: quotation_<lead-name>.docx
+      const lead = await service.getLeadById(id);
+      const leadNameRaw = `${lead.first_name || ""} ${
+        lead.last_name || ""
+      }`.trim();
+      const safeLeadName = (leadNameRaw || id)
+        .replace(/\s+/g, "_")
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename=quotation_${safeLeadName}.docx`
+      );
+      res.send(buffer);
+    } catch (error) {
+      next(error);
+    }
+  };
 
   return {
     exportQuotationDoc,
@@ -354,4 +392,3 @@ const exportQuotationDoc = async (req: Request, res: Response, next: NextFunctio
     uploadLeadsFromExcel,
   };
 };
-
