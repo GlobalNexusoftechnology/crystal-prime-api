@@ -344,7 +344,7 @@ export const leadController = () => {
 
       const buffer = await service.generateQuotationDocService(
         id,
-        proposalDate?.toISOString(),
+        proposalDate.toISOString(),
         proposalNumber,
         proposalText,
         products
