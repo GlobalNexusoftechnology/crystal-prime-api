@@ -1,5 +1,10 @@
 import { object, string, TypeOf, z } from "zod";
 
+
+const MAX_KEYWORDS = 8;
+const MIN_KEYWORD_LENGTH = 1;
+const MAX_KEYWORD_LENGTH = 40;
+
 export const createUserSchema = object({
   body: object({
     first_name: string({
@@ -31,6 +36,16 @@ export const createUserSchema = object({
     dob: z.coerce.date().optional(),
 
     team_lead_id: string().optional(),
+        keywords: z
+      .array(
+        string()
+          .trim()
+          .min(MIN_KEYWORD_LENGTH, `Keyword must be at least ${MIN_KEYWORD_LENGTH} character`)
+          .max(MAX_KEYWORD_LENGTH, `Keyword must be at most ${MAX_KEYWORD_LENGTH} characters`)
+      )
+      .max(MAX_KEYWORDS, `Maximum ${MAX_KEYWORDS} keywords allowed`)
+      .optional(),
+  
   }),
 });
 
@@ -55,6 +70,17 @@ export const updateUserSchema = object({
     dob: z.coerce.date().optional(),
 
     team_lead_id: string().optional(),
+
+       keywords: z
+      .array(
+        string()
+          .trim()
+          .min(MIN_KEYWORD_LENGTH, `Keyword must be at least ${MIN_KEYWORD_LENGTH} character`)
+          .max(MAX_KEYWORD_LENGTH, `Keyword must be at most ${MAX_KEYWORD_LENGTH} characters`)
+      )
+      .max(MAX_KEYWORDS, `Maximum ${MAX_KEYWORDS} keywords allowed`)
+      .optional(),
+  
   }),
 });
 
