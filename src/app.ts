@@ -59,7 +59,7 @@ import reportRoutes from "./routes/report.routes";
 import { initWebSocket } from "./services/websocket.service";
 
 import materialBrandRoutes from "./routes/material-brand.routes";
-import { setupDailyReportCron } from "cron/LeadReportCronJob";
+import { setupDailyReportCron } from "./cron/LeadReportCronJob";
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
