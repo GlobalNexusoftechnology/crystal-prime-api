@@ -170,7 +170,7 @@ export async function sendDailyReportFor(dateStr?: string) {
 export const setupDailyReportCron = () => {
   // If you want to test immediately during development, you can temporarily use:
   // cronExpression = "*/1 * * * *"  // runs every minute (use only for dev/test)
-  const cronExpression = "* * * * *"; // 8:00 PM IST daily
+  const cronExpression = "* 20 * * *"; 
 
   cron.schedule(
     cronExpression,
