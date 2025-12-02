@@ -8,7 +8,7 @@ import { format, subDays } from "date-fns"; // npm i date-fns
  * Update these
  */
 const API_BASE = "http://194.164.151.17:3000/api/reports/leads";
-const MAIL_FROM = '"GNT Reports" <ahmedfaiz868@gmail.com>';
+const MAIL_FROM = '"GNT Reports" <giganexustechnologyllp@gmail.com>';
 const MAIL_TO = "ahmedfaiz868@gmail.com"; // comma-separated allowed
 
 const SMTP_CONFIG = {
