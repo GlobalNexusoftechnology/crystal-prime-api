@@ -121,119 +121,145 @@ export const LeadService = () => {
     //   lead.assigned_to = user;
     // }
 
-if (assigned_to) {
-  const user = await userRepo.findOne({ where: { id: assigned_to } });
-  if (!user) throw new AppError(400, "Invalid Assigned User");
-  lead.assigned_to = user;
-} else {
-  // auto-assign based on lead.requirement text vs user.keywords
-  const requirementText = (lead.requirement || "").toString().trim();
+    if (assigned_to) {
+      const user = await userRepo.findOne({ where: { id: assigned_to } });
+      if (!user) throw new AppError(400, "Invalid Assigned User");
+      lead.assigned_to = user;
 
-  if (!requirementText) {
-    // nothing to match against — leave unassigned or handle default
-    lead.assigned_to = null; // or keep existing, or assign default user
-  } else {
-    // tokenize requirement - words and meaningful phrases
-    // you can tune this regex for better tokenization
-    const reqTokens = requirementText
-      .toLowerCase()
-      .split(/[\s,;.:\-()\/\\]+/)
-      .map((t) => t.trim())
-      .filter(Boolean);
+      // update lastAssigned and persist
+      user.lastAssigned = new Date().toISOString();
+      await userRepo.save(user);
+    } else {
+      // auto-assign based on lead.requirement text vs user.keywords
+      const requirementText = (lead.requirement || "").toString().trim();
 
-    // load candidate users — restrict query as needed (active users only etc.)
-    const users = await userRepo.find(); // or add where: { deleted: false } etc.
+      if (!requirementText) {
+        // nothing to match against — fallback to selecting by oldest lastAssigned
+        const candidates = await userRepo.find({ /* add filters: active/deleted etc. */ });
 
-    // helper to normalize keywords stored in various formats
-    const normalizeKeywords = (raw: any): string[] => {
-      if (!raw) return [];
-      if (Array.isArray(raw)) {
-        return raw.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
-      }
-      if (typeof raw === "string") {
-        const s = raw.trim();
-        // try JSON parse: '["a","b"]'
-        if ((s.startsWith("[") && s.endsWith("]")) || s.startsWith('["')) {
-          try {
-            const parsed = JSON.parse(s);
-            if (Array.isArray(parsed)) return parsed.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
-          } catch (e) {
-            // fallthrough to CSV parse
+        if (!candidates || candidates.length === 0) {
+          lead.assigned_to = null;
+        } else {
+          // treat missing lastAssigned as oldest (0) so they get priority
+          candidates.sort((a, b) => {
+            const ta = a.lastAssigned ? new Date(a.lastAssigned).getTime() : 0;
+            const tb = b.lastAssigned ? new Date(b.lastAssigned).getTime() : 0;
+            return ta - tb; // ascending => oldest first
+          });
+
+          const selected = candidates[0];
+          lead.assigned_to = selected;
+          selected.lastAssigned = new Date().toISOString();
+          await userRepo.save(selected);
+        }
+      } else {
+        // tokenize requirement - words and meaningful phrases
+        const reqTokens = requirementText
+          .toLowerCase()
+          .split(/[\s,;.:\-()\/\\]+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+
+        // load candidate users — restrict query as needed (active users only etc.)
+        const users = await userRepo.find(); // adapt where clause as needed
+
+        // helper to normalize keywords stored in various formats
+        const normalizeKeywords = (raw: any): string[] => {
+          if (!raw) return [];
+          if (Array.isArray(raw)) {
+            return raw.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+          }
+          if (typeof raw === "string") {
+            const s = raw.trim();
+            if ((s.startsWith("[") && s.endsWith("]")) || s.startsWith('["')) {
+              try {
+                const parsed = JSON.parse(s);
+                if (Array.isArray(parsed)) return parsed.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+              } catch (e) {
+                // fallback to CSV parse
+              }
+            }
+            return s
+              .split(/[,;|\/]+|\s+/)
+              .map((k) => k.toLowerCase().trim())
+              .filter(Boolean);
+          }
+          return String(raw)
+            .toLowerCase()
+            .split(/[,;|\/]+|\s+/)
+            .map((k) => k.trim())
+            .filter(Boolean);
+        };
+
+        // Score users by matches
+        type Score = { user: any; score: number; matchedKeywords: string[] };
+        const scores: Score[] = [];
+
+        for (const u of users) {
+          const kws = normalizeKeywords(u.keywords);
+          if (kws.length === 0) continue;
+
+          let score = 0;
+          const matched: Set<string> = new Set();
+
+          for (const kw of kws) {
+            if (!kw) continue;
+            if (reqTokens.includes(kw)) {
+              score += 2;
+              matched.add(kw);
+              continue;
+            }
+            if (requirementText.toLowerCase().includes(kw)) {
+              score += 1;
+              matched.add(kw);
+            }
+          }
+
+          if (score > 0) {
+            scores.push({ user: u, score, matchedKeywords: Array.from(matched) });
           }
         }
-        // CSV or space-separated fallback
-        return s
-          .split(/[,;|\/]+|\s+/)
-          .map((k) => k.toLowerCase().trim())
-          .filter(Boolean);
-      }
-      // fallback: try toString
-      return String(raw)
-        .toLowerCase()
-        .split(/[,;|\/]+|\s+/)
-        .map((k) => k.trim())
-        .filter(Boolean);
-    };
 
-    // Score users by matches
-    type Score = { user: any; score: number; matchedKeywords: string[] };
-    const scores: Score[] = [];
+        if (scores.length === 0) {
+          // NO KEYWORD MATCH -> pick user with oldest lastAssigned (round-robin-ish)
+          const candidates = users; // optionally filter eligible users here
+          if (!candidates || candidates.length === 0) {
+            lead.assigned_to = null;
+          } else {
+            candidates.sort((a, b) => {
+              const ta = a.lastAssigned ? new Date(a.lastAssigned).getTime() : 0;
+              const tb = b.lastAssigned ? new Date(b.lastAssigned).getTime() : 0;
+              return ta - tb;
+            });
 
-    for (const u of users) {
-      const kws = normalizeKeywords(u.keywords);
-      if (kws.length === 0) continue;
+            const selected = candidates[0];
+            lead.assigned_to = selected;
+            selected.lastAssigned = new Date().toISOString();
+            await userRepo.save(selected);
+          }
+        } else {
+          // KEYWORD MATCH FOUND -> choose best, assign and update lastAssigned
+          scores.sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            const aMatched = a.matchedKeywords.length;
+            const bMatched = b.matchedKeywords.length;
+            if (bMatched !== aMatched) return bMatched - aMatched;
+            return 0;
+          });
 
-      // count keyword hits — increase weight for exact token matches
-      let score = 0;
-      const matched: Set<string> = new Set();
+          const best = scores[0];
+          lead.assigned_to = best.user;
 
-      // match by keyword included in requirementText OR token intersection
-      for (const kw of kws) {
-        if (!kw) continue;
-        // exact token match
-        if (reqTokens.includes(kw)) {
-          score += 2; // stronger weight for direct token match
-          matched.add(kw);
-          continue;
+          // update lastAssigned on selected user and persist
+          best.user.lastAssigned = new Date().toISOString();
+          await userRepo.save(best.user);
+
+          // optional log:
+          // console.log(`Auto-assigned lead to user ${best.user.id}. Matched:`, best.matchedKeywords);
         }
-        // substring match in requirement (e.g. requirement contains "crm integration" and kw is "crm")
-        if (requirementText.toLowerCase().includes(kw)) {
-          score += 1;
-          matched.add(kw);
-        }
-      }
-
-      if (score > 0) {
-        scores.push({ user: u, score, matchedKeywords: Array.from(matched) });
       }
     }
 
-    if (scores.length === 0) {
-      // no matching users — decide fallback behavior
-      // Option A: keep unassigned
-      lead.assigned_to = null;
-      // Option B: assign to default admin / round-robin / manager
-      // const defaultUser = await userRepo.findOne({ where: { role: 'manager' }});
-      // lead.assigned_to = defaultUser || null;
-    } else {
-      // pick user with highest score, tie-break by earliest created_at or any other measure
-      scores.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        // tie-break: you could compare matchedKeywords length, created_at, load, etc.
-        const aMatched = a.matchedKeywords.length;
-        const bMatched = b.matchedKeywords.length;
-        if (bMatched !== aMatched) return bMatched - aMatched;
-        // fallback stable order
-        return 0;
-      });
-
-      const best = scores[0];
-      lead.assigned_to = best.user;
-      // optionally: log which keywords matched
-      // console.log(`Auto-assigned lead to user ${best.user.id}. Matched keywords:`, best.matchedKeywords);
-    }
-  }
-}
 
 
     const savedLead = await leadRepo.save(lead);
@@ -440,9 +466,9 @@ if (assigned_to) {
       isAdmin
         ? leadRepo.count({ where: { deleted: false } })
         : leadRepo.count({
-            where: { deleted: false, assigned_to: { id: userId } },
-            relations: ["assigned_to"],
-          }),
+          where: { deleted: false, assigned_to: { id: userId } },
+          relations: ["assigned_to"],
+        }),
 
       // Profile sent
       leadRepo.count({
@@ -636,8 +662,7 @@ if (assigned_to) {
         await notificationService.createNotification(
           admin.id,
           NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
-            lead.phone || lead.email
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email
           }) - Duplicate created`,
           {
             leadId: lead.id,
@@ -1205,8 +1230,8 @@ if (assigned_to) {
       attachments: Array.isArray(payload.attachments)
         ? payload.attachments
         : payload.attachments
-        ? [payload.attachments]
-        : [],
+          ? [payload.attachments]
+          : [],
     };
 
     const data = createLeadSchema.parse(prepData);
@@ -1370,9 +1395,8 @@ if (assigned_to) {
                           alignment: AlignmentType.RIGHT,
                           children: [
                             new TextRun({
-                              text: `Client Name: ${lead.first_name || ""} ${
-                                lead.last_name || ""
-                              }`,
+                              text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""
+                                }`,
                             }),
                           ],
                         }),
@@ -1528,33 +1552,33 @@ if (assigned_to) {
                 // DYNAMIC PRODUCT ROWS
                 ...(Array.isArray(products)
                   ? products.map(
-                      (item) =>
-                        new TableRow({
-                          children: [
-                            new TableCell({
-                              children: [
-                                new Paragraph({
-                                  children: [
-                                    new TextRun({ text: item.name || "-" }),
-                                  ],
-                                }),
-                              ],
-                            }),
+                    (item) =>
+                      new TableRow({
+                        children: [
+                          new TableCell({
+                            children: [
+                              new Paragraph({
+                                children: [
+                                  new TextRun({ text: item.name || "-" }),
+                                ],
+                              }),
+                            ],
+                          }),
 
-                            new TableCell({
-                              children: [
-                                new Paragraph({
-                                  children: [
-                                    new TextRun({
-                                      text: String(item.sale_price || "0"),
-                                    }),
-                                  ],
-                                }),
-                              ],
-                            }),
-                          ],
-                        })
-                    )
+                          new TableCell({
+                            children: [
+                              new Paragraph({
+                                children: [
+                                  new TextRun({
+                                    text: String(item.sale_price || "0"),
+                                  }),
+                                ],
+                              }),
+                            ],
+                          }),
+                        ],
+                      })
+                  )
                   : []),
               ],
             }),

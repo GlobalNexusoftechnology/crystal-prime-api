@@ -66,6 +66,10 @@ export class User extends Model {
   @Column({ nullable: false })
   password: string;
 
+    @Column({ nullable: true })
+  lastAssigned: string;
+
+
   @OneToMany(() => Leads, (lead) => lead.assigned_to)
   assignedLeads: Leads[];
 
