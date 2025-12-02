@@ -45,7 +45,6 @@ export const createUserSchema = object({
       )
       .max(MAX_KEYWORDS, `Maximum ${MAX_KEYWORDS} keywords allowed`)
       .optional(),
-  
   }),
 });
 
