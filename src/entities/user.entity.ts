@@ -60,13 +60,13 @@ export class User extends Model {
   @Column({ default: false })
   isOtpVerified: boolean;
 
-  @Column({ type: "text", array: true, nullable: true})
-  keywords?: string[] ;
+  @Column({ type: "text", array: true, nullable: true })
+  keywords?: string[];
 
   @Column({ nullable: false })
   password: string;
 
-    @Column({ nullable: true })
+  @Column({ nullable: true })
   lastAssigned: string;
 
 
