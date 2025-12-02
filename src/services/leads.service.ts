@@ -115,11 +115,126 @@ export const LeadService = () => {
       lead.type = type;
     }
 
-    if (assigned_to) {
-      const user = await userRepo.findOne({ where: { id: assigned_to } });
-      if (!user) throw new AppError(400, "Invalid Assigned User");
-      lead.assigned_to = user;
+    // if (assigned_to) {
+    //   const user = await userRepo.findOne({ where: { id: assigned_to } });
+    //   if (!user) throw new AppError(400, "Invalid Assigned User");
+    //   lead.assigned_to = user;
+    // }
+
+if (assigned_to) {
+  const user = await userRepo.findOne({ where: { id: assigned_to } });
+  if (!user) throw new AppError(400, "Invalid Assigned User");
+  lead.assigned_to = user;
+} else {
+  // auto-assign based on lead.requirement text vs user.keywords
+  const requirementText = (lead.requirement || "").toString().trim();
+
+  if (!requirementText) {
+    // nothing to match against — leave unassigned or handle default
+    lead.assigned_to = null; // or keep existing, or assign default user
+  } else {
+    // tokenize requirement - words and meaningful phrases
+    // you can tune this regex for better tokenization
+    const reqTokens = requirementText
+      .toLowerCase()
+      .split(/[\s,;.:\-()\/\\]+/)
+      .map((t) => t.trim())
+      .filter(Boolean);
+
+    // load candidate users — restrict query as needed (active users only etc.)
+    const users = await userRepo.find(); // or add where: { deleted: false } etc.
+
+    // helper to normalize keywords stored in various formats
+    const normalizeKeywords = (raw: any): string[] => {
+      if (!raw) return [];
+      if (Array.isArray(raw)) {
+        return raw.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+      }
+      if (typeof raw === "string") {
+        const s = raw.trim();
+        // try JSON parse: '["a","b"]'
+        if ((s.startsWith("[") && s.endsWith("]")) || s.startsWith('["')) {
+          try {
+            const parsed = JSON.parse(s);
+            if (Array.isArray(parsed)) return parsed.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+          } catch (e) {
+            // fallthrough to CSV parse
+          }
+        }
+        // CSV or space-separated fallback
+        return s
+          .split(/[,;|\/]+|\s+/)
+          .map((k) => k.toLowerCase().trim())
+          .filter(Boolean);
+      }
+      // fallback: try toString
+      return String(raw)
+        .toLowerCase()
+        .split(/[,;|\/]+|\s+/)
+        .map((k) => k.trim())
+        .filter(Boolean);
+    };
+
+    // Score users by matches
+    type Score = { user: any; score: number; matchedKeywords: string[] };
+    const scores: Score[] = [];
+
+    for (const u of users) {
+      const kws = normalizeKeywords(u.keywords);
+      if (kws.length === 0) continue;
+
+      // count keyword hits — increase weight for exact token matches
+      let score = 0;
+      const matched: Set<string> = new Set();
+
+      // match by keyword included in requirementText OR token intersection
+      for (const kw of kws) {
+        if (!kw) continue;
+        // exact token match
+        if (reqTokens.includes(kw)) {
+          score += 2; // stronger weight for direct token match
+          matched.add(kw);
+          continue;
+        }
+        // substring match in requirement (e.g. requirement contains "crm integration" and kw is "crm")
+        if (requirementText.toLowerCase().includes(kw)) {
+          score += 1;
+          matched.add(kw);
+        }
+      }
+
+      if (score > 0) {
+        scores.push({ user: u, score, matchedKeywords: Array.from(matched) });
+      }
     }
+
+    if (scores.length === 0) {
+      // no matching users — decide fallback behavior
+      // Option A: keep unassigned
+      lead.assigned_to = null;
+      // Option B: assign to default admin / round-robin / manager
+      // const defaultUser = await userRepo.findOne({ where: { role: 'manager' }});
+      // lead.assigned_to = defaultUser || null;
+    } else {
+      // pick user with highest score, tie-break by earliest created_at or any other measure
+      scores.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        // tie-break: you could compare matchedKeywords length, created_at, load, etc.
+        const aMatched = a.matchedKeywords.length;
+        const bMatched = b.matchedKeywords.length;
+        if (bMatched !== aMatched) return bMatched - aMatched;
+        // fallback stable order
+        return 0;
+      });
+
+      const best = scores[0];
+      lead.assigned_to = best.user;
+      // optionally: log which keywords matched
+      // console.log(`Auto-assigned lead to user ${best.user.id}. Matched keywords:`, best.matchedKeywords);
+    }
+  }
+}
+
 
     const savedLead = await leadRepo.save(lead);
 
