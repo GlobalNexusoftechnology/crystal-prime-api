@@ -69,7 +69,12 @@ export const LeadService = () => {
     // Validate email (optional now)
     if (email && typeof email !== "string") {
       throw new AppError(400, "Email must be a string");
-    }
+    }else if (email) {
+  const existingLead = await leadRepo.findOne({ where: { email } });
+  if (existingLead) {
+    throw new AppError(400, "Email already exists");
+  }
+}
 
     // Check if any email already exists
     // for (const emailStr of email) {
