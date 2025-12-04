@@ -1578,7 +1578,7 @@ export const LeadService = () => {
                               new Paragraph({
                                 children: [
                                   new TextRun({
-                                    text: String(item.sale_price || "0"),
+                                    text: String(item.salePrice || "0"),
                                   }),
                                 ],
                               }),
@@ -1590,7 +1590,7 @@ export const LeadService = () => {
                   : []),
               ],
             }),
-            
+
             // ----------------------------
             // NEW SECTION ADDED BELOW
             // ----------------------------
