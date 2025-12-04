@@ -8,21 +8,21 @@ export class Material extends Model {
   @Column({ type: "varchar", length: 150, nullable: false })
   name: string;
 
-  @Column({ type: "varchar", length: 50, nullable: false })
+  @Column({ type: "varchar", length: 50, nullable: true })
   code: string;
 
   @ManyToOne(
     () => MaterialBrand,
     (brand: { materials: any }) => brand.materials,
-    {
-      nullable: true,
-    }
+    { nullable: true }
   )
   materialBrand: MaterialBrand;
 
-  @ManyToOne(() => MaterialType, (type: { materials: any }) => type.materials, {
-    nullable: true,
-  })
+  @ManyToOne(
+    () => MaterialType,
+    (type: { materials: any }) => type.materials,
+    { nullable: true }
+  )
   materialType: MaterialType;
 
   @Column({ type: "varchar", length: 50, nullable: true })
@@ -49,7 +49,7 @@ export class Material extends Model {
   @Column({ type: "text", array: true, nullable: true })
   photos: string[];
 
-  @Column({ type: "boolean", default: true })
+  @Column({ type: "boolean", nullable: true })
   active: boolean;
 
   @Column({ type: "text", nullable: true })
@@ -61,6 +61,7 @@ export class Material extends Model {
   @Column({ type: "varchar", length: 100, nullable: true })
   alias: string;
 
-  @Column({ default: 0 })
+  @Column({ nullable: true })
   quantity: number;
 }
+
