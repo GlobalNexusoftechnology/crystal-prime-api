@@ -339,22 +339,29 @@ export const leadController = () => {
       // Validate request body
       // const validatedData = generateQuotationSchema.parse(req.body);
       const validatedData = req.body;
-      const { proposalDate, proposalNumber, proposalText, products } =
+      const { proposalDate, proposalNumber, proposalText, products,
+        productsText,
+        subtotal,
+        taxPercent, finalAmount
+      } =
         validatedData;
 
       const buffer = await service.generateQuotationDocService(
         id,
+
+        products,
+        productsText,
+        subtotal,
+        taxPercent, finalAmount,
         new Date(proposalDate).toISOString(),
         proposalNumber,
         proposalText,
-        products
       );
 
       // Build file name: quotation_<lead-name>.docx
       const lead = await service.getLeadById(id);
-      const leadNameRaw = `${lead.first_name || ""} ${
-        lead.last_name || ""
-      }`.trim();
+      const leadNameRaw = `${lead.first_name || ""} ${lead.last_name || ""
+        }`.trim();
       const safeLeadName = (leadNameRaw || id)
         .replace(/\s+/g, "_")
         .replace(/[^a-zA-Z0-9_-]/g, "");
