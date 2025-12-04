@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createMaterialSchema = z.object({
   name: z.string().min(1, "Material name is required"),
-  code: z.string().min(1, "Code is required"),
+  code: z.string().optional(),
   materialBrandId: z.string().uuid().optional(),
   size: z.string().optional(),
   uom: z.string().optional(),
