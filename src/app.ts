@@ -60,6 +60,7 @@ import { initWebSocket } from "./services/websocket.service";
 
 import materialBrandRoutes from "./routes/material-brand.routes";
 import { setupDailyReportCron } from "./cron/LeadReportCronJob";
+import inventoryHistoryRoutes from "routes/inventory-history.routes";
 
 (async function () {
   const credentials = await nodemailer.createTestAccount();
@@ -143,6 +144,9 @@ AppDataSource.initialize()
     app.use("/api/attendances", AttendanceRoutes);
     app.use("/api/work-requests", workRequestRoutes);
     app.use("/api/materials", materialRoutes);
+
+    app.use("/api/inventory-history", inventoryHistoryRoutes);
+
 
     app.use("/api/material-brand", materialBrandRoutes);
     app.use("/api/material-type", materialTypeRoutes);

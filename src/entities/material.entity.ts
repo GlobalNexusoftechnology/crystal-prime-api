@@ -1,7 +1,8 @@
-import { Entity, Column, ManyToOne } from "typeorm";
+import { Entity, Column, ManyToOne, OneToMany } from "typeorm";
 import Model from "./model.entity";
 import { MaterialType } from "./material-type.entity";
 import { MaterialBrand } from "./material-brand.entity";
+import { InventoryHistory } from "./inventory.history.entity";
 
 @Entity("materials")
 export class Material extends Model {
@@ -63,4 +64,10 @@ export class Material extends Model {
 
   @Column({ default: 0 })
   quantity: number;
+
+   @OneToMany(
+    () => InventoryHistory,
+    (history: InventoryHistory) => history.material
+  )
+  inventoryHistory: InventoryHistory[];
 }
