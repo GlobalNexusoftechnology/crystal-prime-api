@@ -1,4 +1,4 @@
-import { createInventoryHistory, deleteInventoryHistory, getAllInventoryHistory, getInventoryHistoryById, updateInventoryHistory } from "controllers/inventory-history.controller";
+import { createInventoryHistory, deleteInventoryHistory, getAllInventoryHistory, getInventoryHistoryById, updateInventoryHistory } from "../controllers/inventory-history.controller";
 import { Router } from "express";
 import { deserializeUser, requireUser } from "middleware";
 
