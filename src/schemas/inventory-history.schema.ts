@@ -4,7 +4,7 @@ export const createInventoryHistory = z.object({
   material_id: z.string({
     required_error: "Material id is required",
     invalid_type_error: "Material id must be a string",
-  }),
+}),
   date: z
     .string({
       required_error: "Date is required",

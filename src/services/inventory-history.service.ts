@@ -2,7 +2,7 @@ import { AppDataSource } from "../utils/data-source";
 import { Material } from "../entities/material.entity";
 import AppError from "../utils/appError";
 import { DeepPartial } from "typeorm";
-import { InventoryHistory } from "entities/inventory.history.entity";
+import { InventoryHistory } from "../entities/inventory.history.entity";
 
 interface IInventoryHistoryInput {
   material_id: string;

@@ -1,11 +1,10 @@
 import { Request, Response, NextFunction } from "express"
-
 import { AppError } from "../utils"
 import {
   createInventoryHistory as createInventoryHistorySchema,
   updateInventoryHistory as updateInventoryHistorySchema,
-} from "schemas/inventory-history.schema"
-import { InventoryHistoryService } from "services/inventory-history"
+} from "../schemas/inventory-history.schema"
+import { InventoryHistoryService } from "../services/inventory-history.service"
 
 const service = InventoryHistoryService()
 
