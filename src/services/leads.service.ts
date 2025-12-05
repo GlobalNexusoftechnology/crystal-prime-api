@@ -69,6 +69,11 @@ export const LeadService = () => {
     // Validate email (optional now)
     if (email && typeof email !== "string") {
       throw new AppError(400, "Email must be a string");
+    } else if (email) {
+      const existingLead = await leadRepo.findOne({ where: { email } });
+      if (existingLead) {
+        throw new AppError(400, "Email already exists");
+      }
     }
 
     // Check if any email already exists
@@ -1255,10 +1260,13 @@ export const LeadService = () => {
 
   const generateQuotationDocService = async (
     leadId: string,
+    products: any[] = [], // default safe array,
+    productsText: string,
+    subtotal: number,
+    taxPercent: number, finalAmount: number,
     proposalDate?: string,
     proposalNumber?: string,
     proposalText?: string,
-    products: any[] = [] // default safe array
   ) => {
     const lead = await leadRepo.findOne({
       where: { id: leadId },
@@ -1570,7 +1578,7 @@ export const LeadService = () => {
                               new Paragraph({
                                 children: [
                                   new TextRun({
-                                    text: String(item.sale_price || "0"),
+                                    text: String(item.salePrice || "0"),
                                   }),
                                 ],
                               }),
@@ -1580,6 +1588,116 @@ export const LeadService = () => {
                       })
                   )
                   : []),
+              ],
+            }),
+
+            // ----------------------------
+            // NEW SECTION ADDED BELOW
+            // ----------------------------
+
+            // Products Description Text
+            new Paragraph({ text: "", spacing: { after: 300 } }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      borders: BORDER_BOX(),
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: "Products Description:", bold: true }),
+                          ],
+                        }),
+                        new Paragraph({
+                          text: productsText || "-",
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+
+            new Paragraph({ text: "", spacing: { after: 300 } }),
+
+            // PRICE SUMMARY TABLE
+            new Table({
+              width: { size: 60, type: WidthType.PERCENTAGE },
+              alignment: AlignmentType.RIGHT,
+              borders: FULL_TABLE_BORDER(),
+              rows: [
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [new TextRun({ text: "Subtotal", bold: true })],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({ text: `₹ ${Number(subtotal || 0).toFixed(2)}` }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [new TextRun({ text: `Tax (${taxPercent || 0}%)`, bold: true })],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: `₹ ${(
+                                (Number(subtotal || 0) * Number(taxPercent || 0)) /
+                                100
+                              ).toFixed(2)}`,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+
+                new TableRow({
+                  children: [
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [new TextRun({ text: "Final Amount", bold: true })],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      children: [
+                        new Paragraph({
+                          children: [
+                            new TextRun({
+                              text: `₹ ${Number(finalAmount || 0).toFixed(2)}`,
+                              bold: true,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
               ],
             }),
           ],
