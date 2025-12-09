@@ -12,7 +12,7 @@ interface ClientInput {
   lead_id?: string;
   name: string;
   email?: string;
-  contact_number: string;
+  contact_number?: string;
   address?: string;
   company_name?: string;
   contact_person?: string;
