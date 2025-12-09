@@ -9,7 +9,7 @@ export class ClientDetails extends Model {
   @JoinColumn({ name: "client_id" })
   client: Clients;
 
-  @Column({ type: "varchar", length: 100 })
+  @Column({ type: "varchar", length: 100, nullable:true })
   client_contact: string;
 
   @Column({ type: "varchar", length: 100, nullable: true })
