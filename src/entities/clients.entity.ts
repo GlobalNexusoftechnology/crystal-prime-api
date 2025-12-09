@@ -23,7 +23,7 @@ export class Clients extends Model {
   @Column({ type: "varchar", length: 100, nullable: true })
   email: string;
 
-  @Column({ type: "varchar", length: 20 })
+  @Column({ type: "varchar", length: 20, nullable: true })
   contact_number: string;
 
   @Column({ type: "text", nullable: true })
