@@ -6,7 +6,7 @@ import AppError from "../utils/appError";
 
 interface ClientDetailsInput {
     client_id?: string;
-    client_contact: string;
+    client_contact?: string;
     contact_person?: string;
     email?: string;
     other_contact?: string;
