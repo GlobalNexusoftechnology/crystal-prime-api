@@ -45,6 +45,19 @@ const leadFollowupRepo = AppDataSource.getRepository(LeadFollowup);
 const clientRepo = AppDataSource.getRepository(Clients);
 
 const notificationService = NotificationService();
+
+const CELL_PADDING = {
+  top: 300,
+  bottom: 300,
+  left: 300,
+  right: 300,
+};
+
+const PARA_SPACING = {
+  before: 120,
+  after: 120,
+};
+
 // Create lead
 export const LeadService = () => {
   // Create Lead
@@ -1260,456 +1273,236 @@ export const LeadService = () => {
     await leadRepo.save(newLead);
   };
 
-  const generateQuotationDocService = async (
-    leadId: string,
-    products: any[] = [], // default safe array,
-    productsText: string,
-    subtotal: number,
-    taxPercent: number, finalAmount: number,
-    proposalDate?: string,
-    proposalNumber?: string,
-    proposalText?: string,
-  ) => {
-    const lead = await leadRepo.findOne({
-      where: { id: leadId },
-      relations: ["assigned_to", "status", "type", "source"],
-    });
+const generateQuotationDocService = async (
+  leadId: string,
+  products: any[] = [],
+  productsText: string,
+  subtotal: number,
+  taxPercent: number,
+  finalAmount: number,
+  proposalDate?: string,
+  proposalNumber?: string,
+  proposalText?: string,
+) => {
+  const lead = await leadRepo.findOne({
+    where: { id: leadId },
+    relations: ["assigned_to", "status", "type", "source"],
+  });
 
-    if (!lead) throw new AppError(404, "Lead not found");
+  if (!lead) throw new AppError(404, "Lead not found");
 
-    // Read logo
-    const logoCandidates = [
-      path.join(__dirname, "../../public/satkar-logo.png"),
-      path.join(__dirname, "../../../src/public/satkar-logo.png"),
-      path.join(process.cwd(), "src/public/satkar-logo.png"),
-      path.join(process.cwd(), "public/satkar-logo.png"),
-    ];
-    const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+  const logoCandidates = [
+    path.join(__dirname, "../../public/satkar-logo.png"),
+    path.join(__dirname, "../../../src/public/satkar-logo.png"),
+    path.join(process.cwd(), "src/public/satkar-logo.png"),
+    path.join(process.cwd(), "public/satkar-logo.png"),
+  ];
 
-    if (!resolvedLogoPath) {
-      throw new AppError(
-        500,
-        "Quotation logo not found. Ensure 'src/public/satkar-logo.png' is available."
-      );
-    }
+  const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
+  if (!resolvedLogoPath) {
+    throw new AppError(500, "Quotation logo not found");
+  }
 
-    const logoBuffer = fs.readFileSync(resolvedLogoPath);
+  const logoBuffer = fs.readFileSync(resolvedLogoPath);
 
-    const doc = new Document({
-      creator: "Crystal Prime",
-      title: "Quotation Document",
-      sections: [
-        {
-          children: [
-            // LOGO
-            new Paragraph({
-              children: [
-                new ImageRun({
-                  data: logoBuffer,
-                  type: "png",
-                  transformation: { width: 120, height: 40 },
-                }),
-              ],
-            }),
+  const doc = new Document({
+    creator: "Crystal Prime",
+    title: "Quotation Document",
+    sections: [
+      {
+        children: [
+          /* LOGO */
+          new Paragraph({
+            spacing: { after: 300 },
+            children: [
+              new ImageRun({
+                data: logoBuffer,
+                type: "png",
+                transformation: { width: 120, height: 40 },
+              }),
+            ],
+          }),
 
-            // LINE BELOW LOGO
-            new Paragraph({
-              border: {
-                bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
-              },
-            }),
+          /* DIVIDER */
+          new Paragraph({
+            border: {
+              bottom: { style: BorderStyle.SINGLE, size: 4, color: "C0C0C0" },
+            },
+            spacing: { after: 400 },
+          }),
 
-            new Paragraph({ text: "" }),
+          /* FROM / TO TABLE */
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: FULL_TABLE_BORDER(),
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    children: [
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Quotation From:", bold: true })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Crystal Prime", bold: true, size: 22 })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "GST No: 27AAUCS490971ZW" })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Udyam Reg: UDYAM-MH-26-0525073" })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Email ID: manish@satkarinfotech.com" })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Contact Person:" })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Contact No:" })] }),
+                    ],
+                  }),
 
-            // QUOTATION FROM / TO TABLE
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: FULL_TABLE_BORDER(),
-              rows: [
-                new TableRow({
-                  children: [
-                    // LEFT SIDE (COMPANY INFO)
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
-                      children: [
-                        new Paragraph({
-                          children: [new TextRun({ text: "Quotation From:" })],
-                        }),
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    children: [
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: "Quotation To:", bold: true })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: lead.company || "-", bold: true, size: 22 })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: "Client GST No: -" })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}` })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Address: ${lead.location || "-"}` })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Contact No: ${lead.phone || "-"}` })] }),
+                      new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Email ID: ${lead.email || "-"}` })] }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
 
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: "Crystal Prime",
-                              bold: true,
-                              size: 22,
-                            }),
-                          ],
-                        }),
+          new Paragraph({ spacing: { after: 400 } }),
 
-                        new Paragraph({
-                          children: [
-                            new TextRun({ text: "GST No: 27AAUCS490971ZW" }),
-                          ],
-                        }),
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: "Udyam Reg: UDYAM-MH-26-0525073",
-                            }),
-                          ],
-                        }),
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: "Email ID: manish@satkarinfotech.com",
-                            }),
-                          ],
-                        }),
-                        new Paragraph({
-                          children: [new TextRun({ text: "Contact Person:" })],
-                        }),
-                        new Paragraph({
-                          children: [new TextRun({ text: "Contact No:" })],
-                        }),
-                      ],
-                    }),
-
-                    // RIGHT SIDE (CLIENT INFO)
-                    new TableCell({
-                      width: { size: 50, type: WidthType.PERCENTAGE },
-                      margins: { top: 400, bottom: 400, left: 400, right: 400 },
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [new TextRun({ text: "Quotation To:" })],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [
-                            new TextRun({
-                              text: lead.company || "-",
-                              bold: true,
-                              size: 22,
-                            }),
-                          ],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [new TextRun({ text: "Client GST No: -" })],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [
-                            new TextRun({
-                              text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""
-                                }`,
-                            }),
-                          ],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [
-                            new TextRun({
-                              text: `Client Address: ${lead.location || "-"}`,
-                            }),
-                          ],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [
-                            new TextRun({
-                              text: `Client Contact No: ${lead.phone || "-"}`,
-                            }),
-                          ],
-                        }),
-
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          children: [
-                            new TextRun({
-                              text: `Client Email ID: ${lead.email || "-"}`,
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-
-            new Paragraph({ text: "", spacing: { after: 200 } }),
-
-            // DATE & PROPOSAL NUMBER TABLE
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
-                new TableRow({
-                  children: [
-                    // PROPOSAL DATE
-                    new TableCell({
-                      borders: BORDER_BOX(),
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          children: [
-                            new TextRun({
-                              text: "Proposal Date: ",
-                              bold: true,
-                            }),
-                            new TextRun({
-                              text:
-                                formatQuotationDate(proposalDate) ||
-                                "_____________",
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-
-                    // PROPOSAL NUMBER
-                    new TableCell({
-                      borders: BORDER_BOX(),
-                      children: [
-                        new Paragraph({
-                          alignment: AlignmentType.CENTER,
-                          children: [
-                            new TextRun({
-                              text: "Proposal Number: ",
-                              bold: true,
-                            }),
-                            new TextRun({
-                              text: proposalNumber || "_____________",
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-
-            new Paragraph({ text: "", spacing: { after: 200 } }),
-
-            // PROPOSAL DETAILS
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      borders: BORDER_BOX(),
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: "Proposal Details:",
-                              bold: true,
-                            }),
-                          ],
-                        }),
-
-                        new Paragraph({
-                          text:
-                            proposalText ||
-                            "_________________________________________________________",
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-
-            new Paragraph({ text: "", spacing: { after: 200 } }),
-
-            // PRODUCT TABLE
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: FULL_TABLE_BORDER(),
-              rows: [
-                // HEADER ROW
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({ text: "Product Name", bold: true }),
-                          ],
-                        }),
-                      ],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({ text: "Sale Price (₹)", bold: true }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-
-                // DYNAMIC PRODUCT ROWS
-                ...(Array.isArray(products)
-                  ? products.map(
-                    (item) =>
-                      new TableRow({
+          /* DATE & NUMBER */
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    borders: BORDER_BOX(),
+                    children: [
+                      new Paragraph({
+                        spacing: PARA_SPACING,
+                        alignment: AlignmentType.CENTER,
                         children: [
-                          new TableCell({
-                            children: [
-                              new Paragraph({
-                                children: [
-                                  new TextRun({ text: item.name || "-" }),
-                                ],
-                              }),
-                            ],
-                          }),
-
-                          new TableCell({
-                            children: [
-                              new Paragraph({
-                                children: [
-                                  new TextRun({
-                                    text: String(item.salePrice || "0"),
-                                  }),
-                                ],
-                              }),
-                            ],
-                          }),
+                          new TextRun({ text: "Proposal Date: ", bold: true }),
+                          new TextRun({ text: formatQuotationDate(proposalDate) || "_____" }),
                         ],
-                      })
-                  )
-                  : []),
-              ],
-            }),
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    borders: BORDER_BOX(),
+                    children: [
+                      new Paragraph({
+                        spacing: PARA_SPACING,
+                        alignment: AlignmentType.CENTER,
+                        children: [
+                          new TextRun({ text: "Proposal Number: ", bold: true }),
+                          new TextRun({ text: proposalNumber || "_____" }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
 
-            // ----------------------------
-            // NEW SECTION ADDED BELOW
-            // ----------------------------
+          new Paragraph({ spacing: { after: 400 } }),
 
-            // Products Description Text
-            new Paragraph({ text: "", spacing: { after: 300 } }),
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              rows: [
+          /* PROPOSAL DETAILS */
+          new Table({
+            width: { size: 100,_plugin: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    borders: BORDER_BOX(),
+                    children: [
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Proposal Details:", bold: true })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: proposalText || "-" })] }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+
+          new Paragraph({ spacing: { after: 400 } }),
+
+          /* PRODUCTS TABLE */
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: FULL_TABLE_BORDER(),
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Product Name", bold: true })] })] }),
+                  new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Sale Price (₹)", bold: true })] })] }),
+                ],
+              }),
+
+              ...products.map((item) =>
                 new TableRow({
                   children: [
-                    new TableCell({
-                      borders: BORDER_BOX(),
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({ text: "Products Description:", bold: true }),
-                          ],
-                        }),
-                        new Paragraph({
-                          text: productsText || "-",
-                        }),
-                      ],
-                    }),
+                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: item.name || "-" })] })] }),
+                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.salePrice || 0) })] })] }),
                   ],
-                }),
-              ],
-            }),
+                })
+              ),
+            ],
+          }),
 
-            new Paragraph({ text: "", spacing: { after: 300 } }),
+          new Paragraph({ spacing: { after: 400 } }),
 
-            // PRICE SUMMARY TABLE
-            new Table({
-              width: { size: 60, type: WidthType.PERCENTAGE },
-              alignment: AlignmentType.RIGHT,
-              borders: FULL_TABLE_BORDER(),
-              rows: [
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [new TextRun({ text: "Subtotal", bold: true })],
-                        }),
-                      ],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({ text: `₹ ${Number(subtotal || 0).toFixed(2)}` }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
+          /* PRODUCT DESCRIPTION */
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              new TableRow({
+                children: [
+                  new TableCell({
+                    margins: CELL_PADDING,
+                    borders: BORDER_BOX(),
+                    children: [
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Products Description:", bold: true })] }),
+                      new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: productsText || "-" })] }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
 
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [new TextRun({ text: `Tax (${taxPercent || 0}%)`, bold: true })],
-                        }),
-                      ],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: `₹ ${(
-                                (Number(subtotal || 0) * Number(taxPercent || 0)) /
-                                100
-                              ).toFixed(2)}`,
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
+          new Paragraph({ spacing: { after: 400 } }),
 
-                new TableRow({
-                  children: [
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [new TextRun({ text: "Final Amount", bold: true })],
-                        }),
-                      ],
-                    }),
-                    new TableCell({
-                      children: [
-                        new Paragraph({
-                          children: [
-                            new TextRun({
-                              text: `₹ ${Number(finalAmount || 0).toFixed(2)}`,
-                              bold: true,
-                            }),
-                          ],
-                        }),
-                      ],
-                    }),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        },
-      ],
-    });
+          /* PRICE SUMMARY */
+          new Table({
+            width: { size: 60, type: WidthType.PERCENTAGE },
+            alignment: AlignmentType.RIGHT,
+            borders: FULL_TABLE_BORDER(),
+            rows: [
+              ["Subtotal", subtotal],
+              [`Tax (${taxPercent}%)`, (subtotal * taxPercent) / 100],
+              ["Final Amount", finalAmount],
+            ].map(([label, value], i) =>
+              new TableRow({
+                children: [
+                  new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(label), bold: i === 2 })] })] }),
+                  new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: `₹ ${Number(value).toFixed(2)}`, bold: i === 2 })] })] }),
+                ],
+              })
+            ),
+          }),
+        ],
+      },
+    ],
+  });
 
-    const buffer = await Packer.toBuffer(doc);
-    return buffer;
-  };
+  return await Packer.toBuffer(doc);
+};
 
   // Helper for borders
   function FULL_TABLE_BORDER() {
