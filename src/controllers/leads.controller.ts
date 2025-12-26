@@ -380,6 +380,55 @@ export const leadController = () => {
     }
   };
 
+
+
+const INDIA_MART_API_KEY = process.env.INDIAMART_API_KEY;
+
+const indiaMartLeadWebhook = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    // 🔐 API KEY VALIDATION
+    const apiKey = req.headers["x-api-key"];
+    if (apiKey !== INDIA_MART_API_KEY) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const payload = req.body;
+      const userData = res?.locals?.user;
+
+    // 🔁 FIELD MAPPING (IndiaMART → Your Schema)
+    const leadData = {
+      first_name: payload.SENDER_NAME?.split(" ")[0] || "Unknown",
+      last_name: payload.SENDER_NAME?.split(" ").slice(1).join(" "),
+      phone: payload.SENDER_MOBILE,
+      email: payload.SENDER_EMAIL,
+      company: payload.SENDER_COMPANY,
+      location: `${payload.SENDER_CITY}, ${payload.SENDER_STATE}`,
+      requirement: payload.QUERY_MESSAGE || payload.QUERY_PRODUCT_NAME,
+      source_id: "",
+      possibility_of_conversion: 50,
+    };
+
+    const validatedLead = createLeadSchema.parse(leadData);
+
+    await service.createLead(validatedLead,userData);
+
+    return res.status(200).json({
+      message: "Lead received successfully",
+      lead_id: "lead.id",
+    });
+  } catch (error: any) {
+    console.error("IndiaMART Webhook Error:", error);
+    return res.status(400).json({
+      message: "Invalid lead data",
+      error: error.message,
+    });
+  }
+};
+
+
   return {
     exportQuotationDoc,
     googleLeadWebhook,
@@ -393,5 +442,6 @@ export const leadController = () => {
     exportLeadsExcelController,
     downloadLeadTemplate,
     uploadLeadsFromExcel,
+    indiaMartLeadWebhook
   };
 };

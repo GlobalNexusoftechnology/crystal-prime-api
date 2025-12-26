@@ -9,6 +9,7 @@ const controller = leadController();
 router.get("/meta/webhook", controller.verifyMetaWebhook);
 router.post("/meta/webhook", controller.metaLeadWebhook);
 router.post("/google/webhook", controller.googleLeadWebhook);
+router.post("/indiamart/webhook", controller.indiaMartLeadWebhook);
 
 router.use(deserializeUser, requireUser);
 
