@@ -22,6 +22,27 @@ export const createLeadSchema = z.object({
   status_histories: z.array(z.any()).optional(),
 });
 
+
+export const createIndiaMartLeadSchema = z.object({
+  first_name: z.string().optional(),
+  phone: z.string().optional(),
+  last_name: z.string().optional(),
+  company: z.string().optional(),
+  other_contact: z.string().optional(),
+  email: z.string().optional(),
+  location: z.string().optional(),
+  budget:  z.number().optional(),
+  requirement: z.string().optional(),
+  possibility_of_conversion: z.number().optional(),
+  source_id: z.string().optional(),
+  status_id: z.string().optional(),
+  type_id: z.string().optional(),
+  assigned_to: z.string().optional(),
+  followups: z.array(z.any()).optional(),
+  attachments: z.array(z.any()).optional(),
+  status_histories: z.array(z.any()).optional(),
+});
+
 // Update Lead Schema (all optional)
 export const updateLeadSchema = z.object({
   first_name: z.string().min(1).optional(),

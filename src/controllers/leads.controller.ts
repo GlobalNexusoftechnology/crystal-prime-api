@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ChannelType } from "../entities/leads.entity";
-import { createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import { createIndiaMartLeadSchema, createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 
@@ -411,7 +411,7 @@ const indiaMartLeadWebhook = async (
       possibility_of_conversion: 50,
     };
 
-    const validatedLead = createLeadSchema.parse(leadData);
+    const validatedLead = createIndiaMartLeadSchema.parse(leadData);
 
     await service.createLead(validatedLead,userData);
 
