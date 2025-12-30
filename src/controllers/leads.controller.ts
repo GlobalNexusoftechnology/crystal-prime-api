@@ -397,13 +397,13 @@ const indiaMartLeadWebhook = async (
     console.log("payload",payload);
     // 🔁 FIELD MAPPING (IndiaMART → Your Schema)
     const leadData = {
-      first_name: payload.SENDER_NAME?.split(" ")[0] || "Unknown",
-      last_name: payload.SENDER_NAME?.split(" ").slice(1).join(" "),
-      phone: payload.SENDER_MOBILE,
-      email: payload.SENDER_EMAIL,
-      company: payload.SENDER_COMPANY,
-      location: `${payload.SENDER_CITY}, ${payload.SENDER_STATE}`,
-      requirement: payload.QUERY_MESSAGE || payload.QUERY_PRODUCT_NAME,
+      first_name: payload.RESPONSE.SENDER_NAME?.split(" ")[0] || "Unknown",
+      last_name: payload.RESPONSE.SENDER_NAME?.split(" ").slice(1).join(" "),
+      phone: payload.RESPONSE.SENDER_MOBILE,
+      email: payload.RESPONSE.SENDER_EMAIL,
+      company: payload.RESPONSE.SENDER_COMPANY,
+      location: `${payload.RESPONSE.SENDER_CITY}, ${payload.RESPONSE.SENDER_STATE}`,
+      requirement: payload.RESPONSE.QUERY_MESSAGE || payload.RESPONSE.QUERY_PRODUCT_NAME,
       source_id: "",
       possibility_of_conversion: 50,
     };
