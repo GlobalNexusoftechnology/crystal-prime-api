@@ -389,12 +389,12 @@ const indiaMartLeadWebhook = async (
   res: Response
 ) => {
   try {
-  console.log("req",req);
-  console.log("res",res);
-  
+    
+    
     const payload = req.body;
-      const userData = res?.locals?.user;
-
+    const userData = res?.locals?.user;
+    
+    console.log("payload",payload);
     // 🔁 FIELD MAPPING (IndiaMART → Your Schema)
     const leadData = {
       first_name: payload.SENDER_NAME?.split(" ")[0] || "Unknown",
