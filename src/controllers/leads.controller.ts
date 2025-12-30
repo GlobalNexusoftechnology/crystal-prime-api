@@ -389,12 +389,9 @@ const indiaMartLeadWebhook = async (
   res: Response
 ) => {
   try {
-    // 🔐 API KEY VALIDATION
-    const apiKey = req.headers["x-api-key"];
-    if (apiKey !== INDIA_MART_API_KEY) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  console.log("req",req);
+  console.log("res",res);
+  
     const payload = req.body;
       const userData = res?.locals?.user;
 
