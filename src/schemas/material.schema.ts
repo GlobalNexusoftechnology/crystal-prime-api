@@ -1,4 +1,12 @@
 import { z } from "zod";
+const statePricesSchema = z.object({
+  Maharashtra: z.number().min(0),
+  Gujarat: z.number().min(0),
+  Karnataka: z.number().min(0),
+  Delhi: z.number().min(0),
+  "Tamil Nadu": z.number().min(0),
+  Rajasthan: z.number().min(0),
+});
 
 export const createMaterialSchema = z.object({
   name: z.string().min(1, "Material name is required"),
@@ -18,6 +26,8 @@ export const createMaterialSchema = z.object({
   purchase_description: z.string().optional(),
   alias: z.string().optional(),
   quantity: z.number().min(0).optional(),
+    state_prices: statePricesSchema.optional(),
+
 });
 
 export const updateMaterialSchema = createMaterialSchema.partial(); 
