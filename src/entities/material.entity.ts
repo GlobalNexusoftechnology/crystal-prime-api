@@ -3,6 +3,14 @@ import Model from "./model.entity";
 import { MaterialType } from "./material-type.entity";
 import { MaterialBrand } from "./material-brand.entity";
 import { InventoryHistory } from "./inventory.history.entity";
+export type StatePrices = {
+  Maharashtra?: number;
+  Gujarat?: number;
+  Karnataka?: number;
+  Delhi?: number;
+  "Tamil Nadu"?: number;
+  Rajasthan?: number;
+};
 
 @Entity("materials")
 export class Material extends Model {
@@ -64,6 +72,8 @@ export class Material extends Model {
 
   @Column({ nullable: true })
   quantity: number;
+@Column({ type: "jsonb", nullable: true })
+state_prices: StatePrices;
 
    @OneToMany(
     () => InventoryHistory,
