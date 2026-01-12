@@ -1441,8 +1441,9 @@ export const LeadService = () => {
                 new TableRow({
                   children: [
                     new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Product Name", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Sale Price (₹)", bold: true })] })] }),
+                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Price Per Quantity (₹)", bold: true })] })] }),
                     new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Quantity", bold: true })] })] }),
+                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Price", bold: true })] })] }),
                   ],
                 }),
 
@@ -1452,6 +1453,7 @@ export const LeadService = () => {
                       new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: item.name || "-" })] })] }),
                       new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.salePrice || 0) })] })] }),
                       new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.quantity || 0) })] })] }),
+                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.total || 0) })] })] }),
                     ],
                   })
                 ),
