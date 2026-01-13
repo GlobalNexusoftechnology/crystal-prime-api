@@ -1,12 +1,14 @@
 import { z } from "zod";
 const statePricesSchema = z.object({
   Maharashtra: z.number().min(0),
-  Gujarat: z.number().min(0),
   Karnataka: z.number().min(0),
+  Telangana: z.number().min(0),
+  Gujarat: z.number().min(0),
+  Chhattisgarh: z.number().min(0),
   Delhi: z.number().min(0),
-  "Tamil Nadu": z.number().min(0),
-  Rajasthan: z.number().min(0),
+  Goa: z.number().min(0),
 });
+
 
 export const createMaterialSchema = z.object({
   name: z.string().min(1, "Material name is required"),

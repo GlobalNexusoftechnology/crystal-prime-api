@@ -5,12 +5,14 @@ import { MaterialBrand } from "./material-brand.entity";
 import { InventoryHistory } from "./inventory.history.entity";
 export type StatePrices = {
   Maharashtra?: number;
-  Gujarat?: number;
   Karnataka?: number;
+  Telangana?: number;
+  Gujarat?: number;
+  Chhattisgarh?: number;
   Delhi?: number;
-  "Tamil Nadu"?: number;
-  Rajasthan?: number;
+  Goa?: number;
 };
+
 
 @Entity("materials")
 export class Material extends Model {
