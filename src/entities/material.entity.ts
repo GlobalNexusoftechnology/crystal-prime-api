@@ -14,6 +14,7 @@ export type StatePrices = {
   "Goa"?: number;
 };
 
+
 @Entity("materials")
 export class Material extends Model {
   @Column({ type: "varchar", length: 150, nullable: false })

@@ -10,6 +10,7 @@ const statePricesSchema = z.object({
   "Goa": z.number().min(0),
 });
 
+
 export const createMaterialSchema = z.object({
   name: z.string().min(1, "Material name is required"),
   code: z.string().optional(),
