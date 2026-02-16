@@ -4,12 +4,14 @@ import { MaterialType } from "./material-type.entity";
 import { MaterialBrand } from "./material-brand.entity";
 import { InventoryHistory } from "./inventory.history.entity";
 export type StatePrices = {
-  Maharashtra?: number;
-  Gujarat?: number;
-  Karnataka?: number;
-  Delhi?: number;
-  "Tamil Nadu"?: number;
-  Rajasthan?: number;
+  "Maharashtra"?: number;
+  "Gujarat"?: number;
+  "Uttar_Pradesh"?: number;
+  "Karnataka"?: number;
+  "West_Bengal"?: number;
+  "Delhi"?: number;
+  "Odisha"?: number;
+  "Goa"?: number;
 };
 
 @Entity("materials")
