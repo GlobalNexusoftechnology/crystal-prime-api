@@ -22,6 +22,185 @@ async function seedMaterials() {
         Goa: 50000,
       },
     },
+
+    // =========================
+    // MISSING PORTABLE OFFICE CABINS
+    // =========================
+    {
+      size: "12'x20'x8'.6\"",
+      prices: {
+        Maharashtra: 205000,
+        Gujarat: 228000,
+        Uttar_Pradesh: 228000,
+        Karnataka: 228000,
+        West_Bengal: 228000,
+        Delhi: 228000,
+        Odisha: 228000,
+        Goa: 228000,
+      },
+    },
+    {
+      size: "12'x12'x8'.6\"",
+      prices: {
+        Maharashtra: 130000,
+        Gujarat: 137500,
+        Uttar_Pradesh: 137500,
+        Karnataka: 137500,
+        West_Bengal: 137500,
+        Delhi: 137500,
+        Odisha: 137500,
+        Goa: 137500,
+      },
+    },
+    {
+      size: "10'x25'x8'.6\"",
+      prices: {
+        Maharashtra: 212500,
+        Gujarat: 238500,
+        Uttar_Pradesh: 238500,
+        Karnataka: 238500,
+        West_Bengal: 238500,
+        Delhi: 238500,
+        Odisha: 238500,
+        Goa: 238500,
+      },
+    },
+    {
+      size: "10'x30'x8'.6\"",
+      prices: {
+        Maharashtra: 255000,
+        Gujarat: 388000,
+        Uttar_Pradesh: 388000,
+        Karnataka: 388000,
+        West_Bengal: 388000,
+        Delhi: 388000,
+        Odisha: 388000,
+        Goa: 388000,
+      },
+    },
+    {
+      size: "10'x35'x8'.6\"",
+      prices: {
+        Maharashtra: 297500,
+        Gujarat: 335000,
+        Uttar_Pradesh: 335000,
+        Karnataka: 335000,
+        West_Bengal: 335000,
+        Delhi: 335000,
+        Odisha: 335000,
+        Goa: 335000,
+      },
+    },
+    {
+      size: "10'x40'x8'.6\"",
+      prices: {
+        Maharashtra: 340000,
+        Gujarat: 380000,
+        Uttar_Pradesh: 380000,
+        Karnataka: 380000,
+        West_Bengal: 380000,
+        Delhi: 380000,
+        Odisha: 380000,
+        Goa: 380000,
+      },
+    },
+    {
+      size: "12'x25'x8'.6\"",
+      prices: {
+        Maharashtra: 255000,
+        Gujarat: 287000,
+        Uttar_Pradesh: 287000,
+        Karnataka: 287000,
+        West_Bengal: 287000,
+        Delhi: 287000,
+        Odisha: 287000,
+        Goa: 287000,
+      },
+    },
+    {
+      size: "12'x30'x8'.6\"",
+      prices: {
+        Maharashtra: 306000,
+        Gujarat: 345000,
+        Uttar_Pradesh: 345000,
+        Karnataka: 345000,
+        West_Bengal: 345000,
+        Delhi: 345000,
+        Odisha: 345000,
+        Goa: 345000,
+      },
+    },
+    {
+      size: "12'x35'x8'.6\"",
+      prices: {
+        Maharashtra: 358000,
+        Gujarat: 420000,
+        Uttar_Pradesh: 420000,
+        Karnataka: 420000,
+        West_Bengal: 420000,
+        Delhi: 420000,
+        Odisha: 420000,
+        Goa: 420000,
+      },
+    },
+    {
+      size: "12'x40'x8'.6\"",
+      prices: {
+        Maharashtra: 410000,
+        Gujarat: 455000,
+        Uttar_Pradesh: 455000,
+        Karnataka: 455000,
+        West_Bengal: 455000,
+        Delhi: 455000,
+        Odisha: 455000,
+        Goa: 455000,
+      },
+    },
+    {
+      size: "8'x40'x8'.6\"",
+      prices: {
+        Maharashtra: 275000,
+        Gujarat: 305000,
+        Uttar_Pradesh: 310000,
+        Karnataka: 310000,
+        West_Bengal: 310000,
+        Delhi: 310000,
+        Odisha: 310000,
+        Goa: 310000,
+      },
+    },
+
+    // =========================
+    // MISSING OPEN TOP CONTAINERS
+    // =========================
+    {
+      size: "20'x8'x8'.6\"",
+      prices: {
+        Maharashtra: 450000,
+        Gujarat: 450000,
+        Uttar_Pradesh: 450000,
+        Karnataka: 450000,
+        West_Bengal: 450000,
+        Delhi: 450000,
+        Odisha: 450000,
+        Goa: 450000,
+      },
+      code: "Used Open Top Container",
+    },
+    {
+      size: "40'x8'x8'.6\"",
+      prices: {
+        Maharashtra: 520000,
+        Gujarat: 520000,
+        Uttar_Pradesh: 520000,
+        Karnataka: 520000,
+        West_Bengal: 520000,
+        Delhi: 520000,
+        Odisha: 520000,
+        Goa: 520000,
+      },
+      code: "Used Open Top Container",
+    },
     {
       size: "4'x5'x8'.6\"",
       prices: {
