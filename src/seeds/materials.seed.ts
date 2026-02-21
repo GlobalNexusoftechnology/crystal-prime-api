@@ -6,6 +6,9 @@ async function seedMaterials() {
   const repo = AppDataSource.getRepository(Material);
 
   const materialsData = [
+    // =========================
+    // PORTABLE OFFICE CABINS
+    // =========================
     {
       size: "4'x4'x8'.6\"",
       prices: {
@@ -253,18 +256,112 @@ async function seedMaterials() {
         Goa: 190000,
       },
     },
+
+    // =========================
+    // CARGO / CONTAINERS
+    // =========================
+    {
+      size: "20'x8'x8'.6\"",
+      code: "Used Cargo Container",
+      prices: {
+        Maharashtra: 100000,
+        Gujarat: 105000,
+        Uttar_Pradesh: 105000,
+        Karnataka: 105000,
+        West_Bengal: 105000,
+        Delhi: 105000,
+        Odisha: 105000,
+        Goa: 105000,
+      },
+    },
+    {
+      size: "40'x8'x8'.6\"",
+      code: "Used Cargo Container",
+      prices: {
+        Maharashtra: 175000,
+        Gujarat: 180000,
+        Uttar_Pradesh: 180000,
+        Karnataka: 180000,
+        West_Bengal: 180000,
+        Delhi: 180000,
+        Odisha: 180000,
+        Goa: 180000,
+      },
+    },
+    {
+      size: "20'x8'x8'.6\"",
+      code: "New Cargo Container",
+      prices: {
+        Maharashtra: 225000,
+        Gujarat: 225000,
+        Uttar_Pradesh: 225000,
+        Karnataka: 225000,
+        West_Bengal: 225000,
+        Delhi: 225000,
+        Odisha: 225000,
+        Goa: 225000,
+      },
+    },
+    {
+      size: "40'x8'x8'.6\"",
+      code: "New Cargo Container",
+      prices: {
+        Maharashtra: 380000,
+        Gujarat: 380000,
+        Uttar_Pradesh: 380000,
+        Karnataka: 380000,
+        West_Bengal: 380000,
+        Delhi: 380000,
+        Odisha: 380000,
+        Goa: 380000,
+      },
+    },
+
+    // =========================
+    // REFRIGERATED
+    // =========================
+    {
+      size: "20'x8'x8'.6\"",
+      code: "Used Refrigerated Container",
+      prices: {
+        Maharashtra: 350000,
+        Gujarat: 350000,
+        Uttar_Pradesh: 350000,
+        Karnataka: 350000,
+        West_Bengal: 350000,
+        Delhi: 350000,
+        Odisha: 350000,
+        Goa: 350000,
+      },
+    },
+    {
+      size: "40'x8'x8'.6\"",
+      code: "Used Refrigerated Container",
+      prices: {
+        Maharashtra: 520000,
+        Gujarat: 520000,
+        Uttar_Pradesh: 520000,
+        Karnataka: 520000,
+        West_Bengal: 520000,
+        Delhi: 520000,
+        Odisha: 520000,
+        Goa: 520000,
+      },
+    },
   ];
 
   for (const item of materialsData) {
+    const materialCode = item.code ?? "Portable Office Cabin";
+
     const exists = await repo.findOne({
-      where: { name: item.size, code: "Portable Office Cabin" },
+      where: { name: item.size, code: materialCode },
     });
 
     if (!exists) {
       await repo.save(
         repo.create({
           name: item.size,
-          code: "Portable Office Cabin",
+          code: materialCode,
           size: item.size,
           active: true,
           state_prices: item.prices,
@@ -273,7 +370,7 @@ async function seedMaterials() {
     }
   }
 
-  console.log("✅ Materials seeded successfully");
+  console.log("✅ ALL PDF MATERIALS SEEDED SUCCESSFULLY");
   process.exit(0);
 }
 
