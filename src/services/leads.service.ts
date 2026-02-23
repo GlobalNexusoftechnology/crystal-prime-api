@@ -156,7 +156,9 @@ export const LeadService = () => {
 
       if (!requirementText) {
         // nothing to match against — fallback to selecting by oldest lastAssigned
-        const candidates = await userRepo.find({ /* add filters: active/deleted etc. */ });
+        const candidates = await userRepo.find({
+          /* add filters: active/deleted etc. */
+        });
 
         if (!candidates || candidates.length === 0) {
           lead.assigned_to = null;
@@ -188,14 +190,19 @@ export const LeadService = () => {
         const normalizeKeywords = (raw: any): string[] => {
           if (!raw) return [];
           if (Array.isArray(raw)) {
-            return raw.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+            return raw
+              .map((k) => String(k).toLowerCase().trim())
+              .filter(Boolean);
           }
           if (typeof raw === "string") {
             const s = raw.trim();
             if ((s.startsWith("[") && s.endsWith("]")) || s.startsWith('["')) {
               try {
                 const parsed = JSON.parse(s);
-                if (Array.isArray(parsed)) return parsed.map((k) => String(k).toLowerCase().trim()).filter(Boolean);
+                if (Array.isArray(parsed))
+                  return parsed
+                    .map((k) => String(k).toLowerCase().trim())
+                    .filter(Boolean);
               } catch (e) {
                 // fallback to CSV parse
               }
@@ -237,7 +244,11 @@ export const LeadService = () => {
           }
 
           if (score > 0) {
-            scores.push({ user: u, score, matchedKeywords: Array.from(matched) });
+            scores.push({
+              user: u,
+              score,
+              matchedKeywords: Array.from(matched),
+            });
           }
         }
 
@@ -248,8 +259,12 @@ export const LeadService = () => {
             lead.assigned_to = null;
           } else {
             candidates.sort((a, b) => {
-              const ta = a.lastAssigned ? new Date(a.lastAssigned).getTime() : 0;
-              const tb = b.lastAssigned ? new Date(b.lastAssigned).getTime() : 0;
+              const ta = a.lastAssigned
+                ? new Date(a.lastAssigned).getTime()
+                : 0;
+              const tb = b.lastAssigned
+                ? new Date(b.lastAssigned).getTime()
+                : 0;
               return ta - tb;
             });
 
@@ -281,8 +296,6 @@ export const LeadService = () => {
       }
     }
 
-
-
     const savedLead = await leadRepo.save(lead);
 
     // Send notification to assigned user if any
@@ -295,7 +308,7 @@ export const LeadService = () => {
           leadId: savedLead.id,
           leadName: `${first_name} ${last_name}`,
           assignedBy: `${userData?.first_name} ${userData?.last_name}`,
-        }
+        },
       );
     }
 
@@ -306,7 +319,7 @@ export const LeadService = () => {
   const getAllLeads = async (
     filters: any = {},
     userId?: string,
-    role?: string
+    role?: string,
   ) => {
     const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
     const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
@@ -348,7 +361,7 @@ export const LeadService = () => {
          OR LOWER(lead.location) LIKE :search
          OR LOWER(lead.requirement) LIKE :search
          OR LOWER(lead.email) LIKE :search`,
-        { search }
+        { search },
       );
     }
 
@@ -397,7 +410,7 @@ export const LeadService = () => {
           23,
           59,
           59,
-          999
+          999,
         );
       }
 
@@ -415,7 +428,7 @@ export const LeadService = () => {
         {
           followupFrom,
           followupTo,
-        }
+        },
       );
     } else if (followupFrom) {
       query = query.andWhere("followup.due_date >= :followupFrom", {
@@ -464,8 +477,8 @@ export const LeadService = () => {
         0,
         0,
         0,
-        0
-      )
+        0,
+      ),
     );
 
     const isAdmin = role === "admin" || role === "Admin";
@@ -487,9 +500,9 @@ export const LeadService = () => {
       isAdmin
         ? leadRepo.count({ where: { deleted: false } })
         : leadRepo.count({
-          where: { deleted: false, assigned_to: { id: userId } },
-          relations: ["assigned_to"],
-        }),
+            where: { deleted: false, assigned_to: { id: userId } },
+            relations: ["assigned_to"],
+          }),
 
       // Profile sent
       leadRepo.count({
@@ -683,7 +696,8 @@ export const LeadService = () => {
         await notificationService.createNotification(
           admin.id,
           NotificationType.LEAD_ESCALATED,
-          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${lead.phone || lead.email
+          `Lead Escalated: ${lead.first_name} ${lead.last_name} (${
+            lead.phone || lead.email
           }) - Duplicate created`,
           {
             leadId: lead.id,
@@ -692,7 +706,7 @@ export const LeadService = () => {
             leadContact: lead.phone || lead.email,
             escalatedBy: `${userData?.first_name} ${userData?.last_name}`,
             requirement: lead.requirement,
-          }
+          },
         );
       }
     }
@@ -711,7 +725,7 @@ export const LeadService = () => {
           leadId: lead.id,
           leadName: `${lead.first_name} ${lead.last_name}`,
           assignedBy: `${userData?.first_name} ${userData?.last_name}`,
-        }
+        },
       );
     }
 
@@ -767,7 +781,7 @@ export const LeadService = () => {
     followupFrom?: Date,
     followupTo?: Date,
     sourceId?: string,
-    assignedToId?: string
+    assignedToId?: string,
   ): Promise<ExcelJS.Workbook> => {
     const filters = {
       searchText,
@@ -866,7 +880,7 @@ export const LeadService = () => {
   // Service to handle Excel upload
   const uploadLeadsFromExcelService = async (
     fileBuffer: Buffer,
-    user: User
+    user: User,
   ) => {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(fileBuffer as any);
@@ -880,12 +894,12 @@ export const LeadService = () => {
     // Define required fields
     const requiredFields = ["first_name", "last_name"];
     const missingFields = requiredFields.filter(
-      (field) => !headers.includes(field)
+      (field) => !headers.includes(field),
     );
     if (missingFields.length > 0) {
       throw new AppError(
         400,
-        `Missing required fields: ${missingFields.join(", ")}`
+        `Missing required fields: ${missingFields.join(", ")}`,
       );
     }
 
@@ -943,7 +957,7 @@ export const LeadService = () => {
         if (!emailRegex.test(emailString)) {
           throw new AppError(
             400,
-            `Invalid email format at row ${rowNumber}: ${emailString}`
+            `Invalid email format at row ${rowNumber}: ${emailString}`,
           );
         }
 
@@ -956,7 +970,7 @@ export const LeadService = () => {
         if (existingEmail) {
           throw new AppError(
             400,
-            `Email already exists at row ${rowNumber}: ${emailString}`
+            `Email already exists at row ${rowNumber}: ${emailString}`,
           );
         }
       }
@@ -986,7 +1000,7 @@ export const LeadService = () => {
         if (!source) {
           throw new AppError(
             400,
-            `Invalid source name at row ${rowNumber}: ${data.source}`
+            `Invalid source name at row ${rowNumber}: ${data.source}`,
           );
         }
         lead.source = source;
@@ -999,7 +1013,7 @@ export const LeadService = () => {
         if (!type) {
           throw new AppError(
             400,
-            `Invalid type name at row ${rowNumber}: ${data.type}`
+            `Invalid type name at row ${rowNumber}: ${data.type}`,
           );
         }
         lead.type = type;
@@ -1013,7 +1027,7 @@ export const LeadService = () => {
         if (!status) {
           throw new AppError(
             400,
-            `Invalid status name at row ${rowNumber}: ${data.status}`
+            `Invalid status name at row ${rowNumber}: ${data.status}`,
           );
         }
         lead.status = status;
@@ -1047,7 +1061,7 @@ export const LeadService = () => {
     dateRange: "Weekly" | "Monthly" | "Yearly",
     userId?: string,
     role?: string,
-    referenceDate?: Date
+    referenceDate?: Date,
   ) => {
     const now = referenceDate ? new Date(referenceDate) : new Date();
     let start: Date | undefined;
@@ -1085,7 +1099,7 @@ export const LeadService = () => {
     dateRange: "Weekly" | "Monthly" | "Yearly",
     userId?: string,
     role?: string,
-    referenceDate?: Date
+    referenceDate?: Date,
   ) => {
     const now = referenceDate ? new Date(referenceDate) : new Date();
     let start: Date | undefined;
@@ -1319,7 +1333,7 @@ export const LeadService = () => {
                 new ImageRun({
                   data: logoBuffer,
                   type: "png",
-                  transformation: { width: 110, height: 36 },
+                  transformation: { width: 180, height: 100 },
                 }),
               ],
             }),
@@ -1342,26 +1356,120 @@ export const LeadService = () => {
                     new TableCell({
                       margins: CELL_PADDING,
                       children: [
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Quotation From:", bold: true })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Crystal Prime", bold: true, size: 22 })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "GST No: 27AAUCS490971ZW" })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Udyam Reg: UDYAM-MH-26-0525073" })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Email ID: info@crytalprime.com" })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Contact Person:" })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Contact No:" })] }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Quotation From:",
+                              bold: true,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Crystal Prime",
+                              bold: true,
+                              size: 22,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "GST No: 27AAUCS490971ZW" }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Udyam Reg: UDYAM-MH-26-0525073",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Email ID: info@crytalprime.com",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [new TextRun({ text: "Contact Person:" })],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [new TextRun({ text: "Contact No:" })],
+                        }),
                       ],
                     }),
 
                     new TableCell({
                       margins: CELL_PADDING,
                       children: [
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: "Quotation To:", bold: true })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: lead.company || "-", bold: true, size: 22 })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: "Client GST No: -" })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}` })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Address: ${lead.location || "-"}` })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Contact No: ${lead.phone || "-"}` })] }),
-                        new Paragraph({ alignment: AlignmentType.RIGHT, spacing: PARA_SPACING, children: [new TextRun({ text: `Client Email ID: ${lead.email || "-"}` })] }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Quotation To:", bold: true }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: lead.company || "-",
+                              bold: true,
+                              size: 22,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [new TextRun({ text: "Client GST No: -" })],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}`,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Address: ${lead.location || "-"}`,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Contact No: ${lead.phone || "-"}`,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Email ID: ${lead.email || "-"}`,
+                            }),
+                          ],
+                        }),
                       ],
                     }),
                   ],
@@ -1385,8 +1493,14 @@ export const LeadService = () => {
                           spacing: PARA_SPACING,
                           alignment: AlignmentType.CENTER,
                           children: [
-                            new TextRun({ text: "Proposal Date: ", bold: true }),
-                            new TextRun({ text: formatQuotationDate(proposalDate) || "_____" }),
+                            new TextRun({
+                              text: "Proposal Date: ",
+                              bold: true,
+                            }),
+                            new TextRun({
+                              text:
+                                formatQuotationDate(proposalDate) || "_____",
+                            }),
                           ],
                         }),
                       ],
@@ -1399,7 +1513,10 @@ export const LeadService = () => {
                           spacing: PARA_SPACING,
                           alignment: AlignmentType.CENTER,
                           children: [
-                            new TextRun({ text: "Proposal Number: ", bold: true }),
+                            new TextRun({
+                              text: "Proposal Number: ",
+                              bold: true,
+                            }),
                             new TextRun({ text: proposalNumber || "_____" }),
                           ],
                         }),
@@ -1422,8 +1539,21 @@ export const LeadService = () => {
                       margins: CELL_PADDING,
                       borders: BORDER_BOX(),
                       children: [
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Proposal Details:", bold: true })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: proposalText || "-" })] }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Proposal Details:",
+                              bold: true,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: proposalText || "-" }),
+                          ],
+                        }),
                       ],
                     }),
                   ],
@@ -1440,26 +1570,156 @@ export const LeadService = () => {
               rows: [
                 new TableRow({
                   children: [
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Product Name", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Price Per Quantity (₹)", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Size", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Quantity", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "State", bold: true })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Total", bold: true })] })] }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Product Name", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Price Per Quantity (₹)",
+                              bold: true,
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [new TextRun({ text: "Size", bold: true })],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Quantity", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "State", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Total", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
                   ],
                 }),
 
-                ...products.map((item) =>
-                  new TableRow({
-                    children: [
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: item.name || "-" })] })] }),
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.salePrice || 0) })] })] }),
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.productSize || 0) })] })] }),
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.count || 0) })] })] }),
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.state || "-") })] })] }),
-                      new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(item.totalPrice || 0) })] })] }),
-                    ],
-                  })
+                ...products.map(
+                  (item) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({ text: item.name || "-" }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({
+                                  text: String(item.salePrice || 0),
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({
+                                  text: String(item.productSize || 0),
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({ text: String(item.count || 0) }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({
+                                  text: String(item.state || "-"),
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({
+                                  text: String(item.totalPrice || 0),
+                                }),
+                              ],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
                 ),
               ],
             }),
@@ -1476,8 +1736,21 @@ export const LeadService = () => {
                       margins: CELL_PADDING,
                       borders: BORDER_BOX(),
                       children: [
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: "Products Description:", bold: true })] }),
-                        new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: productsText || "-" })] }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Products Description:",
+                              bold: true,
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: productsText || "-" }),
+                          ],
+                        }),
                       ],
                     }),
                   ],
@@ -1496,13 +1769,40 @@ export const LeadService = () => {
                 ["Subtotal", subtotal],
                 [`Tax (${taxPercent}%)`, (subtotal * taxPercent) / 100],
                 ["Final Amount", finalAmount],
-              ].map(([label, value], i) =>
-                new TableRow({
-                  children: [
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: String(label), bold: i === 2 })] })] }),
-                    new TableCell({ margins: CELL_PADDING, children: [new Paragraph({ spacing: PARA_SPACING, children: [new TextRun({ text: `₹ ${Number(value).toFixed(2)}`, bold: i === 2 })] })] }),
-                  ],
-                })
+              ].map(
+                ([label, value], i) =>
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            children: [
+                              new TextRun({
+                                text: String(label),
+                                bold: i === 2,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            children: [
+                              new TextRun({
+                                text: `₹ ${Number(value).toFixed(2)}`,
+                                bold: i === 2,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
               ),
             }),
           ],
