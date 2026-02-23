@@ -4,16 +4,15 @@ import { MaterialType } from "./material-type.entity";
 import { MaterialBrand } from "./material-brand.entity";
 import { InventoryHistory } from "./inventory.history.entity";
 export type StatePrices = {
-  "Maharashtra"?: number;
-  "Gujarat"?: number;
-  "Uttar_Pradesh"?: number;
-  "Karnataka"?: number;
-  "West_Bengal"?: number;
-  "Delhi"?: number;
-  "Odisha"?: number;
-  "Goa"?: number;
+  Maharashtra?: number;
+  Gujarat?: number;
+  Uttar_Pradesh?: number;
+  Karnataka?: number;
+  West_Bengal?: number;
+  Delhi?: number;
+  Odisha?: number;
+  Goa?: number;
 };
-
 
 @Entity("materials")
 export class Material extends Model {
@@ -26,15 +25,13 @@ export class Material extends Model {
   @ManyToOne(
     () => MaterialBrand,
     (brand: { materials: any }) => brand.materials,
-    { nullable: true }
+    { nullable: true },
   )
   materialBrand: MaterialBrand;
 
-  @ManyToOne(
-    () => MaterialType,
-    (type: { materials: any }) => type.materials,
-    { nullable: true }
-  )
+  @ManyToOne(() => MaterialType, (type: { materials: any }) => type.materials, {
+    nullable: true,
+  })
   materialType: MaterialType;
 
   @Column({ type: "varchar", length: 50, nullable: true })
@@ -75,13 +72,12 @@ export class Material extends Model {
 
   @Column({ nullable: true })
   quantity: number;
-@Column({ type: "jsonb", nullable: true })
-state_prices: StatePrices;
+  @Column({ type: "jsonb", nullable: true })
+  state_prices: StatePrices;
 
-   @OneToMany(
-    () => InventoryHistory,
-    (history: InventoryHistory) => history.material
-  )
-  inventoryHistory: InventoryHistory[];
+  //  @OneToMany(
+  //   () => InventoryHistory,
+  //   (history: InventoryHistory) => history.material
+  // )
+  // inventoryHistory: InventoryHistory[];
 }
-
