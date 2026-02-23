@@ -72,6 +72,7 @@ export class Material extends Model {
 
   @Column({ nullable: true })
   quantity: number;
+
   @Column({ type: "jsonb", nullable: true })
   state_prices: StatePrices;
 

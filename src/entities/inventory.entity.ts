@@ -76,6 +76,9 @@ export class Inventory extends Model {
   @Column({ nullable: true })
   prices: string;
 
+  @Column({ type: "jsonb", nullable: true })
+  state_prices: StatePrices;
+
   @OneToMany(
     () => InventoryHistory,
     (history: InventoryHistory) => history.inventory,
