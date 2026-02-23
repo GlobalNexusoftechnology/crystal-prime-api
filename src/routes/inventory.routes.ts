@@ -1,4 +1,4 @@
-import { inventoryController } from "controllers/inventory.controller";
+import { inventoryController } from "../controllers/inventory.controller";
 import { Router } from "express";
 import multer from "multer";
 

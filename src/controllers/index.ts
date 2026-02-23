@@ -12,3 +12,4 @@ export * from "./leaves.controller";
 export * from "./attendance.controller";
 export * from "./material-brand.controller";
 export * from "./material-type.controller";
+export * from "./inventory.controller";
