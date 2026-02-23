@@ -1,9 +1,8 @@
-import { AppDataSource } from "../utils/data-source";
-import { Material } from "../entities/material.entity";
-import AppError from "../utils/appError";
 import { DeepPartial } from "typeorm";
+import { Inventory } from "../entities/inventory.entity";
 import { InventoryHistory } from "../entities/inventory.history.entity";
-import { Inventory } from "entities/inventory.entity";
+import AppError from "../utils/appError";
+import { AppDataSource } from "../utils/data-source";
 
 interface IInventoryHistoryInput {
   material_id: string;
