@@ -3,6 +3,7 @@ import { Material } from "../entities/material.entity";
 import AppError from "../utils/appError";
 import { DeepPartial } from "typeorm";
 import { InventoryHistory } from "../entities/inventory.history.entity";
+import { Inventory } from "entities/inventory.entity";
 
 interface IInventoryHistoryInput {
   material_id: string;
@@ -12,7 +13,7 @@ interface IInventoryHistoryInput {
 }
 
 const inventoryHistoryRepo = AppDataSource.getRepository(InventoryHistory);
-const materialRepo = AppDataSource.getRepository(Material);
+const materialRepo = AppDataSource.getRepository(Inventory);
 
 export const InventoryHistoryService = () => {
   const createHistory = async (data: IInventoryHistoryInput) => {
@@ -33,7 +34,7 @@ export const InventoryHistoryService = () => {
     if (used > currentQuantity) {
       throw new AppError(
         400,
-        `Used quantity (${used}) cannot be greater than available quantity (${currentQuantity}).`
+        `Used quantity (${used}) cannot be greater than available quantity (${currentQuantity}).`,
       );
     }
 
@@ -51,7 +52,6 @@ export const InventoryHistoryService = () => {
 
     return await inventoryHistoryRepo.save(history);
   };
-
 
   const getAllHistory = async () => {
     return await inventoryHistoryRepo.find({
@@ -73,7 +73,7 @@ export const InventoryHistoryService = () => {
 
   const updateHistory = async (
     id: string,
-    data: DeepPartial<IInventoryHistoryInput>
+    data: DeepPartial<IInventoryHistoryInput>,
   ) => {
     const history = await inventoryHistoryRepo.findOne({
       where: { id, deleted: false },
@@ -120,13 +120,12 @@ export const InventoryHistoryService = () => {
     });
   };
 
-
   return {
     createHistory,
     getAllHistory,
     getHistoryById,
     updateHistory,
     deleteHistory,
-    getAllHistoryByMaterialId
+    getAllHistoryByMaterialId,
   };
 };
