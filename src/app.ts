@@ -54,6 +54,7 @@ import eilogTypeRouter from "./routes/eilog-type.routes";
 import eilogRouter from "./routes/eilog.routes";
 import materialTypeRoutes from "./routes/material-type.routes";
 import materialRoutes from "./routes/material.routes";
+import inventoryRoutes from "./routes/inventory.routes";
 import notificationRouter from "./routes/notification.routes";
 import reportRoutes from "./routes/report.routes";
 import { initWebSocket } from "./services/websocket.service";
@@ -81,7 +82,7 @@ AppDataSource.initialize()
     // Inside src/app.ts or main file
     app.use(
       "/exports",
-      express.static(path.join(__dirname, "..", "public", "exports"))
+      express.static(path.join(__dirname, "..", "public", "exports")),
     );
 
     // MIDDLEWARE
@@ -102,7 +103,7 @@ AppDataSource.initialize()
       cors({
         origin: config.get<string>("origin"),
         credentials: true,
-      })
+      }),
     );
 
     // ROUTES
@@ -143,6 +144,7 @@ AppDataSource.initialize()
     app.use("/api/attendances", AttendanceRoutes);
     app.use("/api/work-requests", workRequestRoutes);
     app.use("/api/materials", materialRoutes);
+    app.use("/api/inventory", inventoryRoutes);
     app.use("/api/inventory-history", inventoryHistoryRoutes);
     app.use("/api/material-brand", materialBrandRoutes);
     app.use("/api/material-type", materialTypeRoutes);
@@ -169,7 +171,7 @@ AppDataSource.initialize()
           status: error.status,
           message: error.message,
         });
-      }
+      },
     );
 
     setupTicketCronJobs();
@@ -178,7 +180,7 @@ AppDataSource.initialize()
     setupHolidayNotificationCron();
     setupAnnouncementCron();
     setupAutoCheckoutCronJob();
-    setupDailyReportCron()
+    setupDailyReportCron();
 
     const port = config.get<number>("port");
     app.listen(port, () => {
