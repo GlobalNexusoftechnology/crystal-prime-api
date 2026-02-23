@@ -70,6 +70,8 @@ export const InventoryHistoryService = () => {
       relations: ["inventory"],
     });
 
+    console.log("history", history);
+
     if (!history) throw new AppError(404, "Inventory history not found");
     return history;
   };
