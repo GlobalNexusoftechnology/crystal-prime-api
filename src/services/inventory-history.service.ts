@@ -107,7 +107,6 @@ export const InventoryHistoryService = () => {
       where: { id, deleted: false },
     });
     if (!history) throw new AppError(404, "Inventory history not found");
-    console.log("history", history);
 
     history.deleted = true;
     await inventoryHistoryRepo.save(history);

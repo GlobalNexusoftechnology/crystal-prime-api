@@ -1293,10 +1293,10 @@ export const LeadService = () => {
     if (!lead) throw new AppError(404, "Lead not found");
 
     const logoCandidates = [
-      path.join(__dirname, "../../public/satkar-logo.png"),
-      path.join(__dirname, "../../../src/public/satkar-logo.png"),
-      path.join(process.cwd(), "src/public/satkar-logo.png"),
-      path.join(process.cwd(), "public/satkar-logo.png"),
+      path.join(__dirname, "../../public/logo.jpeg"),
+      path.join(__dirname, "../../../src/public/logo.jpeg"),
+      path.join(process.cwd(), "src/public/logo.jpeg"),
+      path.join(process.cwd(), "public/logo.jpeg"),
     ];
 
     const resolvedLogoPath = logoCandidates.find((p) => fs.existsSync(p));
