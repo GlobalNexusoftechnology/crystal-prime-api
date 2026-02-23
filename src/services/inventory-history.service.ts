@@ -88,7 +88,7 @@ export const InventoryHistoryService = () => {
         where: { id: data.material_id, deleted: false },
       });
       if (!inventory) throw new AppError(404, "Material not found");
-      history.material = inventory;
+      history.inventory = inventory;
     }
 
     if (data.date !== undefined) history.date = data.date;
