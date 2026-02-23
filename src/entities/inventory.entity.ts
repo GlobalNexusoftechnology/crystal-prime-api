@@ -78,7 +78,7 @@ export class Inventory extends Model {
 
   @OneToMany(
     () => InventoryHistory,
-    (history: InventoryHistory) => history.material,
+    (history: InventoryHistory) => history.inventory,
   )
   inventoryHistory: InventoryHistory[];
 }
