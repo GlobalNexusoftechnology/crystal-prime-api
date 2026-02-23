@@ -84,11 +84,11 @@ export const InventoryHistoryService = () => {
     if (!history) throw new AppError(404, "Inventory history not found");
 
     if (data.material_id) {
-      const material = await materialRepo.findOne({
+      const inventory = await materialRepo.findOne({
         where: { id: data.material_id, deleted: false },
       });
-      if (!material) throw new AppError(404, "Material not found");
-      history.material = material;
+      if (!inventory) throw new AppError(404, "Material not found");
+      history.material = inventory;
     }
 
     if (data.date !== undefined) history.date = data.date;
@@ -114,7 +114,7 @@ export const InventoryHistoryService = () => {
     return await inventoryHistoryRepo.find({
       where: {
         deleted: false,
-        material: { id: materialId },
+        inventory: { id: materialId },
       },
       relations: ["material"],
       order: { date: "DESC" },
