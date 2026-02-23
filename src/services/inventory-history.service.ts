@@ -28,10 +28,6 @@ export const InventoryHistoryService = () => {
       throw new AppError(404, "Material not found");
     }
 
-    const material = await material2Repo.findOne({
-      where: { id: material_id, deleted: false },
-    });
-
     // Ensure quantity is a number (fallback to 0 just in case)
     const currentQuantity = inventory.quantity ?? 0;
 
@@ -53,7 +49,6 @@ export const InventoryHistoryService = () => {
       date,
       used,
       notes,
-      material,
     });
 
     return await inventoryHistoryRepo.save(history);

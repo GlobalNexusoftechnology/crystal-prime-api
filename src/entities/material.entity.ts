@@ -75,10 +75,4 @@ export class Material extends Model {
 
   @Column({ type: "jsonb", nullable: true })
   state_prices: StatePrices;
-
-  @OneToMany(
-    () => InventoryHistory,
-    (history: InventoryHistory) => history.material,
-  )
-  inventoryHistory: InventoryHistory[];
 }
