@@ -18,4 +18,9 @@ export class InventoryHistory extends Model {
     nullable: false,
   })
   inventory: Inventory;
+
+  @ManyToOne(() => Material, (material) => material.inventoryHistory, {
+    nullable: false,
+  })
+  material: Material;
 }
