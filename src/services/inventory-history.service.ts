@@ -3,6 +3,7 @@ import { Inventory } from "../entities/inventory.entity";
 import { InventoryHistory } from "../entities/inventory.history.entity";
 import AppError from "../utils/appError";
 import { AppDataSource } from "../utils/data-source";
+import { Material } from "entities";
 
 interface IInventoryHistoryInput {
   material_id: string;
@@ -13,6 +14,7 @@ interface IInventoryHistoryInput {
 
 const inventoryHistoryRepo = AppDataSource.getRepository(InventoryHistory);
 const materialRepo = AppDataSource.getRepository(Inventory);
+const material2Repo = AppDataSource.getRepository(Material);
 
 export const InventoryHistoryService = () => {
   const createHistory = async (data: IInventoryHistoryInput) => {
@@ -25,6 +27,10 @@ export const InventoryHistoryService = () => {
     if (!inventory) {
       throw new AppError(404, "Material not found");
     }
+
+    const material = await material2Repo.findOne({
+      where: { id: material_id, deleted: false },
+    });
 
     // Ensure quantity is a number (fallback to 0 just in case)
     const currentQuantity = inventory.quantity ?? 0;
@@ -47,6 +53,7 @@ export const InventoryHistoryService = () => {
       date,
       used,
       notes,
+      material,
     });
 
     return await inventoryHistoryRepo.save(history);
