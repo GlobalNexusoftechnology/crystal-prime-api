@@ -1,6 +1,7 @@
 import { Column, Entity, ManyToOne } from "typeorm";
 import Model from "./model.entity";
 import { Material } from "./material.entity";
+import { Inventory } from "./inventory.entity";
 
 @Entity("inventory_history")
 export class InventoryHistory extends Model {
@@ -13,8 +14,8 @@ export class InventoryHistory extends Model {
   @Column({ type: "text", nullable: true })
   notes: string;
 
-  @ManyToOne(() => Material, (material) => material.inventoryHistory, {
+  @ManyToOne(() => Inventory, (inventory) => inventory.inventoryHistory, {
     nullable: false,
   })
-  material: Material;
+  inventory: Material;
 }
