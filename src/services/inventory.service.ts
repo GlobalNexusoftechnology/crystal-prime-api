@@ -146,34 +146,34 @@ export const InventoryService = () => {
     return await repo.save(material);
   };
 
-  const updateMaterialAvailability = async (
-    materialId: string,
-    quantityChange: number,
-    transactionalEntityManager?: EntityManager,
-  ) => {
-    const repoToUse =
-      transactionalEntityManager?.getRepository(Material) || repo;
+  // const updateMaterialAvailability = async (
+  //   materialId: string,
+  //   quantityChange: number,
+  //   transactionalEntityManager?: EntityManager,
+  // ) => {
+  //   const repoToUse =
+  //     transactionalEntityManager?.getRepository(Material) || repo;
 
-    const material = await repoToUse.findOne({
-      where: { id: materialId, deleted: false },
-      lock: { mode: "pessimistic_write" },
-    });
+  //   const material = await repoToUse.findOne({
+  //     where: { id: materialId, deleted: false },
+  //     lock: { mode: "pessimistic_write" },
+  //   });
 
-    if (!material) {
-      throw new AppError(404, "Material not found");
-    }
+  //   if (!material) {
+  //     throw new AppError(404, "Material not found");
+  //   }
 
-    const newQuantity = (material.quantity || 0) + quantityChange;
-    if (newQuantity < 0) {
-      throw new AppError(
-        400,
-        `Insufficient material quantity for ${material.name}`,
-      );
-    }
+  //   const newQuantity = (material.quantity || 0) + quantityChange;
+  //   if (newQuantity < 0) {
+  //     throw new AppError(
+  //       400,
+  //       `Insufficient material quantity for ${material.name}`,
+  //     );
+  //   }
 
-    material.quantity = newQuantity;
-    return await repoToUse.save(material);
-  };
+  //   material.quantity = newQuantity;
+  //   return await repoToUse.save(material);
+  // };
 
   // Get materials for export with pagination support
   const getMaterialsForExport = async (filters: any = {}) => {
@@ -411,7 +411,7 @@ export const InventoryService = () => {
 
   return {
     createMaterial,
-    updateMaterialAvailability,
+    // updateMaterialAvailability,
     getAllMaterials,
     getMaterialsForExport,
     getMaterialById,
