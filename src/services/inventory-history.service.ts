@@ -59,7 +59,7 @@ export const InventoryHistoryService = () => {
   const getAllHistory = async () => {
     return await inventoryHistoryRepo.find({
       where: { deleted: false },
-      relations: ["material"],
+      relations: ["inventory"],
       order: { date: "DESC" },
     });
   };
@@ -67,7 +67,7 @@ export const InventoryHistoryService = () => {
   const getHistoryById = async (id: string) => {
     const history = await inventoryHistoryRepo.findOne({
       where: { id, deleted: false },
-      relations: ["material"],
+      relations: ["inventory"],
     });
 
     if (!history) throw new AppError(404, "Inventory history not found");
@@ -80,7 +80,7 @@ export const InventoryHistoryService = () => {
   ) => {
     const history = await inventoryHistoryRepo.findOne({
       where: { id, deleted: false },
-      relations: ["material"],
+      relations: ["inventory"],
     });
 
     if (!history) throw new AppError(404, "Inventory history not found");
