@@ -4,8 +4,9 @@ import { Material } from "../entities/material.entity";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { MaterialBrand, MaterialType } from "../entities";
+import { Inventory } from "entities/inventory.entity";
 
-const repo = AppDataSource.getRepository(Material);
+const repo = AppDataSource.getRepository(Inventory);
 const brandRepo = AppDataSource.getRepository(MaterialBrand);
 const typeRepo = AppDataSource.getRepository(MaterialType);
 
