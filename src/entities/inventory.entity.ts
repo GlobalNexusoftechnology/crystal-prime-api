@@ -1,7 +1,8 @@
-import { Column, Entity, ManyToOne } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { MaterialBrand } from "./material-brand.entity";
 import { MaterialType } from "./material-type.entity";
 import Model from "./model.entity";
+import { InventoryHistory } from "./inventory.history.entity";
 export type StatePrices = {
   Maharashtra?: number;
   Gujarat?: number;
@@ -74,4 +75,10 @@ export class Inventory extends Model {
 
   @Column({ nullable: true })
   prices: string;
+
+  @OneToMany(
+    () => InventoryHistory,
+    (history: InventoryHistory) => history.material,
+  )
+  inventoryHistory: InventoryHistory[];
 }
