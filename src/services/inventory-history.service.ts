@@ -14,7 +14,6 @@ interface IInventoryHistoryInput {
 
 const inventoryHistoryRepo = AppDataSource.getRepository(InventoryHistory);
 const materialRepo = AppDataSource.getRepository(Inventory);
-const material2Repo = AppDataSource.getRepository(Material);
 
 export const InventoryHistoryService = () => {
   const createHistory = async (data: IInventoryHistoryInput) => {
@@ -24,8 +23,11 @@ export const InventoryHistoryService = () => {
       where: { id: material_id, deleted: false },
     });
 
+    console.log("data", data);
+    console.log("inventory", inventory);
+
     if (!inventory) {
-      throw new AppError(404, "Material not found");
+      throw new AppError(404, "Inventory not found");
     }
 
     // Ensure quantity is a number (fallback to 0 just in case)
