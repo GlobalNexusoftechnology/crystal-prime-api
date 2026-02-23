@@ -18,16 +18,16 @@ export const InventoryHistoryService = () => {
   const createHistory = async (data: IInventoryHistoryInput) => {
     const { material_id, date, used, notes } = data;
 
-    const material = await materialRepo.findOne({
+    const inventory = await materialRepo.findOne({
       where: { id: material_id, deleted: false },
     });
 
-    if (!material) {
+    if (!inventory) {
       throw new AppError(404, "Material not found");
     }
 
     // Ensure quantity is a number (fallback to 0 just in case)
-    const currentQuantity = material.quantity ?? 0;
+    const currentQuantity = inventory.quantity ?? 0;
 
     // ❌ If used > available quantity → throw error
     if (used > currentQuantity) {
@@ -38,12 +38,12 @@ export const InventoryHistoryService = () => {
     }
 
     // ✅ Update material quantity
-    material.quantity = currentQuantity - used;
-    await materialRepo.save(material);
+    inventory.quantity = currentQuantity - used;
+    await materialRepo.save(inventory);
 
     // ✅ Create history record
     const history = inventoryHistoryRepo.create({
-      material,
+      inventory,
       date,
       used,
       notes,
