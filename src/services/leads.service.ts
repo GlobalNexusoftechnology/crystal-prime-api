@@ -1877,6 +1877,325 @@ export const LeadService = () => {
                   }),
               ),
             }),
+
+            // bank details
+
+            new Paragraph({
+              spacing: PARA_SPACING,
+              children: [
+                new TextRun({
+                  text: "Details of Company",
+                  bold: true,
+                  underline: {},
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+
+            new Table({
+              width: { size: 9000, type: WidthType.DXA },
+              alignment: AlignmentType.CENTER,
+              borders: FULL_TABLE_BORDER(),
+              rows: [
+                {
+                  label: "Account Name",
+                  value: "Crystal Cabin",
+                },
+                {
+                  label: "Bank",
+                  value: "HDFC Bank",
+                },
+                {
+                  label: "Account Type",
+                  value: "Current Account",
+                },
+                {
+                  label: "Account No.",
+                  value: "50200053443660",
+                },
+                {
+                  label: "Branch",
+                  value: "Navi Mumbai",
+                },
+                {
+                  label: "IFSC",
+                  value: "HDFC0001602",
+                },
+                {
+                  label: "GST No.",
+                  value: "27AAJFC0916G1ZO",
+                },
+                {
+                  label: "Pan No.",
+                  value: "AAJFC0916G",
+                },
+                {
+                  label: "MSME No.",
+                  value: "MH33A0205607",
+                },
+              ].map(
+                ({ label, value }) =>
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        width: { size: 4500, type: WidthType.DXA },
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            children: [
+                              new TextRun({
+                                text: label,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        width: { size: 4500, type: WidthType.DXA },
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            children: [
+                              new TextRun({
+                                text: value,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+              ),
+            }),
+
+            // Other Specification
+
+            new Paragraph({
+              spacing: PARA_SPACING,
+              children: [
+                new TextRun({
+                  text: "TECHNICAL SPECIFICATION FOR NEW PREFAB CABIN",
+                  bold: true,
+                  underline: {},
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+
+            new Table({
+              width: { size: 9000, type: WidthType.DXA },
+              alignment: AlignmentType.CENTER,
+              borders: FULL_TABLE_BORDER(),
+              rows: [
+                // Header Row
+                new TableRow({
+                  tableHeader: true,
+                  children: [
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      width: { size: 800, type: WidthType.DXA },
+                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Sr.No.", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      width: { size: 2000, type: WidthType.DXA },
+                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Components", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                    new TableCell({
+                      margins: CELL_PADDING,
+                      width: { size: 6200, type: WidthType.DXA },
+                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      children: [
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({ text: "Descriptions", bold: true }),
+                          ],
+                        }),
+                      ],
+                    }),
+                  ],
+                }),
+                // Data Rows
+                ...[
+                  {
+                    no: "1",
+                    component: "Bottom Frame",
+                    description:
+                      "100X50 formed MS I-Beam ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "2",
+                    component: "Stiffener Bottom",
+                    description:
+                      "80X40 & 50X50 mm Square Pipes. ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "3",
+                    component: "Top Frame",
+                    description:
+                      "Frame made of 50X50 Square Pipes. ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "4",
+                    component: "Stiffener Top",
+                    description:
+                      "50X50 & 40X20 Square pipes. ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "5",
+                    component: "Side Stiffener",
+                    description:
+                      "Corner Post Shall be of 60X60 Square Pipes & wall thickness of 60mm. ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "6",
+                    component: "Paneling Outside",
+                    description:
+                      "Specially Corrugated G.I./M.S. 1.2 mm Thick Sheet Welded on MS frame. The steel sheet shall be treated for corrosion resistance. Panels shall be vertically corrugated, sheet shall be continuously welded to top side and base structure so as to offer better strength to weight ratio. All gaps will be sealed at edges and at seams, ISI Marked (UTTAM/JSW/ESSAR) {Not Applicable}",
+                  },
+                  {
+                    no: "7",
+                    component: "Internal Wall Paneling",
+                    description:
+                      "8mm Thick MDF Make of Green Panel & all Vertically & Horizontal Corners Will be Neatly & Smoothly Finished with Aluminum Sections & L Angles.",
+                  },
+                  {
+                    no: "8",
+                    component: "Toilet Wall Paneling",
+                    description:
+                      "Toilet Walls Shall be of 4mm Hardener Sheets Water Roof & All Vertically & Horizontal Corners Shall be Neatly & Smoothly Finished with Aluminum Sections.",
+                  },
+                  {
+                    no: "9",
+                    component: "Roof Outside",
+                    description:
+                      "1.2 mm thick GI/M.S. Sheet Properly Sloped & Water Tight Protect from Anti Rust with Gutter System ISI Marked {Not Applicable}",
+                  },
+                  {
+                    no: "10",
+                    component: "False Ceiling",
+                    description:
+                      "9mm thick MDF Make of Green Panel & All Vertically & Horizontal Corners Will be Neatly & Smoothly Finished With Aluminum Sections & L Angles.",
+                  },
+                  {
+                    no: "11",
+                    component: "Bottom Flooring",
+                    description:
+                      "On the bottom frame 18 mm Thick V-Board I.e. Cemented Bonded Fiber Sheets Shall (Visaka or Bison Panel) be Fixed by Means of Self-Taping Screw {Not Applicable} & 1mm Thick PVC Vinyl Carpet Shall be Fixed on The Panel. (100% water, Termite & Dimensional Proof with Vinyl Carpet)",
+                  },
+                  {
+                    no: "12",
+                    component: "Aluminum Sliding Windows",
+                    description:
+                      "Double Shutter Sliding Aluminum Powder Coated Windows of Thickness 1.2mm with 4mm Thick Glass for All Windows, Safety Grills from Outside & Canopy On The Top Of Windows. The Door Shall be Of External Opening Type Made Out Of The Same Material as Wall Panels & Canopy Above the Door.",
+                  },
+                  {
+                    no: "13",
+                    component: "Main Door",
+                    description:
+                      "Frame Work by Tubular Pipe Of 30X30 & The Door Interior Shall be Finished With Same Material Matching With That Of The Cabin Interior With Insulations. Door With Stand Hardware Locks & Handles Al drop Lock",
+                  },
+                  {
+                    no: "14",
+                    component: "Insulation",
+                    description:
+                      "50 mm Thick Glass Wool Density Of 64 kg/m3 With Insulation For Top & 25mm Side Walls To Avoid Heat",
+                  },
+                  {
+                    no: "15",
+                    component: "Wiring",
+                    description:
+                      "All Wiring Shall be Concealed & Shall be PVC Insulated Copper Wires Of ISI Quality, Suitable for 240 Volts, 50 HZ Single Phase AC Power Supply. With MCB Protection Split Air Conditioner Point Along With Separate MCB. ISI Marked Main Supply, MCB & AC :- 4mm, Fan & Light :- 1.5 mm, Neutral :- 2.5mm, Sockets :- 2.5mm, Earthling :- 1mm",
+                  },
+                  {
+                    no: "16",
+                    component: "Outside Painting",
+                    description:
+                      "All Components Are Painted With 2 Coats Of BERGER/ESDEE Epoxy Primer & 2 Coats Of Corrosion Free BERGER/ESDEE Paint i.e. Synthetic Epoxy Paint.",
+                  },
+                  {
+                    no: "17",
+                    component: "Hooks for Cabin Lifting",
+                    description:
+                      "Specially Formed Hooks For Easy Lift & Shift. {Not Applicable}",
+                  },
+                  {
+                    no: "18",
+                    component: "Ear thing",
+                    description: "Ear thing point shall be provided for safety",
+                  },
+                  {
+                    no: "19",
+                    component: "Legs",
+                    description:
+                      "6 inch height, six legs at all four corners & center {Not Applicable}",
+                  },
+                  {
+                    no: "20",
+                    component: "Furniture's",
+                    description:
+                      "All Furniture's Shall be made of 18mm Pre-Laminated (Particle) Board.",
+                  },
+                ].map(
+                  ({ no, component, description }) =>
+                    new TableRow({
+                      children: [
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          width: { size: 800, type: WidthType.DXA },
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [new TextRun({ text: no })],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          width: { size: 2000, type: WidthType.DXA },
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [
+                                new TextRun({ text: component, bold: true }),
+                              ],
+                            }),
+                          ],
+                        }),
+                        new TableCell({
+                          margins: CELL_PADDING,
+                          width: { size: 6200, type: WidthType.DXA },
+                          children: [
+                            new Paragraph({
+                              spacing: PARA_SPACING,
+                              children: [new TextRun({ text: description })],
+                            }),
+                          ],
+                        }),
+                      ],
+                    }),
+                ),
+              ],
+            }),
           ],
         },
       ],
