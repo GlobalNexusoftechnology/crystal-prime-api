@@ -63,15 +63,28 @@ export const InventoryHistoryService = () => {
     });
   };
 
-  const getHistoryById = async (id: string) => {
-    const history = await inventoryHistoryRepo.findOne({
-      where: { inventoryId: id, deleted: false },
+  // const getHistoryById = async (id: string) => {
+  //   const history = await inventoryHistoryRepo.findOne({
+  //     where: { id, deleted: false },
+  //     relations: ["inventory"],
+  //   });
+
+  //   console.log("history", history);
+
+  //   if (!history) throw new AppError(404, "Inventory history not found");
+  //   return history;
+  // };
+
+  const getHistoryById = async (inventoryId: string) => {
+    const history = await inventoryHistoryRepo.find({
+      where: {
+        inventory: { id: inventoryId },
+        deleted: false,
+      },
       relations: ["inventory"],
+      order: { date: "DESC" },
     });
 
-    console.log("history", history);
-
-    if (!history) throw new AppError(404, "Inventory history not found");
     return history;
   };
 
