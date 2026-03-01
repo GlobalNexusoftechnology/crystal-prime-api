@@ -1,7 +1,6 @@
 import { Column, Entity, ManyToOne } from "typeorm";
-import Model from "./model.entity";
-import { Material } from "./material.entity";
 import { Inventory } from "./inventory.entity";
+import Model from "./model.entity";
 
 @Entity("inventory_history")
 export class InventoryHistory extends Model {

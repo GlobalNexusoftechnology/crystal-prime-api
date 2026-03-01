@@ -3,7 +3,6 @@ import { Inventory } from "../entities/inventory.entity";
 import { InventoryHistory } from "../entities/inventory.history.entity";
 import AppError from "../utils/appError";
 import { AppDataSource } from "../utils/data-source";
-import { Material } from "entities";
 
 interface IInventoryHistoryInput {
   material_id: string;
@@ -66,7 +65,7 @@ export const InventoryHistoryService = () => {
 
   const getHistoryById = async (id: string) => {
     const history = await inventoryHistoryRepo.findOne({
-      where: { id, deleted: false },
+      where: { inventoryId: id, deleted: false },
       relations: ["inventory"],
     });
 
