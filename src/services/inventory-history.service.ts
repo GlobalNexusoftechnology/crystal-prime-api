@@ -76,12 +76,13 @@ export const InventoryHistoryService = () => {
   // };
 
   const getHistoryById = async (inventoryId: string) => {
-    return inventoryHistoryRepo
-      .createQueryBuilder("history")
-      .where("history.inventoryId = :inventoryId", { inventoryId })
-      .andWhere("history.deleted = false")
-      .orderBy("history.date", "DESC")
-      .getMany();
+    const history = await inventoryHistoryRepo.find({
+      where: { deleted: false },
+      order: { date: "DESC" },
+    });
+
+    // 🔥 Manual filtering
+    return history.filter((item: any) => item.inventoryId === inventoryId);
   };
 
   const updateHistory = async (
