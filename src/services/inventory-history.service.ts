@@ -76,16 +76,12 @@ export const InventoryHistoryService = () => {
   // };
 
   const getHistoryById = async (inventoryId: string) => {
-    const history = await inventoryHistoryRepo.find({
-      where: {
-        inventory: { id: inventoryId },
-        deleted: false,
-      },
-      relations: ["inventory"],
-      order: { date: "DESC" },
-    });
-
-    return history;
+    return inventoryHistoryRepo
+      .createQueryBuilder("history")
+      .where("history.inventoryId = :inventoryId", { inventoryId })
+      .andWhere("history.deleted = false")
+      .orderBy("history.date", "DESC")
+      .getMany();
   };
 
   const updateHistory = async (
