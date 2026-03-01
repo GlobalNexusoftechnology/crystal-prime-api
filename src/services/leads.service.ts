@@ -1,41 +1,40 @@
-import { AppDataSource } from "../utils/data-source";
-import { ChannelType, Leads } from "../entities/leads.entity";
+import {
+  AlignmentType,
+  BorderStyle,
+  Document,
+  ImageRun,
+  Packer,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { ILike } from "typeorm";
+import { Clients } from "../entities/clients.entity";
+import {
+  FollowupStatus,
+  LeadFollowup,
+} from "../entities/lead-followups.entity";
 import { LeadSources } from "../entities/lead-sources.entity";
 import { LeadStatuses } from "../entities/lead-statuses.entity";
-import { User } from "../entities/user.entity";
-import AppError from "../utils/appError";
-import ExcelJS from "exceljs";
 import { LeadTypes } from "../entities/lead-type.entity";
-import { NotificationService } from "./notification.service";
+import { ChannelType, Leads } from "../entities/leads.entity";
 import { NotificationType } from "../entities/notification.entity";
-import {
-  LeadFollowup,
-  FollowupStatus,
-} from "../entities/lead-followups.entity";
-import { Between, ILike, Not } from "typeorm";
-import { Clients } from "../entities/clients.entity";
+import { User } from "../entities/user.entity";
 import {
   createLeadSchema,
   createMetaLeadSchema,
 } from "../schemas/leads.schema";
-import { getValidToken } from "./page-token.service";
-import {
-  Document,
-  Packer,
-  Paragraph,
-  TextRun,
-  ImageRun,
-  Table,
-  TableRow,
-  TableCell,
-  WidthType,
-  AlignmentType,
-  BorderStyle,
-  HeightRule,
-} from "docx";
-import fs from "fs";
-import path from "path";
+import AppError from "../utils/appError";
+import { AppDataSource } from "../utils/data-source";
 import { formatQuotationDate } from "../utils/formatQuotationDate";
+import { NotificationService } from "./notification.service";
+import { getValidToken } from "./page-token.service";
 
 const leadRepo = AppDataSource.getRepository(Leads);
 const userRepo = AppDataSource.getRepository(User);
@@ -1375,20 +1374,7 @@ export const LeadService = () => {
                             }),
                           ],
                         }),
-                        new Paragraph({
-                          spacing: PARA_SPACING,
-                          children: [
-                            new TextRun({ text: "GST No: 27AAUCS490971ZW" }),
-                          ],
-                        }),
-                        new Paragraph({
-                          spacing: PARA_SPACING,
-                          children: [
-                            new TextRun({
-                              text: "Udyam Reg: UDYAM-MH-26-0525073",
-                            }),
-                          ],
-                        }),
+
                         new Paragraph({
                           spacing: PARA_SPACING,
                           children: [
@@ -1396,14 +1382,6 @@ export const LeadService = () => {
                               text: "Email ID: info@crytalprime.com",
                             }),
                           ],
-                        }),
-                        new Paragraph({
-                          spacing: PARA_SPACING,
-                          children: [new TextRun({ text: "Contact Person:" })],
-                        }),
-                        new Paragraph({
-                          spacing: PARA_SPACING,
-                          children: [new TextRun({ text: "Contact No:" })],
                         }),
                       ],
                     }),
@@ -1796,6 +1774,100 @@ export const LeadService = () => {
                               new TextRun({
                                 text: `₹ ${Number(value).toFixed(2)}`,
                                 bold: i === 2,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+              ),
+            }),
+
+            // Terms And Condtions
+            // After your existing totals table, add a spacer paragraph and then the terms table:
+
+            new Paragraph({ spacing: PARA_SPACING }),
+
+            new Paragraph({
+              spacing: PARA_SPACING,
+              children: [
+                new TextRun({
+                  text: "OTHER TERMS & CONDITIONS: -",
+                  bold: true,
+                  underline: {},
+                }),
+              ],
+              alignment: AlignmentType.CENTER,
+            }),
+
+            new Table({
+              width: { size: 9000, type: WidthType.DXA },
+              alignment: AlignmentType.CENTER,
+              borders: FULL_TABLE_BORDER(),
+              rows: [
+                {
+                  label: "Freight & Challan",
+                  value: "Freight cost & RTO fine will be extra at actual.",
+                },
+                {
+                  label: "Taxes",
+                  value: "GST @ 18% extra as per mention above.",
+                },
+                {
+                  label: "Delivery Schedule",
+                  value:
+                    "7 to 8 working days from the date of receipt of Purchase Order & Advance.",
+                },
+                {
+                  label: "Loading",
+                  value: "Will be in our scope.",
+                },
+                {
+                  label: "Unloading",
+                  value: "To be borne by the client.",
+                },
+                {
+                  label: "Warranty",
+                  value: "365 days against any manufacturing defects.",
+                },
+                {
+                  label: "Payment Terms",
+                  value:
+                    "75% Advance along with purchase order and balance after inspection of the material before dispatch.",
+                },
+                {
+                  label: "OFFER VALIDITY",
+                  value: "Prices mentioned are valid for a period of 1 month.",
+                },
+              ].map(
+                ({ label, value }) =>
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        width: { size: 2500, type: WidthType.DXA },
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            numbering: { reference: "bullets", level: 0 },
+                            children: [
+                              new TextRun({
+                                text: label,
+                              }),
+                            ],
+                          }),
+                        ],
+                      }),
+                      new TableCell({
+                        margins: CELL_PADDING,
+                        width: { size: 6500, type: WidthType.DXA },
+                        children: [
+                          new Paragraph({
+                            spacing: PARA_SPACING,
+                            children: [
+                              new TextRun({
+                                text: value,
                               }),
                             ],
                           }),
