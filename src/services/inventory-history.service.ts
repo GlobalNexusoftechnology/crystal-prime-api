@@ -129,7 +129,7 @@ export const InventoryHistoryService = () => {
         deleted: false,
         inventory: { id: materialId },
       },
-      relations: ["material"],
+      relations: ["inventory"],
       order: { date: "DESC" },
     });
   };
