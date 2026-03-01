@@ -1879,6 +1879,7 @@ export const LeadService = () => {
             }),
 
             // bank details
+            new Paragraph({ spacing: PARA_SPACING }),
 
             new Paragraph({
               spacing: PARA_SPACING,
@@ -1971,6 +1972,7 @@ export const LeadService = () => {
             }),
 
             // Other Specification
+            new Paragraph({ spacing: PARA_SPACING }),
 
             new Paragraph({
               spacing: PARA_SPACING,
