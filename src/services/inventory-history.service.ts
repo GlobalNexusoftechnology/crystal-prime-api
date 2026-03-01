@@ -123,11 +123,11 @@ export const InventoryHistoryService = () => {
   };
 
   // ✅ Get All by Material ID
-  const getAllHistoryByMaterialId = async (materialId: string) => {
+  const getAllHistoryByMaterialId = async (inventoryId: string) => {
     return await inventoryHistoryRepo.find({
       where: {
         deleted: false,
-        inventory: { id: materialId },
+        inventory: { id: inventoryId },
       },
       relations: ["inventory"],
       order: { date: "DESC" },
