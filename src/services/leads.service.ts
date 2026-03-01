@@ -1996,7 +1996,7 @@ export const LeadService = () => {
                     new TableCell({
                       margins: CELL_PADDING,
                       width: { size: 800, type: WidthType.DXA },
-                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      // shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
                       children: [
                         new Paragraph({
                           spacing: PARA_SPACING,
@@ -2009,7 +2009,7 @@ export const LeadService = () => {
                     new TableCell({
                       margins: CELL_PADDING,
                       width: { size: 2000, type: WidthType.DXA },
-                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      // shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
                       children: [
                         new Paragraph({
                           spacing: PARA_SPACING,
@@ -2022,7 +2022,7 @@ export const LeadService = () => {
                     new TableCell({
                       margins: CELL_PADDING,
                       width: { size: 6200, type: WidthType.DXA },
-                      shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
+                      // shading: { fill: "D3D3D3", type: ShadingType.CLEAR },
                       children: [
                         new Paragraph({
                           spacing: PARA_SPACING,
