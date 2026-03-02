@@ -1,17 +1,21 @@
-import { Entity, Column, ManyToOne, OneToMany } from "typeorm";
-import Model from "./model.entity";
-import { MaterialType } from "./material-type.entity";
+import { Column, Entity, ManyToOne } from "typeorm";
 import { MaterialBrand } from "./material-brand.entity";
-import { InventoryHistory } from "./inventory.history.entity";
+import { MaterialType } from "./material-type.entity";
+import Model from "./model.entity";
+
+// export type StatePrices = {
+//   Maharashtra?: number;
+//   Gujarat?: number;
+//   Uttar_Pradesh?: number;
+//   Karnataka?: number;
+//   West_Bengal?: number;
+//   Delhi?: number;
+//   Odisha?: number;
+//   Goa?: number;
+// };
+
 export type StatePrices = {
-  Maharashtra?: number;
-  Gujarat?: number;
-  Uttar_Pradesh?: number;
-  Karnataka?: number;
-  West_Bengal?: number;
-  Delhi?: number;
-  Odisha?: number;
-  Goa?: number;
+  [stateName: string]: number;
 };
 
 @Entity("materials")
