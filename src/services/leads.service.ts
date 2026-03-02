@@ -155,9 +155,17 @@ export const LeadService = () => {
 
       if (!requirementText) {
         // nothing to match against — fallback to selecting by oldest lastAssigned
-        const candidates = await userRepo.find({
-          /* add filters: active/deleted etc. */
-        });
+        // const candidates = await userRepo.find({
+        //   /* add filters: active/deleted etc. */
+        // });
+
+        const candidates = await userRepo
+          .createQueryBuilder("user")
+          .where("user.role_id = :roleId", {
+            roleId: "a668bb29-2fbf-4a5e-be4d-9c73e990871b",
+          })
+          .andWhere("user.deleted = false") // if you use soft delete flag
+          .getMany();
 
         if (!candidates || candidates.length === 0) {
           lead.assigned_to = null;
@@ -183,7 +191,15 @@ export const LeadService = () => {
           .filter(Boolean);
 
         // load candidate users — restrict query as needed (active users only etc.)
-        const users = await userRepo.find(); // adapt where clause as needed
+        // const users = await userRepo.find(); // adapt where clause as needed
+
+        const users = await userRepo
+          .createQueryBuilder("user")
+          .where("user.role_id = :roleId", {
+            roleId: "a668bb29-2fbf-4a5e-be4d-9c73e990871b",
+          })
+          .andWhere("user.deleted = false") // if you use soft delete flag
+          .getMany();
 
         // helper to normalize keywords stored in various formats
         const normalizeKeywords = (raw: any): string[] => {
