@@ -1,6 +1,10 @@
 import { NextFunction, Request, Response } from "express";
 import { ChannelType } from "../entities/leads.entity";
-import { createIndiaMartLeadSchema, createLeadSchema, updateLeadSchema } from "../schemas/leads.schema";
+import {
+  createIndiaMartLeadSchema,
+  createLeadSchema,
+  updateLeadSchema,
+} from "../schemas/leads.schema";
 import { LeadService } from "../services/leads.service";
 import { findUserById } from "../services/user.service";
 
@@ -11,7 +15,7 @@ export const leadController = () => {
   const createLead = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const userData = res?.locals?.user;
@@ -37,7 +41,7 @@ export const leadController = () => {
   const getAllLeads = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const userId = res?.locals?.user?.id;
@@ -97,7 +101,7 @@ export const leadController = () => {
   const getLeadById = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { id } = req.params;
@@ -114,7 +118,7 @@ export const leadController = () => {
   const updateLead = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const userData = res?.locals?.user;
@@ -140,7 +144,7 @@ export const leadController = () => {
   const softDeleteLead = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { id } = req.params;
@@ -190,16 +194,16 @@ export const leadController = () => {
         followupFrom,
         followupTo,
         sourceId,
-        assignedToId
+        assignedToId,
       );
 
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=leads_${Date.now()}.xlsx`
+        `attachment; filename=leads_${Date.now()}.xlsx`,
       );
 
       await workbook.xlsx.write(res);
@@ -217,11 +221,11 @@ export const leadController = () => {
 
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
       res.setHeader(
         "Content-Disposition",
-        "attachment; filename=leads_template.xlsx"
+        "attachment; filename=leads_template.xlsx",
       );
 
       await workbook.xlsx.write(res);
@@ -236,7 +240,7 @@ export const leadController = () => {
   const uploadLeadsFromExcel = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const user = res.locals.user;
@@ -248,7 +252,7 @@ export const leadController = () => {
 
       const result = await service.uploadLeadsFromExcelService(
         req.file.buffer,
-        user
+        user,
       );
       res.status(201).json({
         status: "success",
@@ -277,7 +281,7 @@ export const leadController = () => {
   const metaLeadWebhook = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const body = req.body;
@@ -311,7 +315,7 @@ export const leadController = () => {
   const googleLeadWebhook = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const receivedApiKey = req.headers["x-api-key"] as string;
@@ -331,7 +335,7 @@ export const leadController = () => {
   const exportQuotationDoc = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     try {
       const { id } = req.params;
@@ -339,12 +343,16 @@ export const leadController = () => {
       // Validate request body
       // const validatedData = generateQuotationSchema.parse(req.body);
       const validatedData = req.body;
-      const { proposalDate, proposalNumber, proposalText, products,
+      const {
+        proposalDate,
+        proposalNumber,
+        proposalText,
+        products,
         productsText,
         subtotal,
-        taxPercent, finalAmount
-      } =
-        validatedData;
+        taxPercent,
+        finalAmount,
+      } = validatedData;
 
       const buffer = await service.generateQuotationDocService(
         id,
@@ -352,7 +360,8 @@ export const leadController = () => {
         products,
         productsText,
         subtotal,
-        taxPercent, finalAmount,
+        taxPercent,
+        finalAmount,
         new Date(proposalDate).toISOString(),
         proposalNumber,
         proposalText,
@@ -360,19 +369,20 @@ export const leadController = () => {
 
       // Build file name: quotation_<lead-name>.docx
       const lead = await service.getLeadById(id);
-      const leadNameRaw = `${lead.first_name || ""} ${lead.last_name || ""
-        }`.trim();
+      const leadNameRaw = `${lead.first_name || ""} ${
+        lead.last_name || ""
+      }`.trim();
       const safeLeadName = (leadNameRaw || id)
         .replace(/\s+/g, "_")
         .replace(/[^a-zA-Z0-9_-]/g, "");
 
       res.setHeader(
         "Content-Type",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=quotation_${safeLeadName}.docx`
+        `attachment; filename=quotation_${safeLeadName}.docx`,
       );
       res.send(buffer);
     } catch (error) {
@@ -380,51 +390,44 @@ export const leadController = () => {
     }
   };
 
+  const INDIA_MART_API_KEY = process.env.INDIAMART_API_KEY;
 
+  const indiaMartLeadWebhook = async (req: Request, res: Response) => {
+    try {
+      const payload = req.body;
+      const userData = res?.locals?.user;
 
-const INDIA_MART_API_KEY = process.env.INDIAMART_API_KEY;
+      console.log("payload", payload);
+      // 🔁 FIELD MAPPING (IndiaMART → Your Schema)
+      const leadData = {
+        first_name: payload.RESPONSE.SENDER_NAME?.split(" ")[0] || "Unknown",
+        last_name: payload.RESPONSE.SENDER_NAME?.split(" ").slice(1).join(" "),
+        phone: payload.RESPONSE.SENDER_MOBILE,
+        email: payload.RESPONSE.SENDER_EMAIL,
+        company: payload.RESPONSE.SENDER_COMPANY,
+        location: `${payload.RESPONSE.SENDER_CITY}, ${payload.RESPONSE.SENDER_STATE}`,
+        requirement:
+          payload.RESPONSE.QUERY_MESSAGE || payload.RESPONSE.QUERY_PRODUCT_NAME,
+        source_id: "d8f50868-045a-40d2-ab57-36ccb91c129b",
+        possibility_of_conversion: 50,
+      };
 
-const indiaMartLeadWebhook = async (
-  req: Request,
-  res: Response
-) => {
-  try {
-    
-    
-    const payload = req.body;
-    const userData = res?.locals?.user;
-    
-    console.log("payload",payload);
-    // 🔁 FIELD MAPPING (IndiaMART → Your Schema)
-    const leadData = {
-      first_name: payload.RESPONSE.SENDER_NAME?.split(" ")[0] || "Unknown",
-      last_name: payload.RESPONSE.SENDER_NAME?.split(" ").slice(1).join(" "),
-      phone: payload.RESPONSE.SENDER_MOBILE,
-      email: payload.RESPONSE.SENDER_EMAIL,
-      company: payload.RESPONSE.SENDER_COMPANY,
-      location: `${payload.RESPONSE.SENDER_CITY}, ${payload.RESPONSE.SENDER_STATE}`,
-      requirement: payload.RESPONSE.QUERY_MESSAGE || payload.RESPONSE.QUERY_PRODUCT_NAME,
-      source_id: "8a900964-6fee-4386-bd28-ac0f6e456809",
-      possibility_of_conversion: 50,
-    };
+      const validatedLead = createIndiaMartLeadSchema.parse(leadData);
 
-    const validatedLead = createIndiaMartLeadSchema.parse(leadData);
+      await service.createLead(validatedLead, userData);
 
-    await service.createLead(validatedLead,userData);
-
-    return res.status(200).json({
-      message: "Lead received successfully",
-      lead_id: "lead.id",
-    });
-  } catch (error: any) {
-    console.error("IndiaMART Webhook Error:", error);
-    return res.status(400).json({
-      message: "Invalid lead data",
-      error: error.message,
-    });
-  }
-};
-
+      return res.status(200).json({
+        message: "Lead received successfully",
+        lead_id: "lead.id",
+      });
+    } catch (error: any) {
+      console.error("IndiaMART Webhook Error:", error);
+      return res.status(400).json({
+        message: "Invalid lead data",
+        error: error.message,
+      });
+    }
+  };
 
   return {
     exportQuotationDoc,
@@ -439,6 +442,6 @@ const indiaMartLeadWebhook = async (
     exportLeadsExcelController,
     downloadLeadTemplate,
     uploadLeadsFromExcel,
-    indiaMartLeadWebhook
+    indiaMartLeadWebhook,
   };
 };
