@@ -3,16 +3,6 @@ import { MaterialBrand } from "./material-brand.entity";
 import { MaterialType } from "./material-type.entity";
 import Model from "./model.entity";
 
-// export type StatePrices = {
-//   Maharashtra?: number;
-//   Gujarat?: number;
-//   Uttar_Pradesh?: number;
-//   Karnataka?: number;
-//   West_Bengal?: number;
-//   Delhi?: number;
-//   Odisha?: number;
-//   Goa?: number;
-// };
 
 export type StatePrices = {
   [stateName: string]: number;

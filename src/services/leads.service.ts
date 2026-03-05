@@ -78,6 +78,7 @@ export const LeadService = () => {
       type_id,
       assigned_to,
     } = data;
+    console.log("data", data);
 
     // Validate email (optional now)
     if (email && typeof email !== "string") {
@@ -90,14 +91,6 @@ export const LeadService = () => {
         throw new AppError(400, "Phone Number already exists");
       }
     }
-
-    // Check if any email already exists
-    // for (const emailStr of email) {
-    //   const existing = await leadRepo.findOne({ where: { email: emailStr } });
-    //   if (existing) {
-    //     throw new AppError(400, `Email ${emailStr} already exists`);
-    //   }
-    // }
 
     const lead = new Leads();
     lead.first_name = first_name;
