@@ -73,6 +73,8 @@ export class Inventory extends Model {
 
   @Column({ nullable: true })
   quantity: number;
+  @Column({ nullable: true })
+  minqty: number;
 
   @Column({ nullable: true })
   prices: string;

@@ -3,7 +3,6 @@ import { MaterialBrand } from "./material-brand.entity";
 import { MaterialType } from "./material-type.entity";
 import Model from "./model.entity";
 
-
 export type StatePrices = {
   [stateName: string]: number;
 };
@@ -66,6 +65,8 @@ export class Material extends Model {
 
   @Column({ nullable: true })
   quantity: number;
+  @Column({ nullable: true })
+  minqty: number;
 
   @Column({ type: "jsonb", nullable: true })
   state_prices: StatePrices;

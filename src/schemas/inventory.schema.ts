@@ -18,6 +18,7 @@ export const createInventorySchema = z.object({
   purchase_description: z.string().optional(),
   alias: z.string().optional(),
   quantity: z.number().min(0).optional(),
+  minqty: z.number().min(0).optional(),
   prices: z.number().min(0).optional(),
 });
 
