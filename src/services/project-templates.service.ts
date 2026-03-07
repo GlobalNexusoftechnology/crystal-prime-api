@@ -46,9 +46,8 @@ export const ProjectTemplateService = () => {
           description: milestone.description,
           estimated_days: milestone.estimated_days,
         };
-        const createdMilestone = await milestoneService.createMilestone(
-          milestoneData
-        );
+        const createdMilestone =
+          await milestoneService.createMilestone(milestoneData);
         let createdTasks = [];
         if (Array.isArray(milestone.tasks)) {
           for (const task of milestone.tasks) {
@@ -91,15 +90,22 @@ export const ProjectTemplateService = () => {
         "project_milestone_master",
         "project_milestone_master.project_task_master",
       ],
+      order: {
+        project_milestone_master: {
+          project_task_master: {
+            created_at: "ASC",
+          },
+        },
+      },
     });
+
     if (!template) throw new AppError(404, "Project template not found");
     return template;
   };
-
   // Update
   const updateTemplate = async (
     id: string,
-    data: any // Accepts milestones and tasks now
+    data: any, // Accepts milestones and tasks now
   ) => {
     const template = await templateRepo.findOne({
       where: { id, deleted: false },
@@ -113,8 +119,10 @@ export const ProjectTemplateService = () => {
     // Update template fields
     if (data.name !== undefined) template.name = data.name;
     if (data.description !== undefined) template.description = data.description;
-    if (data.project_type !== undefined) template.project_type = data.project_type;
-    if (data.estimated_days !== undefined) template.estimated_days = data.estimated_days;
+    if (data.project_type !== undefined)
+      template.project_type = data.project_type;
+    if (data.estimated_days !== undefined)
+      template.estimated_days = data.estimated_days;
     await templateRepo.save(template);
 
     const milestoneService = ProjectMilestoneMasterService();
@@ -202,7 +210,7 @@ export const ProjectTemplateService = () => {
       where: {
         template: { id: id },
         deleted: false,
-      }
+      },
     });
     if (exist) {
       throw new AppError(400, "This project template is in use cannot delete.");
