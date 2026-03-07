@@ -1379,7 +1379,7 @@ export const LeadService = () => {
                           spacing: PARA_SPACING,
                           children: [
                             new TextRun({
-                              text: "Crystal Prime",
+                              text: "Crystal Portal Cabins",
                               bold: true,
                               size: 22,
                             }),
@@ -1447,41 +1447,45 @@ export const LeadService = () => {
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
                           spacing: PARA_SPACING,
-                          children: [new TextRun({ text: "Client GST No: -" })],
-                        }),
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          spacing: PARA_SPACING,
                           children: [
                             new TextRun({
                               text: `Client Name: ${lead.first_name || ""} ${lead.last_name || ""}`,
                             }),
                           ],
                         }),
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          spacing: PARA_SPACING,
-                          children: [
-                            new TextRun({
-                              text: `Client Address: ${lead.location || "-"}`,
-                            }),
-                          ],
-                        }),
-                        new Paragraph({
-                          alignment: AlignmentType.RIGHT,
-                          spacing: PARA_SPACING,
-                          children: [
-                            new TextRun({
-                              text: `Client Contact No: ${lead.phone || "-"}`,
-                            }),
-                          ],
-                        }),
+
                         new Paragraph({
                           alignment: AlignmentType.RIGHT,
                           spacing: PARA_SPACING,
                           children: [
                             new TextRun({
                               text: `Client Email ID: ${lead.email || "-"}`,
+                            }),
+                          ],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Mobile No: ${lead.phone || "-"}`,
+                            }),
+                          ],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [new TextRun({ text: "Client GST No: -" })],
+                        }),
+
+                        new Paragraph({
+                          alignment: AlignmentType.RIGHT,
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: `Client Address: ${lead.location || "-"}`,
                             }),
                           ],
                         }),
