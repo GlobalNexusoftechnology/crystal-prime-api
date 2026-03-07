@@ -1388,7 +1388,31 @@ export const LeadService = () => {
                           spacing: PARA_SPACING,
                           children: [
                             new TextRun({
-                              text: "Email ID: info@crytalprime.com",
+                              text: "Email ID: sales@crytalprime.com",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Mobile No: +91 9022236505",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "GST No: 27AAJFC0916G1ZO",
+                            }),
+                          ],
+                        }),
+                        new Paragraph({
+                          spacing: PARA_SPACING,
+                          children: [
+                            new TextRun({
+                              text: "Address: Shop No. 1, House 136/02, Adivali Bhutavali, Near L & T Infotech, Mahape Shil Road, Mahape, Navi Mumbai, Maharashtra 400710, India",
                             }),
                           ],
                         }),
