@@ -267,16 +267,16 @@ export const ProjectService = () => {
       ],
       order: {
         milestones: {
-          created_on: "ASC",
+          created_at: "ASC",
           tasks: {
-            created_on: "ASC",
+            created_at: "ASC",
           },
           tickets: {
-            created_on: "ASC",
+            created_at: "ASC",
           },
         },
         attachments: {
-          created_on: "ASC",
+          created_at: "ASC",
         },
       },
     });
