@@ -267,6 +267,8 @@ export const ProjectService = () => {
       ],
       order: {
         milestones: {
+          created_at: "DESC",
+
           tasks: {
             created_at: "DESC",
           },
