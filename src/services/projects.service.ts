@@ -10,17 +10,16 @@ import { User } from "../entities";
 import { NotificationService } from "./notification.service";
 import { NotificationType } from "../entities/notification.entity";
 
-
 const calculateTaskDelayDays = (task: any): number | null => {
   if (!task.due_date) return null;
   const incompleteStatuses = ["Open", "In Progress", "On Hold", "Reopened"];
   if (!incompleteStatuses.includes(task.status)) return null;
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const dueDate = new Date(task.due_date);
   dueDate.setHours(0, 0, 0, 0);
-  
+
   if (dueDate > today) return 0;
   const diffTime = today.getTime() - dueDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -31,7 +30,7 @@ const calculateMilestoneDelay = (milestone: any): number | null => {
   if (!milestone.tasks || milestone.tasks.length === 0) return null;
   const taskDelays = milestone.tasks
     .map((task: any) => calculateTaskDelayDays(task))
-    .filter((delay:any): delay is number => delay !== null && delay > 0);
+    .filter((delay: any): delay is number => delay !== null && delay > 0);
   if (taskDelays.length === 0) return 0;
   return Math.max(...taskDelays);
 };
@@ -43,9 +42,9 @@ interface ProjectInput {
   project_type?: string;
   status?: ProjectStatus;
   budget?: number;
-  cost_of_labour?: number,
-  overhead_cost?: number,
-  extra_cost?: number,
+  cost_of_labour?: number;
+  overhead_cost?: number;
+  extra_cost?: number;
   estimated_cost?: number;
   actual_cost?: number;
   start_date?: Date;
@@ -75,15 +74,26 @@ export const ProjectService = () => {
     overheadCost?: number | string,
     actualStartDate?: Date | string,
     actualEndDate?: Date | string,
-    extraCost?: number | string
+    extraCost?: number | string,
   ): number | null => {
     const labour = Number(costOfLabour) || 0;
     const overhead = Number(overheadCost) || 0;
     const extra = Number(extraCost) || 0;
     if (!actualStartDate || !actualEndDate) return null;
-    const startDateObj = typeof actualStartDate === 'string' ? new Date(actualStartDate) : actualStartDate;
-    const endDateObj = typeof actualEndDate === 'string' ? new Date(actualEndDate) : actualEndDate;
-    if (!(startDateObj instanceof Date) || isNaN(startDateObj.getTime()) || !(endDateObj instanceof Date) || isNaN(endDateObj.getTime())) {
+    const startDateObj =
+      typeof actualStartDate === "string"
+        ? new Date(actualStartDate)
+        : actualStartDate;
+    const endDateObj =
+      typeof actualEndDate === "string"
+        ? new Date(actualEndDate)
+        : actualEndDate;
+    if (
+      !(startDateObj instanceof Date) ||
+      isNaN(startDateObj.getTime()) ||
+      !(endDateObj instanceof Date) ||
+      isNaN(endDateObj.getTime())
+    ) {
       return null;
     }
     const msPerDay = 1000 * 60 * 60 * 24;
@@ -121,7 +131,9 @@ export const ProjectService = () => {
     let client;
     if (client_id) {
       client = queryRunner
-        ? await queryRunner.manager.findOne(Clients, { where: { id: client_id } })
+        ? await queryRunner.manager.findOne(Clients, {
+            where: { id: client_id },
+          })
         : await clientRepo.findOne({ where: { id: client_id } });
       if (!client) throw new AppError(404, "Client not found");
     }
@@ -138,10 +150,12 @@ export const ProjectService = () => {
       overhead_cost,
       actual_start_date,
       actual_end_date,
-      extra_cost
+      extra_cost,
     );
 
-    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Project)
+      : ProjectRepo;
     const project = repo.create({
       name,
       description,
@@ -168,15 +182,20 @@ export const ProjectService = () => {
     // Automatically create Support Milestone only (task will be created when first ticket is generated)
     try {
       // Create Support Milestone
-      const supportMilestone = await milestoneService.createMilestone({
-        name: "Support",
-        description: "Support and maintenance milestone for ongoing project support",
-        status: "Open",
-        project_id: savedProject.id,
-        start_date: new Date(),
-        end_date: savedProject.end_date || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
-      }, queryRunner);
-
+      const supportMilestone = await milestoneService.createMilestone(
+        {
+          name: "Support",
+          description:
+            "Support and maintenance milestone for ongoing project support",
+          status: "Open",
+          project_id: savedProject.id,
+          start_date: new Date(),
+          end_date:
+            savedProject.end_date ||
+            new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now if no end date
+        },
+        queryRunner,
+      );
     } catch (error) {
       console.error("Error creating support milestone:", error);
       // Don't fail the project creation if milestone/task creation fails
@@ -186,9 +205,12 @@ export const ProjectService = () => {
   };
 
   // Get All Projects
-  const getAllProject = async (userId?: string, userRole?: string, user?: User) => {
-
-    if (userRole && userRole.toLowerCase() === 'client') {
+  const getAllProject = async (
+    userId?: string,
+    userRole?: string,
+    user?: User,
+  ) => {
+    if (userRole && userRole.toLowerCase() === "client") {
       const currentClient = await clientRepo.findOne({
         where: { user: { id: user?.id }, deleted: false },
       });
@@ -200,7 +222,7 @@ export const ProjectService = () => {
       return await ProjectRepo.find({
         where: {
           client: { id: currentClient.id },
-          deleted: false
+          deleted: false,
         },
         order: { created_at: "DESC" },
         relations: [
@@ -210,7 +232,7 @@ export const ProjectService = () => {
           "milestones.tickets",
           "attachments",
           "attachments.uploaded_by",
-          "project_type"
+          "project_type",
         ],
       });
     }
@@ -225,7 +247,7 @@ export const ProjectService = () => {
         "milestones.tickets",
         "attachments",
         "attachments.uploaded_by",
-        "project_type"
+        "project_type",
       ],
     });
   };
@@ -241,8 +263,22 @@ export const ProjectService = () => {
         "milestones.tickets",
         "attachments",
         "attachments.uploaded_by",
-        "project_type"
+        "project_type",
       ],
+      order: {
+        milestones: {
+          created_on: "ASC",
+          tasks: {
+            created_on: "ASC",
+          },
+          tickets: {
+            created_on: "ASC",
+          },
+        },
+        attachments: {
+          created_on: "ASC",
+        },
+      },
     });
 
     if (!project) throw new AppError(404, "Project record not found");
@@ -250,9 +286,17 @@ export const ProjectService = () => {
   };
 
   // Update Project
-  const updateProject = async (id: string, data: Partial<ProjectInput>, queryRunner?: any) => {
-    const repo = queryRunner ? queryRunner.manager.getRepository(Project) : ProjectRepo;
-    const clientRepository = queryRunner ? queryRunner.manager.getRepository(Clients) : clientRepo;
+  const updateProject = async (
+    id: string,
+    data: Partial<ProjectInput>,
+    queryRunner?: any,
+  ) => {
+    const repo = queryRunner
+      ? queryRunner.manager.getRepository(Project)
+      : ProjectRepo;
+    const clientRepository = queryRunner
+      ? queryRunner.manager.getRepository(Clients)
+      : clientRepo;
     const project = await repo.findOne({
       where: { id, deleted: false },
       relations: ["client", "client.user"],
@@ -283,7 +327,9 @@ export const ProjectService = () => {
     const originalStatus = project.status;
 
     if (client_id) {
-      const client = await clientRepository.findOne({ where: { id: client_id } });
+      const client = await clientRepository.findOne({
+        where: { id: client_id },
+      });
       if (!client) throw new AppError(404, "Client not found");
       project.client = client;
     }
@@ -313,25 +359,36 @@ export const ProjectService = () => {
       actual_end_date !== undefined ||
       extra_cost !== undefined
     ) {
-      const newLabourCost = cost_of_labour !== undefined ? cost_of_labour : project.cost_of_labour;
-      const newOverheadCost = overhead_cost !== undefined ? overhead_cost : project.overhead_cost;
-      const newActualStartDate = actual_start_date !== undefined ? actual_start_date : project.actual_start_date;
-      const newActualEndDate = actual_end_date !== undefined ? actual_end_date : project.actual_end_date;
-      const newExtraCost = extra_cost !== undefined ? extra_cost : project.extra_cost;
+      const newLabourCost =
+        cost_of_labour !== undefined ? cost_of_labour : project.cost_of_labour;
+      const newOverheadCost =
+        overhead_cost !== undefined ? overhead_cost : project.overhead_cost;
+      const newActualStartDate =
+        actual_start_date !== undefined
+          ? actual_start_date
+          : project.actual_start_date;
+      const newActualEndDate =
+        actual_end_date !== undefined
+          ? actual_end_date
+          : project.actual_end_date;
+      const newExtraCost =
+        extra_cost !== undefined ? extra_cost : project.extra_cost;
       project.actual_cost = calculateActualCost(
         newLabourCost,
         newOverheadCost,
         newActualStartDate,
         newActualEndDate,
-        newExtraCost
+        newExtraCost,
       );
     } else if (actual_cost !== undefined) {
       // Allow manual override if none of the above are being updated
       project.actual_cost = actual_cost;
     }
 
-    if (start_date !== undefined) project.start_date = mergeDateWithCurrentTime(start_date);
-    if (end_date !== undefined) project.end_date = mergeDateWithCurrentTime(end_date);
+    if (start_date !== undefined)
+      project.start_date = mergeDateWithCurrentTime(start_date);
+    if (end_date !== undefined)
+      project.end_date = mergeDateWithCurrentTime(end_date);
     if (actual_start_date !== undefined)
       project.actual_start_date = actual_start_date;
     if (actual_end_date !== undefined)
@@ -340,13 +397,13 @@ export const ProjectService = () => {
     if (renewal_date !== undefined) project.renewal_date = renewal_date;
     if (is_renewal !== undefined) project.is_renewal = is_renewal;
 
-      // Check if status changed and send notification to client
+    // Check if status changed and send notification to client
     if (status !== undefined && status !== originalStatus) {
-        await sendProjectStatusChangeNotification(
-          project,
-          originalStatus,
-          status,
-        );
+      await sendProjectStatusChangeNotification(
+        project,
+        originalStatus,
+        status,
+      );
     }
 
     return await repo.save(project);
@@ -368,10 +425,13 @@ export const ProjectService = () => {
   // Aggregate project counts by status, filtered by user for non-admins (using joins, no entity change)
   const getProjectStatusCounts = async (userId?: string, role?: string) => {
     const qb = ProjectRepo.createQueryBuilder("project")
-      .select(["project.status AS status", "COUNT(DISTINCT project.id)::int AS count"])
+      .select([
+        "project.status AS status",
+        "COUNT(DISTINCT project.id)::int AS count",
+      ])
       .where("project.deleted = false");
 
-    if (role && role.toLowerCase() === 'client' && userId) {
+    if (role && role.toLowerCase() === "client" && userId) {
       // For client role, filter by client's projects
       qb.leftJoin("project.client", "client")
         .leftJoin("client.user", "user")
@@ -382,7 +442,7 @@ export const ProjectService = () => {
         .leftJoin("milestones.tasks", "tasks")
         .andWhere(
           "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
-          { userId }
+          { userId },
         );
     }
     return await qb.groupBy("project.status").getRawMany();
@@ -391,11 +451,11 @@ export const ProjectService = () => {
   // Get All Projects
   const getAllProjectDashboard = async (userId?: string, userRole?: string) => {
     // If client role, return only projects for that client
-    if (userRole && userRole.toLowerCase() === 'client') {
+    if (userRole && userRole.toLowerCase() === "client") {
       return await ProjectRepo.find({
         where: {
           client: { user: { id: userId } },
-          deleted: false
+          deleted: false,
         },
         order: { created_at: "DESC" },
         relations: [
@@ -404,7 +464,7 @@ export const ProjectService = () => {
           "milestones.tasks",
           "attachments",
           "attachments.uploaded_by",
-          "project_type"
+          "project_type",
         ],
       });
     }
@@ -419,41 +479,43 @@ export const ProjectService = () => {
         "milestones.tasks",
         "attachments",
         "attachments.uploaded_by",
-        "project_type"
+        "project_type",
       ],
     });
   };
 
-const sendProjectStatusChangeNotification = async (
-  project: Project,
-  oldStatus: ProjectStatus,
-  newStatus: ProjectStatus
-) => {
-  try {
-    // We already have the user object from the relations
-    if (project.client && project.client.user) {
-      await Notification.createNotification(
-        project.client.user.id, // Directly use the user ID we already have
-        NotificationType.PROJECT_STATUS_CHANGED,
-        `Your project "${project.name}" status has changed from ${oldStatus} to ${newStatus}`,
-        {
-          projectId: project.id,
-          projectName: project.name,
-          oldStatus: oldStatus,
-          newStatus: newStatus,
-          changedAt: new Date().toISOString(),
-          clientId: project.client.id,
-          clientName: project.client.name
-        }
+  const sendProjectStatusChangeNotification = async (
+    project: Project,
+    oldStatus: ProjectStatus,
+    newStatus: ProjectStatus,
+  ) => {
+    try {
+      // We already have the user object from the relations
+      if (project.client && project.client.user) {
+        await Notification.createNotification(
+          project.client.user.id, // Directly use the user ID we already have
+          NotificationType.PROJECT_STATUS_CHANGED,
+          `Your project "${project.name}" status has changed from ${oldStatus} to ${newStatus}`,
+          {
+            projectId: project.id,
+            projectName: project.name,
+            oldStatus: oldStatus,
+            newStatus: newStatus,
+            changedAt: new Date().toISOString(),
+            clientId: project.client.id,
+            clientName: project.client.name,
+          },
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to send project status change notification:",
+        error,
       );
     }
-  } catch (error) {
-    console.error('Failed to send project status change notification:', error);
-  }
-};
+  };
 
   // Removed: getAllProjectWithDelays
-
 
   return {
     sendProjectStatusChangeNotification,
