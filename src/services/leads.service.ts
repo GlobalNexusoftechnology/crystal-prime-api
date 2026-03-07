@@ -1362,6 +1362,8 @@ export const LeadService = () => {
                 new TableRow({
                   children: [
                     new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE }, // ✅ 50%
+
                       margins: CELL_PADDING,
                       children: [
                         new Paragraph({
@@ -1420,6 +1422,8 @@ export const LeadService = () => {
                     }),
 
                     new TableCell({
+                      width: { size: 50, type: WidthType.PERCENTAGE }, // ✅ 50%
+
                       margins: CELL_PADDING,
                       children: [
                         new Paragraph({
