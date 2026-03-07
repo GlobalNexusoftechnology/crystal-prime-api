@@ -93,7 +93,7 @@ export const ProjectTemplateService = () => {
       order: {
         project_milestone_master: {
           project_task_master: {
-            created_at: "ASC",
+            created_at: "DESC",
           },
         },
       },
