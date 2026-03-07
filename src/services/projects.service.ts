@@ -265,6 +265,13 @@ export const ProjectService = () => {
         "attachments.uploaded_by",
         "project_type",
       ],
+      order: {
+        milestones: {
+          tasks: {
+            created_at: "ASC",
+          },
+        },
+      },
     });
 
     if (!project) throw new AppError(404, "Project record not found");
