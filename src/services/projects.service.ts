@@ -421,6 +421,7 @@ export const ProjectService = () => {
     const qb = ProjectRepo.createQueryBuilder("project")
       .select([
         "project.status AS status",
+        "project.name AS name",
         "COUNT(DISTINCT project.id)::int AS count",
       ])
       .where("project.deleted = false");
