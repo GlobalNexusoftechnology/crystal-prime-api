@@ -419,30 +419,42 @@ export const ProjectService = () => {
   // Aggregate project counts by status, filtered by user for non-admins (using joins, no entity change)
   const getProjectStatusCounts = async (userId?: string, role?: string) => {
     const qb = ProjectRepo.createQueryBuilder("project")
+      .leftJoin("project.milestones", "milestones")
       .select([
-        "project.status AS status",
+        "project.id AS id",
         "project.name AS name",
-        "COUNT(DISTINCT project.id)::int AS count",
+        "project.status AS status",
       ])
+      .addSelect("COUNT(DISTINCT milestones.id)::int", "totalMilestones")
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN milestones.status = 'Open' THEN milestones.id END)::int`,
+        "openMilestoneCount",
+      )
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN milestones.status = 'In Progress' THEN milestones.id END)::int`,
+        "inProgressMilestoneCount",
+      )
+      .addSelect(
+        `COUNT(DISTINCT CASE WHEN milestones.status = 'Completed' THEN milestones.id END)::int`,
+        "completedMilestoneCount",
+      )
       .where("project.deleted = false");
 
     if (role && role.toLowerCase() === "client" && userId) {
-      // For client role, filter by client's projects
       qb.leftJoin("project.client", "client")
         .leftJoin("client.user", "user")
         .andWhere("user.id = :userId", { userId });
     } else if (role !== "admin" && role !== "Admin" && userId) {
-      // For other non-admin roles, filter by assignments
-      qb.leftJoin("project.milestones", "milestones")
-        .leftJoin("milestones.tasks", "tasks")
-        .andWhere(
-          "milestones.assigned_to = :userId OR tasks.assigned_to = :userId",
-          { userId },
-        );
+      qb.leftJoin("milestones.tasks", "tasks").andWhere(
+        "(milestones.assigned_to = :userId OR tasks.assigned_to = :userId)",
+        { userId },
+      );
     }
+
     return await qb
-      .groupBy("project.status")
+      .groupBy("project.id")
       .addGroupBy("project.name")
+      .addGroupBy("project.status")
       .getRawMany();
   };
 
