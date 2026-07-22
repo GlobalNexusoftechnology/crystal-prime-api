@@ -1,18 +1,46 @@
 import { Request, Response, NextFunction } from "express";
 import bcrypt from "bcryptjs";
 
-import { findAllUsers, findUserById, softDeleteUser, updateUser, createUser, exportUsersToExcel, findUserByEmail, findUserByPhoneNumber, changePassword, createClientCredentials, changeClientPassword } from "../services/user.service";
-import { changeClientPasswordSchema, changePasswordSchema, createUserSchema, updateUserSchema } from "../schemas/user.schema";
+import {
+  findAllUsers,
+  findUserById,
+  softDeleteUser,
+  updateUser,
+  createUser,
+  exportUsersToExcel,
+  findUserByEmail,
+  findUserByPhoneNumber,
+  changePassword,
+  createClientCredentials,
+  changeClientPassword,
+} from "../services/user.service";
+import {
+  changeClientPasswordSchema,
+  changePasswordSchema,
+  createUserSchema,
+  updateUserSchema,
+} from "../schemas/user.schema";
 
 // create user
 export const createUserController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const validated = createUserSchema.parse({ body: req.body });
-    const { email, first_name, last_name, password, keywords, role_id, dob, phone_number, employee_id } = validated.body;
+    const {
+      email,
+      first_name,
+      last_name,
+      password,
+      keywords,
+      role_id,
+
+      phone_number,
+      employee_id,
+      target,
+    } = validated.body;
 
     // Check if user already exists by email
     const existingUserByEmail = await findUserByEmail({ email });
@@ -42,14 +70,14 @@ export const createUserController = async (
       email,
       first_name,
       last_name,
-      dob,
       password: hashedPassword,
       role_id,
       verificationCode: null,
       verified: true,
       phone_number,
       employee_id,
-      keywords
+      keywords,
+      target,
     };
 
     // Create user
@@ -77,7 +105,7 @@ export const createUserController = async (
 export const updateProfileController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const userId = req.params.id;
@@ -108,7 +136,7 @@ export const updateProfileController = async (
       }
     }
 
-      // Hash the password if it's provided
+    // Hash the password if it's provided
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10); // 10 salt rounds
       payload.password = hashedPassword;
@@ -131,7 +159,7 @@ export const updateProfileController = async (
 export const getProfileController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { userId } = req.params;
@@ -151,7 +179,7 @@ export const getProfileController = async (
       id: profile.id,
       email: profile.email,
       phone_number: profile.phone_number,
-      dob: profile.dob,
+
       role: profile.role,
       created_at: profile.created_at,
       updated_at: profile.updated_at,
@@ -173,7 +201,7 @@ export const getProfileController = async (
 export const getAllUsersHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const searchText = req.query.searchText as string | undefined;
@@ -183,13 +211,13 @@ export const getAllUsersHandler = async (
     const filters = {
       searchText,
       page,
-      limit
+      limit,
     };
 
     const result = await findAllUsers(filters);
-    res.status(200).json({ 
-      status: "success", 
-      data: { list: result.data, pagination: result.pagination }
+    res.status(200).json({
+      status: "success",
+      data: { list: result.data, pagination: result.pagination },
     });
   } catch (error) {
     next(error);
@@ -200,7 +228,7 @@ export const getAllUsersHandler = async (
 export const softDeleteUserHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const result = await softDeleteUser(req.params.id);
@@ -218,7 +246,7 @@ export const softDeleteUserHandler = async (
 export const exportUsersExcelController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const searchText = req.query.searchText as string | undefined;
@@ -226,27 +254,28 @@ export const exportUsersExcelController = async (
 
     res.setHeader(
       "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=leads_${Date.now()}.xlsx`
-    )
+      `attachment; filename=leads_${Date.now()}.xlsx`,
+    );
 
-    await workbook.xlsx.write(res)
-    res.end()
+    await workbook.xlsx.write(res);
+    res.end();
   } catch (error) {
     console.error("Error exporting users:", error);
-    res.status(500).json({ status: "error", message: "Failed to export user data" });
+    res
+      .status(500)
+      .json({ status: "error", message: "Failed to export user data" });
   }
 };
-
 
 //change password
 export const changePasswordController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { id: userId } = res.locals.user;
@@ -258,7 +287,6 @@ export const changePasswordController = async (
       message: "Password changed successfully",
       data: response,
     });
-    
   } catch (error) {
     next(error);
   }
@@ -268,7 +296,7 @@ export const changePasswordController = async (
 export const changeClientPasswordController = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { id } = res.locals.user;
@@ -280,7 +308,6 @@ export const changeClientPasswordController = async (
       message: "Client Password changed successfully",
       data: response,
     });
-    
   } catch (error) {
     next(error);
   }
@@ -289,10 +316,9 @@ export const changeClientPasswordController = async (
 export const createClientCredentialsHandler = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    
     const response = await createClientCredentials(req.body);
     // Send success response
     res.status(200).json({
@@ -300,10 +326,7 @@ export const createClientCredentialsHandler = async (
       message: "Client credentials created successfully.",
       data: response,
     });
-    
   } catch (error) {
     next(error);
   }
 };
-
-

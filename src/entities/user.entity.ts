@@ -36,16 +36,12 @@ export class User extends Model {
   @Column({ type: "varchar", length: 50, nullable: true, unique: true })
   employee_id: string | null;
 
-
   @Column({ nullable: true })
   phone_number: string;
 
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: "role_id" })
   role: Role;
-
-  @Column({ type: "timestamp", nullable: true })
-  dob: Date;
 
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: "team_lead_id" })
@@ -63,12 +59,14 @@ export class User extends Model {
   @Column({ type: "text", array: true, nullable: true })
   keywords?: string[];
 
+  @Column({ type: "int", nullable: true })
+  target?: number;
+
   @Column({ nullable: false })
   password: string;
 
   @Column({ nullable: true })
   lastAssigned: string;
-
 
   @OneToMany(() => Leads, (lead) => lead.assigned_to)
   assignedLeads: Leads[];
@@ -107,7 +105,7 @@ export class User extends Model {
 
   static async comparePasswords(
     candidatePassword: string,
-    hashedPassword: string
+    hashedPassword: string,
   ) {
     return await bcrypt.compare(candidatePassword, hashedPassword);
   }
