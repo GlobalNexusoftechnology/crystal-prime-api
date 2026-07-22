@@ -65,8 +65,8 @@ export const dashboardController = () => {
           },
           {
             count: String(todayLeadsFollowupsCount || 0),
-            title: "Lead Follow-ups",
-            subtitle: "Today's Lead Follow-ups",
+            title: "Assigned Leads",
+            subtitle: "Today's Assigned Leads",
           },
           {
             count: String(leadStats.convertedLeads || 0),
