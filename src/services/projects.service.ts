@@ -440,7 +440,10 @@ export const ProjectService = () => {
           { userId },
         );
     }
-    return await qb.groupBy("project.status").getRawMany();
+    return await qb
+      .groupBy("project.status")
+      .addGroupBy("project.name")
+      .getRawMany();
   };
 
   // Get All Projects
