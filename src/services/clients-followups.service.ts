@@ -14,7 +14,14 @@ const userRepo = AppDataSource.getRepository(User);
 const taskRepo = AppDataSource.getRepository(ProjectTasks);
 
 export const ClientFollowupService = () => {
-  const createFollowup = async (data: { client_id: string; user_id?: string; status?: any; due_date?: Date; remarks?: string; project_task_id?: string; }) => {
+  const createFollowup = async (data: {
+    client_id: string;
+    user_id?: string;
+    status?: any;
+    due_date?: Date;
+    remarks?: string;
+    project_task_id?: string;
+  }) => {
     const client = await clientRepo.findOneBy({ id: data.client_id });
     if (!client) throw new AppError(404, "Client not found");
 
@@ -31,7 +38,7 @@ export const ClientFollowupService = () => {
     }
 
     let completed_date;
-    if (data.status === 'COMPLETED' && !completed_date) {
+    if (data.status === "COMPLETED" && !completed_date) {
       completed_date = new Date();
     }
 
@@ -48,22 +55,23 @@ export const ClientFollowupService = () => {
     const saved = await followupRepo.save(followup);
 
     // 1. Staff Notification
-if (saved.user) {
-  const notificationService = NotificationService();
-  const staffName = saved.user.first_name + " " + (saved.user.last_name || "");
-  const clientName = saved.client.name; // assuming Clients has name
-  await notificationService.createNotification(
-    saved.user.id,
-    NotificationType.CLIENT_FOLLOWUP_ASSIGNED,
-    `New follow-up assigned to you for client ${clientName}. Due on ${saved.due_date?.toDateString() || 'N/A'}.`,
-    {
-      followupId: saved.id,
-      clientId: saved.client.id,
-      projectTaskId: saved.project_task?.id || null,
-      dueDate: saved.due_date,
+    if (saved.user) {
+      const notificationService = NotificationService();
+      const staffName =
+        saved.user.first_name + " " + (saved.user.last_name || "");
+      const clientName = saved.client.name; // assuming Clients has name
+      await notificationService.createNotification(
+        saved.user.id,
+        NotificationType.CLIENT_FOLLOWUP_ASSIGNED,
+        `New follow-up assigned to you for client ${clientName}. Due on ${saved.due_date?.toDateString() || "N/A"}.`,
+        {
+          followupId: saved.id,
+          clientId: saved.client.id,
+          projectTaskId: saved.project_task?.id || null,
+          dueDate: saved.due_date,
+        },
+      );
     }
-  );
-}
     // Reload with relations
     const withRelations = await followupRepo.findOne({
       where: { id: saved.id },
@@ -85,57 +93,70 @@ if (saved.user) {
     user_id?: string;
     status?: string | string[];
     from_date?: string; // ISO string
-    to_date?: string;   // ISO string
-    due_from?: string;  // ISO string for due_date
-    due_to?: string;    // ISO string for due_date
+    to_date?: string; // ISO string
+    due_from?: string; // ISO string for due_date
+    due_to?: string; // ISO string for due_date
     due_today?: string | boolean; // "true" | "false"
     q?: string; // search in remarks
   }) => {
     const qb = followupRepo
-      .createQueryBuilder('f')
-      .leftJoinAndSelect('f.user', 'u')
-      .leftJoinAndSelect('f.client', 'c')
-      .leftJoinAndSelect('f.project_task', 't')
-      .leftJoinAndSelect('t.milestone', 'm')
-      .leftJoinAndSelect('m.project', 'p')
-      .leftJoinAndSelect('p.client', 'pc')
-      .where('f.deleted = :deleted', { deleted: false });
+      .createQueryBuilder("f")
+      .leftJoinAndSelect("f.user", "u")
+      .leftJoinAndSelect("f.client", "c")
+      .leftJoinAndSelect("f.project_task", "t")
+      .leftJoinAndSelect("t.milestone", "m")
+      .leftJoinAndSelect("m.project", "p")
+      .leftJoinAndSelect("p.client", "pc")
+      .where("f.deleted = :deleted", { deleted: false });
 
     if (filters?.project_task_id) {
-      qb.andWhere('t.id = :taskId', { taskId: filters.project_task_id });
+      qb.andWhere("t.id = :taskId", { taskId: filters.project_task_id });
     }
     if (filters?.client_id) {
-      qb.andWhere('c.id = :clientId', { clientId: filters.client_id });
+      qb.andWhere("c.id = :clientId", { clientId: filters.client_id });
     }
     if (filters?.user_id) {
-      qb.andWhere('u.id = :userId', { userId: filters.user_id });
+      qb.andWhere("u.id = :userId", { userId: filters.user_id });
     }
     if (filters?.status) {
-      const statuses = Array.isArray(filters.status) ? filters.status : [filters.status];
-      qb.andWhere('f.status IN (:...statuses)', { statuses });
+      const statuses = Array.isArray(filters.status)
+        ? filters.status
+        : [filters.status];
+      qb.andWhere("f.status IN (:...statuses)", { statuses });
     }
     if (filters?.from_date && filters?.to_date) {
-      qb.andWhere('f.created_at BETWEEN :from AND :to', { from: filters.from_date, to: filters.to_date });
+      qb.andWhere("f.created_at BETWEEN :from AND :to", {
+        from: filters.from_date,
+        to: filters.to_date,
+      });
     } else if (filters?.from_date) {
-      qb.andWhere('f.created_at >= :from', { from: filters.from_date });
+      qb.andWhere("f.created_at >= :from", { from: filters.from_date });
     } else if (filters?.to_date) {
-      qb.andWhere('f.created_at <= :to', { to: filters.to_date });
+      qb.andWhere("f.created_at <= :to", { to: filters.to_date });
     }
     if (filters?.due_from && filters?.due_to) {
-      qb.andWhere('f.due_date BETWEEN :dfrom AND :dto', { dfrom: filters.due_from, dto: filters.due_to });
+      qb.andWhere("f.due_date BETWEEN :dfrom AND :dto", {
+        dfrom: filters.due_from,
+        dto: filters.due_to,
+      });
     } else if (filters?.due_from) {
-      qb.andWhere('f.due_date >= :dfrom', { dfrom: filters.due_from });
+      qb.andWhere("f.due_date >= :dfrom", { dfrom: filters.due_from });
     } else if (filters?.due_to) {
-      qb.andWhere('f.due_date <= :dto', { dto: filters.due_to });
+      qb.andWhere("f.due_date <= :dto", { dto: filters.due_to });
     }
-    if (filters?.due_today && String(filters.due_today).toLowerCase() === 'true') {
-      qb.andWhere('DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE');
+    if (
+      filters?.due_today &&
+      String(filters.due_today).toLowerCase() === "true"
+    ) {
+      qb.andWhere("DATE(COALESCE(f.due_date, f.created_at)) = CURRENT_DATE");
     }
     if (filters?.q) {
-      qb.andWhere('LOWER(f.remarks) LIKE :q', { q: `%${filters.q.toLowerCase()}%` });
+      qb.andWhere("LOWER(f.remarks) LIKE :q", {
+        q: `%${filters.q.toLowerCase()}%`,
+      });
     }
 
-    qb.orderBy('f.created_at', 'DESC');
+    qb.orderBy("f.created_at", "DESC");
     return await qb.getMany();
   };
 
@@ -143,22 +164,32 @@ if (saved.user) {
   const getTodayFollowupsCount = async (userId?: string, role?: string) => {
     // Get start and end of today to handle timezone issues properly
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    
-    const qb = followupRepo
-      .createQueryBuilder('f')
-      .leftJoin('f.user', 'u')
-      .leftJoin('f.project_task', 't')
-      .where('f.deleted = :deleted', { deleted: false })
-      // Check if followup was created today using date range
-      .andWhere('f.created_at >= :startOfToday', { startOfToday })
-      .andWhere('f.created_at < :endOfToday', { endOfToday })
-      // Exclude completed followups
-      .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
 
-    if (role?.toLowerCase() !== 'admin' && userId) {
-      qb.andWhere('(u.id = :userId OR t.assigned_to = :userId)', { userId });
+    const qb = followupRepo
+      .createQueryBuilder("f")
+      .leftJoin("f.user", "u")
+      .leftJoin("f.project_task", "t")
+      .where("f.deleted = :deleted", { deleted: false })
+      // Check if followup was created today using date range
+      .andWhere("f.created_at >= :startOfToday", { startOfToday })
+      .andWhere("f.created_at < :endOfToday", { endOfToday })
+      // Exclude completed followups
+      .andWhere("(f.status IS NULL OR f.status != :completed)", {
+        completed: "COMPLETED",
+      });
+
+    if (role?.toLowerCase() !== "admin" && userId) {
+      qb.andWhere("(u.id = :userId OR t.assigned_to = :userId)", { userId });
     }
 
     return await qb.getCount();
@@ -167,21 +198,31 @@ if (saved.user) {
   // Debug method to get today's followups with details
   const getTodayFollowupsDetails = async (userId?: string, role?: string) => {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    
-    const qb = followupRepo
-      .createQueryBuilder('f')
-      .leftJoinAndSelect('f.user', 'u')
-      .leftJoinAndSelect('f.client', 'c')
-      .leftJoinAndSelect('f.project_task', 't')
-      .where('f.deleted = :deleted', { deleted: false })
-      .andWhere('f.created_at >= :startOfToday', { startOfToday })
-      .andWhere('f.created_at < :endOfToday', { endOfToday })
-      .andWhere('(f.status IS NULL OR f.status != :completed)', { completed: 'COMPLETED' });
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
 
-    if (role?.toLowerCase() !== 'admin' && userId) {
-      qb.andWhere('(u.id = :userId OR t.assigned_to = :userId)', { userId });
+    const qb = followupRepo
+      .createQueryBuilder("f")
+      .leftJoinAndSelect("f.user", "u")
+      .leftJoinAndSelect("f.client", "c")
+      .leftJoinAndSelect("f.project_task", "t")
+      .where("f.deleted = :deleted", { deleted: false })
+      .andWhere("f.created_at >= :startOfToday", { startOfToday })
+      .andWhere("f.created_at < :endOfToday", { endOfToday })
+      .andWhere("(f.status IS NULL OR f.status != :completed)", {
+        completed: "COMPLETED",
+      });
+
+    if (role?.toLowerCase() !== "admin" && userId) {
+      qb.andWhere("(u.id = :userId OR t.assigned_to = :userId)", { userId });
     }
 
     return await qb.getMany();
@@ -190,19 +231,27 @@ if (saved.user) {
   // Simple method to get all followups created today (no filters)
   const getAllTodayFollowups = async () => {
     const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+
     const followups = await followupRepo
-      .createQueryBuilder('f')
-      .leftJoinAndSelect('f.user', 'u')
-      .leftJoinAndSelect('f.client', 'c')
-      .leftJoinAndSelect('f.project_task', 't')
-      .where('f.deleted = :deleted', { deleted: false })
-      .andWhere('f.created_at >= :startOfToday', { startOfToday })
-      .andWhere('f.created_at < :endOfToday', { endOfToday })
+      .createQueryBuilder("f")
+      .leftJoinAndSelect("f.user", "u")
+      .leftJoinAndSelect("f.client", "c")
+      .leftJoinAndSelect("f.project_task", "t")
+      .where("f.deleted = :deleted", { deleted: false })
+      .andWhere("f.created_at >= :startOfToday", { startOfToday })
+      .andWhere("f.created_at < :endOfToday", { endOfToday })
       .getMany();
-    
+
     return followups;
   };
 
@@ -222,7 +271,17 @@ if (saved.user) {
     return followup;
   };
 
-  const updateFollowup = async (id: string, data: { client_id?: string; user_id?: string; status?: any; due_date?: Date; completed_date?: Date; remarks?: string; }) => {
+  const updateFollowup = async (
+    id: string,
+    data: {
+      client_id?: string;
+      user_id?: string;
+      status?: any;
+      due_date?: Date;
+      completed_date?: Date;
+      remarks?: string;
+    },
+  ) => {
     const followup = await followupRepo.findOneBy({ id });
     if (!followup) throw new AppError(404, "Followup not found");
 
@@ -240,7 +299,7 @@ if (saved.user) {
     if (data.due_date !== undefined) followup.due_date = data.due_date;
     if (data.completed_date !== undefined) {
       followup.completed_date = data.completed_date;
-    } else if (data.status === 'COMPLETED') {
+    } else if (data.status === "COMPLETED") {
       followup.completed_date = new Date();
     }
     if (data.remarks !== undefined) followup.remarks = data.remarks;

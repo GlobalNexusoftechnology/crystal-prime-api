@@ -37,7 +37,8 @@ export const dashboardController = () => {
           yearlyChart,
           monthlyChart,
           weeklyChart,
-          todayClientFollowupsCount,
+          // todayClientFollowupsCount,
+          todayLeadsFollowupsCount,
         ] = await Promise.all([
           leadService.getLeadStats(userId, role),
           projectService.getProjectStatusCounts(userId, role),
@@ -51,7 +52,8 @@ export const dashboardController = () => {
           getEILogChartData(userId, role, "yearly"),
           getEILogChartData(userId, role, "monthly"),
           getEILogChartData(userId, role, "weekly"),
-          clientFollowupService.getTodayFollowupsCount(userId, role),
+          // clientFollowupService.getTodayFollowupsCount(userId, role),
+          leadService.getTodayAssignedLeadsCount(userId),
         ]);
 
         // Stats for cards
@@ -62,9 +64,9 @@ export const dashboardController = () => {
             subtitle: "Over All leads",
           },
           {
-            count: String(todayClientFollowupsCount || 0),
-            title: "Task Followups",
-            subtitle: "Today's pending work",
+            count: String(todayLeadsFollowupsCount || 0),
+            title: "Lead Follow-ups",
+            subtitle: "Today's Lead Follow-ups",
           },
           {
             count: String(leadStats.convertedLeads || 0),

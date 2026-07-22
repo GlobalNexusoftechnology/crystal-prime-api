@@ -777,6 +777,31 @@ export const LeadService = () => {
     };
   };
 
+  // get of no leads assigned to user
+  const getTodayAssignedLeadsCount = async (userId: string) => {
+    const now = new Date();
+
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+
+    const endOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+
+    return await leadRepo
+      .createQueryBuilder("lead")
+      .where("lead.deleted = false")
+      .andWhere("lead.assigned_to = :userId", { userId })
+      .andWhere("lead.created_at >= :startOfToday", { startOfToday })
+      .andWhere("lead.created_at < :endOfToday", { endOfToday })
+      .getCount();
+  };
+
   //  Export Leads to Excel
   const exportLeadsToExcel = async (
     userId: string,
@@ -2304,5 +2329,6 @@ export const LeadService = () => {
     findLeadByPhoneNumber,
     groupLeadsByStatus,
     groupLeadsByType,
+    getTodayAssignedLeadsCount,
   };
 };
