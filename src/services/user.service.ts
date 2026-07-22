@@ -6,7 +6,10 @@ import { createSession } from "../services/session.service";
 import AppError from "../utils/appError";
 import ExcelJS from "exceljs";
 import { Role } from "../entities/roles.entity";
-import { ChangePasswordInput, CreateClientCredentialsInput } from "../schemas/user.schema";
+import {
+  ChangePasswordInput,
+  CreateClientCredentialsInput,
+} from "../schemas/user.schema";
 import bcrypt from "bcryptjs";
 import { Clients } from "../entities/clients.entity";
 import { email } from "envalid";
@@ -15,9 +18,10 @@ const userRepository = AppDataSource.getRepository(User);
 const roleRepository = AppDataSource.getRepository(Role);
 const clientRepository = AppDataSource.getRepository(Clients);
 
-
 // Create user
-export const createUser = async (input: Partial<User> & { role_id?: string; team_lead_id?: string }) => {
+export const createUser = async (
+  input: Partial<User> & { role_id?: string; team_lead_id?: string },
+) => {
   const role = await roleRepository.findOne({
     where: { id: input.role_id, deleted: false },
   });
@@ -51,7 +55,7 @@ export const createUser = async (input: Partial<User> & { role_id?: string; team
 export const findUserByEmail = async ({ email }: { email: string }) => {
   return await userRepository.findOne({
     where: { email, deleted: false },
-    relations: ["role"]
+    relations: ["role"],
   });
 };
 
@@ -59,7 +63,7 @@ export const findUserByEmail = async ({ email }: { email: string }) => {
 export const findUserById = async (userId: string) => {
   const user = await userRepository.findOne({
     where: { id: userId, deleted: false },
-    relations: ["role", "team_lead"]
+    relations: ["role", "team_lead"],
   });
 
   if (!user) {
@@ -69,11 +73,17 @@ export const findUserById = async (userId: string) => {
   return user;
 };
 
-export const findUserByPhoneNumber = async ({ phone_number }: { phone_number: string }) => {
-  return AppDataSource.getRepository(User).findOne({ where: { phone_number, deleted: false } });
+export const findUserByPhoneNumber = async ({
+  phone_number,
+}: {
+  phone_number: string;
+}) => {
+  return AppDataSource.getRepository(User).findOne({
+    where: { phone_number, deleted: false },
+  });
 };
 
-// Find All user 
+// Find All user
 export const findAllUsers = async (filters: any = {}) => {
   const page = Number(filters.page) > 0 ? Number(filters.page) : 1;
   const limit = Number(filters.limit) > 0 ? Number(filters.limit) : 10;
@@ -81,17 +91,20 @@ export const findAllUsers = async (filters: any = {}) => {
 
   const { searchText } = filters;
 
-  const query = userRepository.createQueryBuilder("user")
+  const query = userRepository
+    .createQueryBuilder("user")
     .leftJoinAndSelect("user.role", "role")
     .leftJoinAndSelect("user.team_lead", "team_lead")
     .where("user.deleted = false")
-    .andWhere("LOWER(role.role) != LOWER(:clientRole)", { clientRole: "client" });
+    .andWhere("LOWER(role.role) != LOWER(:clientRole)", {
+      clientRole: "client",
+    });
 
   if (searchText && searchText.trim() !== "") {
     const search = `%${searchText.trim().toLowerCase()}%`;
     query.andWhere(
       `LOWER(user.first_name) LIKE :search OR LOWER(user.last_name) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(user.phone_number) LIKE :search OR LOWER(role.role) LIKE :search`,
-      { search }
+      { search },
     );
   }
 
@@ -115,7 +128,7 @@ export const findAllUsers = async (filters: any = {}) => {
 export const signTokens = async (
   user: User,
   ipAddress: string,
-  userAgent: string
+  userAgent: string,
 ) => {
   const session = await createSession(user.id, ipAddress, userAgent);
 
@@ -128,7 +141,7 @@ export const signTokens = async (
     "refreshTokenPrivateKey",
     {
       expiresIn: `${config.get<number>("refreshTokenExpiresIn")}m`,
-    }
+    },
   );
 
   return { access_token, refresh_token };
@@ -137,11 +150,11 @@ export const signTokens = async (
 // Update user
 export const updateUser = async (
   userId: string,
-  payload: Partial<User> & { role_id?: string; team_lead_id?: string }
+  payload: Partial<User> & { role_id?: string; team_lead_id?: string },
 ): Promise<User | null> => {
   const user = await userRepository.findOne({
     where: { id: userId },
-    relations: ['role', 'team_lead'], // Load team_lead relation
+    relations: ["role", "team_lead"], // Load team_lead relation
   });
 
   if (!user) {
@@ -180,7 +193,9 @@ export const updateUser = async (
 
   // Check for unique email before updating
   if (payload.email && payload.email !== user.email) {
-    const existing = await userRepository.findOne({ where: { email: payload.email, deleted: false } });
+    const existing = await userRepository.findOne({
+      where: { email: payload.email, deleted: false },
+    });
     if (existing && existing.id !== user.id) {
       throw new AppError(400, "Email already in use.");
     }
@@ -209,10 +224,12 @@ export const softDeleteUser = async (id: string) => {
   return await userRepository.save(user);
 };
 
-
 // Export all users to Excel
-export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.Workbook> => {
-  const query = userRepository.createQueryBuilder("user")
+export const exportUsersToExcel = async (
+  searchText?: string,
+): Promise<ExcelJS.Workbook> => {
+  const query = userRepository
+    .createQueryBuilder("user")
     .leftJoinAndSelect("user.role", "role")
     .where("user.deleted = false");
 
@@ -220,7 +237,7 @@ export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.W
     const search = `%${searchText.trim().toLowerCase()}%`;
     query.andWhere(
       `LOWER(user.first_name) LIKE :search OR LOWER(user.last_name) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(user.phone_number) LIKE :search OR LOWER(role.role) LIKE :search`,
-      { search }
+      { search },
     );
   }
 
@@ -235,7 +252,7 @@ export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.W
     { header: "First Name", key: "first_name", width: 20 },
     { header: "Last Name", key: "last_name", width: 20 },
     { header: "Contact", key: "number", width: 20 },
-    { header: "DOB", key: "dob", width: 20 },
+
     { header: "Email", key: "email", width: 30 },
     { header: "Role", key: "role", width: 20 },
     { header: "Created At", key: "created_at", width: 25 },
@@ -248,7 +265,7 @@ export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.W
       first_name: user.first_name ?? "",
       last_name: user.last_name ?? "",
       number: user.phone_number ?? "",
-      dob: user.dob ?? "",
+
       email: user.email ?? "",
       role: user.role.role ?? "",
       created_at: user.created_at?.toLocaleString() ?? "",
@@ -262,7 +279,7 @@ export const exportUsersToExcel = async (searchText?: string): Promise<ExcelJS.W
 //change password service
 export const changePassword = async (
   userId: string,
-  data: ChangePasswordInput
+  data: ChangePasswordInput,
 ): Promise<string> => {
   const user = await userRepository.findOne({ where: { id: userId } });
   if (!user) {
@@ -291,10 +308,10 @@ export const changePassword = async (
 };
 
 //change password service
-export const changeClientPassword = async (
-  data: any
-) => {
-  const Fetcheduser = await userRepository.findOne({ where: { id: data.userId } });
+export const changeClientPassword = async (data: any) => {
+  const Fetcheduser = await userRepository.findOne({
+    where: { id: data.userId },
+  });
   if (!Fetcheduser) {
     throw new AppError(404, "User not found");
   }
@@ -311,16 +328,16 @@ export const changeClientPassword = async (
 
 //change password service
 export const createClientCredentials = async (
-  data: CreateClientCredentialsInput
+  data: CreateClientCredentialsInput,
 ) => {
   let client_role = await roleRepository.findOne({
     where: { role: "client", deleted: false },
   });
 
-  if(!client_role){
+  if (!client_role) {
     const response = roleRepository.create({
       role: "client",
-      permissions: []
+      permissions: [],
     });
     client_role = await roleRepository.save(response);
   }
@@ -329,23 +346,23 @@ export const createClientCredentials = async (
     where: { email: data.email, deleted: false },
   });
 
-  if(existingEmail){
+  if (existingEmail) {
     throw new AppError(409, "User with this email already exist.");
   }
-  
+
   const client = await clientRepository.findOne({
     where: {
       id: data.clientId,
       deleted: false,
-    }
+    },
   });
 
-  if(!client){
+  if (!client) {
     throw new AppError(404, "Client not found.");
   }
 
-  if(client?.isCredential){
-    throw new AppError(400, "Credentials for this client already created.")
+  if (client?.isCredential) {
+    throw new AppError(400, "Credentials for this client already created.");
   }
   const name = client?.name;
   let first_name = "";
@@ -373,6 +390,6 @@ export const createClientCredentials = async (
   client.isCredential = true;
   await clientRepository.save(client);
 
-  const { password, ...isolated} = savedUser;
+  const { password, ...isolated } = savedUser;
   return isolated;
 };
