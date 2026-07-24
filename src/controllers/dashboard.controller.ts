@@ -4,18 +4,21 @@ import { ProjectService } from "../services/projects.service";
 import { ProjectTaskService } from "../services/project-task.service";
 import { getEILogChartData } from "../services/eilog.service";
 import { ClientFollowupService } from "../services/clients-followups.service";
+import { findAllUsers } from "../services/user.service";
+import { Leads } from "../entities/leads.entity";
+import { AppDataSource } from "../utils/data-source";
 
 const leadService = LeadService();
 const projectService = ProjectService();
 const projectTaskService = ProjectTaskService();
 const clientFollowupService = ClientFollowupService();
-
 export const dashboardController = () => {
   const getDashboardSummary = async (
     req: Request,
     res: Response,
     next: NextFunction,
   ): Promise<void> => {
+    const leadRepository = AppDataSource.getRepository(Leads);
     try {
       const user = res?.locals?.user;
       const userId: string = user?.id;
@@ -88,6 +91,79 @@ export const dashboardController = () => {
         ];
         console.log("projectStatusCounts", projectStatusCounts);
 
+        // Staff Name, Total LEads Assigned, Converted Leads, (Sales + budget monthly)
+        const usersResult = await findAllUsers({
+          page: 1,
+          limit: 100000,
+        });
+
+        const users = usersResult.data;
+
+        const leads = await leadRepository.find({
+          relations: {
+            assigned_to: true,
+            status: true,
+          },
+        });
+
+        const convertedStatuses = new Set(["business done", "completed"]);
+
+        const monthNames = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        const staffPerformance = users.map((user: any) => {
+          const report: any = {
+            staffId: user.id,
+            staffName:
+              `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim(),
+          };
+
+          monthNames.forEach((month, monthIndex) => {
+            // Leads assigned to this staff in this month
+            const assignedLeads = leads.filter((lead: any) => {
+              if (!lead.assigned_to) return false;
+
+              return (
+                lead.assigned_to.id === user.id &&
+                new Date(lead.created_at).getMonth() === monthIndex
+              );
+            });
+
+            // Converted leads
+            const convertedLeads = assignedLeads.filter((lead: any) =>
+              convertedStatuses.has(lead.status?.name?.trim().toLowerCase()),
+            );
+
+            // Total Sales
+            const sales = convertedLeads.reduce(
+              (sum: number, lead: any) => sum + Number(lead.budget || 0),
+              0,
+            );
+
+            report[month] = {
+              leadsAssigned: assignedLeads.length,
+              convertedLeads: convertedLeads.length,
+              sales,
+            };
+          });
+
+          return report;
+        });
+
+        console.log(staffPerformance);
+
         // Project snapshot (status counts)
         const projectSnapshot = {
           inProgress:
@@ -106,21 +182,6 @@ export const dashboardController = () => {
         };
 
         const monthWiseProjectRenewalData: Record<string, any[]> = {};
-
-        const monthNames = [
-          "January",
-          "February",
-          "March",
-          "April",
-          "May",
-          "June",
-          "July",
-          "August",
-          "September",
-          "October",
-          "November",
-          "December",
-        ];
 
         for (const project of allProjects) {
           const renewalDate = project.renewal_date;
