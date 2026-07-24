@@ -1196,7 +1196,7 @@ export const LeadService = () => {
           .leftJoin("followup.lead", "lead")
           .where("followup.deleted = false")
           .andWhere("followup.status = :status", {
-            status: "pending",
+            status: "PENDING",
           })
           .andWhere(
             role !== "admin" && role !== "Admin"
