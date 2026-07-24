@@ -285,7 +285,6 @@ export const dashboardController = () => {
 
         // Lead analytics (status) and lead type, all periods
         const leadAnalytics = {
-          daily: leadStatusDaily,
           weekly: leadStatusWeekly,
           monthly: leadStatusMonthly,
           yearly: leadStatusYearly,
