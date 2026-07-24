@@ -1091,7 +1091,7 @@ export const LeadService = () => {
 
   // Group leads by status for a given date range and user
   const groupLeadsByStatus = async (
-    dateRange: "Weekly" | "Monthly" | "Yearly",
+    dateRange: "Daily" | "Weekly" | "Monthly" | "Yearly",
     userId?: string,
     role?: string,
     referenceDate?: Date,
@@ -1105,6 +1105,11 @@ export const LeadService = () => {
       start.setHours(0, 0, 0, 0);
       end = new Date(start);
       end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+    } else if (dateRange === "Daily") {
+      start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(now);
       end.setHours(23, 59, 59, 999);
     } else if (dateRange === "Monthly") {
       start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -1127,6 +1132,88 @@ export const LeadService = () => {
     return await qb.groupBy("status.name").getRawMany();
   };
 
+  // daily leads for a given date range and user
+
+  const getDailyLeadStats = async (userId: string, role?: string) => {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    const convertedStatuses = ["business done", "completed"];
+
+    // Base query for assigned leads
+    const leadQb = leadRepo
+      .createQueryBuilder("lead")
+      .leftJoin("lead.status", "status")
+      .where("lead.deleted = false");
+
+    if (role !== "admin" && role !== "Admin") {
+      leadQb.andWhere("lead.assigned_to = :userId", { userId });
+    }
+
+    const [todayLeads, convertedLeads, followupsDone, pendingFollowups] =
+      await Promise.all([
+        // Today's leads
+        leadQb
+          .clone()
+          .andWhere("lead.created_at BETWEEN :start AND :end", { start, end })
+          .getCount(),
+
+        // Converted leads today
+        leadQb
+          .clone()
+          .andWhere("lead.created_at BETWEEN :start AND :end", { start, end })
+          .andWhere("LOWER(status.name) IN (:...statuses)", {
+            statuses: convertedStatuses,
+          })
+          .getCount(),
+
+        // Today's completed followups
+        AppDataSource.getRepository(LeadFollowup)
+          .createQueryBuilder("followup")
+          .leftJoin("followup.lead", "lead")
+          .where("followup.deleted = false")
+          .andWhere("followup.status = :status", {
+            status: "completed",
+          })
+          .andWhere("followup.created_at BETWEEN :start AND :end", {
+            start,
+            end,
+          })
+          .andWhere(
+            role !== "admin" && role !== "Admin"
+              ? "lead.assigned_to = :userId"
+              : "1=1",
+            { userId },
+          )
+          .getCount(),
+
+        // Pending followups
+        AppDataSource.getRepository(LeadFollowup)
+          .createQueryBuilder("followup")
+          .leftJoin("followup.lead", "lead")
+          .where("followup.deleted = false")
+          .andWhere("followup.status = :status", {
+            status: "pending",
+          })
+          .andWhere(
+            role !== "admin" && role !== "Admin"
+              ? "lead.assigned_to = :userId"
+              : "1=1",
+            { userId },
+          )
+          .getCount(),
+      ]);
+
+    return {
+      todayLeads,
+      followupsDone,
+      pendingFollowups,
+      convertedLeads,
+    };
+  };
   // Group leads by type for a given date range and user
   const groupLeadsByType = async (
     dateRange: "Weekly" | "Monthly" | "Yearly",
@@ -2319,6 +2406,7 @@ export const LeadService = () => {
     createLead,
     getAllLeads,
     getLeadStats,
+    getDailyLeadStats,
     getLeadById,
     updateLead,
     softDeleteLead,

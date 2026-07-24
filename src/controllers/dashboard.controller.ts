@@ -30,6 +30,7 @@ export const dashboardController = () => {
         const [
           leadStats,
           projectStatusCounts,
+          leadStatusDaily,
           leadStatusWeekly,
           leadStatusMonthly,
           leadStatusYearly,
@@ -45,6 +46,7 @@ export const dashboardController = () => {
         ] = await Promise.all([
           leadService.getLeadStats(userId, role),
           projectService.getProjectStatusCounts(userId, role),
+          leadService.getDailyLeadStats(userId, role),
           leadService.groupLeadsByStatus("Weekly", userId, role),
           leadService.groupLeadsByStatus("Monthly", userId, role),
           leadService.groupLeadsByStatus("Yearly", userId, role),
@@ -284,6 +286,7 @@ export const dashboardController = () => {
 
         // Lead analytics (status) and lead type, all periods
         const leadAnalytics = {
+          daily: leadStatusDaily,
           weekly: leadStatusWeekly,
           monthly: leadStatusMonthly,
           yearly: leadStatusYearly,
