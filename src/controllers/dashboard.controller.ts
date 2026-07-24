@@ -303,6 +303,7 @@ export const dashboardController = () => {
             leadType,
             projectRenewalData: monthWiseProjectRenewalData,
             expenses,
+            staffPerformance,
           },
         });
         return;
