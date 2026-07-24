@@ -30,7 +30,7 @@ export const dashboardController = () => {
         const [
           leadStats,
           projectStatusCounts,
-          leadStatusDaily,
+
           leadStatusWeekly,
           leadStatusMonthly,
           leadStatusYearly,
@@ -46,7 +46,6 @@ export const dashboardController = () => {
         ] = await Promise.all([
           leadService.getLeadStats(userId, role),
           projectService.getProjectStatusCounts(userId, role),
-          leadService.getDailyLeadStats(userId, role),
           leadService.groupLeadsByStatus("Weekly", userId, role),
           leadService.groupLeadsByStatus("Monthly", userId, role),
           leadService.groupLeadsByStatus("Yearly", userId, role),
@@ -317,18 +316,25 @@ export const dashboardController = () => {
       // 2. Today Follow up (from getLeadStats)
       // 3. Project (count of projects where user is assigned to a milestone or task)
       // 4. Performance Ratio (completed tasks / total task assigned)
-      const [leadStats, allProjects, allTasksInSystem, todayFollowupsCount] =
-        await Promise.all([
-          leadService.getLeadStats(userId, role),
-          // Get all projects where user is assigned to a milestone or task
-          projectService.getAllProject(userId, role),
-          // Get all tasks in the system for total count
-          (async () => {
-            const { data } = await projectTaskService.getAllTasks(userId, role);
-            return data;
-          })(),
-          clientFollowupService.getTodayFollowupsCount(userId, role),
-        ]);
+      const [
+        leadStats,
+        leadStatusDaily,
+        allProjects,
+        allTasksInSystem,
+        todayFollowupsCount,
+      ] = await Promise.all([
+        leadService.getLeadStats(userId, role),
+        leadService.getDailyLeadStats(userId, role),
+
+        // Get all projects where user is assigned to a milestone or task
+        projectService.getAllProject(userId, role),
+        // Get all tasks in the system for total count
+        (async () => {
+          const { data } = await projectTaskService.getAllTasks(userId, role);
+          return data;
+        })(),
+        clientFollowupService.getTodayFollowupsCount(userId, role),
+      ]);
 
       const taskData = await projectTaskService.getUserTaskCounts(userId);
 
@@ -400,6 +406,7 @@ export const dashboardController = () => {
           projectCount,
           performanceRatio,
           taskStat,
+          leadStatusDaily,
         },
       });
       return;
