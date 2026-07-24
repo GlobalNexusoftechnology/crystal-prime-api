@@ -123,6 +123,8 @@ export const dashboardController = () => {
           "Dec",
         ];
 
+        const currentMonthIndex = new Date().getMonth(); // Jan = 0, Jul = 6
+
         const staffPerformance = users.map((user: any) => {
           const report: any = {
             staffId: user.id,
@@ -130,39 +132,37 @@ export const dashboardController = () => {
               `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim(),
           };
 
-          monthNames.forEach((month, monthIndex) => {
-            // Leads assigned to this staff in this month
-            const assignedLeads = leads.filter((lead: any) => {
-              if (!lead.assigned_to) return false;
+          // Only iterate till current month
+          monthNames
+            .slice(0, currentMonthIndex + 1)
+            .forEach((month, monthIndex) => {
+              const assignedLeads = leads.filter((lead: any) => {
+                if (!lead.assigned_to) return false;
 
-              return (
-                lead.assigned_to.id === user.id &&
-                new Date(lead.created_at).getMonth() === monthIndex
+                return (
+                  lead.assigned_to.id === user.id &&
+                  new Date(lead.created_at).getMonth() === monthIndex
+                );
+              });
+
+              const convertedLeads = assignedLeads.filter((lead: any) =>
+                convertedStatuses.has(lead.status?.name?.trim().toLowerCase()),
               );
+
+              const sales = convertedLeads.reduce(
+                (sum: number, lead: any) => sum + Number(lead.budget || 0),
+                0,
+              );
+
+              report[month] = {
+                leadsAssigned: assignedLeads.length,
+                convertedLeads: convertedLeads.length,
+                sales,
+              };
             });
-
-            // Converted leads
-            const convertedLeads = assignedLeads.filter((lead: any) =>
-              convertedStatuses.has(lead.status?.name?.trim().toLowerCase()),
-            );
-
-            // Total Sales
-            const sales = convertedLeads.reduce(
-              (sum: number, lead: any) => sum + Number(lead.budget || 0),
-              0,
-            );
-
-            report[month] = {
-              leadsAssigned: assignedLeads.length,
-              convertedLeads: convertedLeads.length,
-              sales,
-            };
-          });
 
           return report;
         });
-
-        console.log(staffPerformance);
 
         // Project snapshot (status counts)
         const projectSnapshot = {
