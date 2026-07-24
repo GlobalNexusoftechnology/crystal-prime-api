@@ -1176,7 +1176,7 @@ export const LeadService = () => {
           .leftJoin("followup.lead", "lead")
           .where("followup.deleted = false")
           .andWhere("followup.status = :status", {
-            status: "completed",
+            status: "COMPLETED",
           })
           .andWhere("followup.created_at BETWEEN :start AND :end", {
             start,
