@@ -20,6 +20,9 @@ export const createInventorySchema = z.object({
   quantity: z.number().min(0).optional(),
   minqty: z.number().min(0).optional(),
   prices: z.number().min(0).optional(),
+  date: z.string().optional(),
+  vendorName: z.string().optional(),
+  stockLocation: z.string().optional(),
 });
 
 export const updateMaterialSchema = createInventorySchema.partial();

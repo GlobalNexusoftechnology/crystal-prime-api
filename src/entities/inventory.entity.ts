@@ -87,4 +87,12 @@ export class Inventory extends Model {
     (history: InventoryHistory) => history.inventory,
   )
   inventoryHistory: InventoryHistory[];
+  @Column({ type: "date", nullable: true })
+  date: string;
+
+  @Column({ type: "varchar", length: 150, nullable: true })
+  vendorName: string;
+
+  @Column({ type: "varchar", length: 150, nullable: true })
+  stockLocation: string;
 }
