@@ -30,6 +30,9 @@ export const createMaterialSchema = z.object({
   purchase_description: z.string().optional(),
   alias: z.string().optional(),
   minqty: z.number().min(0).optional(),
+  date: z.string().optional(),
+  vendorName: z.string().optional(),
+  stockLocation: z.string().optional(),
   quantity: z.number().min(0).optional(),
   state_prices: statePricesSchema.optional(),
 });
