@@ -73,6 +73,7 @@ export const LeadService = () => {
       budget,
       requirement,
       possibility_of_conversion,
+      remark,
       source_id,
       status_id,
       type_id,
@@ -99,6 +100,7 @@ export const LeadService = () => {
     lead.phone = phone ?? "";
     lead.email = email || "";
     lead.location = location ?? "";
+    lead.remark = remark ?? "";
     // Handle numeric fields properly
     lead.budget = budget && budget !== "" ? Number(budget) : null;
     lead.requirement = requirement ?? "";
@@ -585,6 +587,7 @@ export const LeadService = () => {
       budget,
       requirement,
       possibility_of_conversion,
+      remark,
       source_id,
       status_id,
       type_id,
@@ -608,6 +611,7 @@ export const LeadService = () => {
     lead.location = location ?? lead.location;
     lead.budget = budget ?? lead.budget;
     lead.requirement = requirement ?? lead.requirement;
+    lead.remark = remark ?? lead.remark;
     lead.possibility_of_conversion =
       possibility_of_conversion ?? lead.possibility_of_conversion;
     lead.other_contact = other_contact ?? lead.other_contact;
@@ -682,6 +686,7 @@ export const LeadService = () => {
         budget: lead.budget,
         requirement: lead.requirement,
         possibility_of_conversion: lead.possibility_of_conversion,
+        remark: lead.remark,
         channel: lead.channel,
         source: lead.source,
         type: lead.type,
@@ -852,6 +857,11 @@ export const LeadService = () => {
         key: "possibility_of_conversion",
         width: 25,
       },
+      {
+        header: "Remark",
+        key: "remark",
+        width: 25,
+      },
       { header: "Source", key: "source", width: 20 },
       { header: "Status", key: "status", width: 20 },
       { header: "type", key: "type", width: 20 },
@@ -871,6 +881,7 @@ export const LeadService = () => {
         location: lead.location ?? "",
         budget: lead.budget ?? 0,
         requirement: lead.requirement ?? "",
+        remark: lead.remark ?? "",
         possibility_of_conversion: lead.possibility_of_conversion ?? "",
         source: lead.source?.name ?? "",
         status: lead.status?.name ?? "",
@@ -902,6 +913,7 @@ export const LeadService = () => {
         key: "possibility_of_conversion",
         width: 25,
       },
+      { header: "remark", key: "remark", width: 15 },
       { header: "source", key: "source", width: 15 },
       { header: "status", key: "status", width: 15 },
       { header: "type", key: "type", width: 15 },
@@ -1019,6 +1031,7 @@ export const LeadService = () => {
         location: data.location || "",
         budget: Number(data.budget) || 0,
         requirement: data.requirement || "",
+        remark: data.remark || "",
         possibility_of_conversion:
           Number(data.possibility_of_conversion) || null,
         created_by: `${user.first_name} ${user.last_name}` || "",

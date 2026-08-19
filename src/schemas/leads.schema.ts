@@ -14,6 +14,7 @@ export const createLeadSchema = z.object({
   requirement: z.string().optional(),
   possibility_of_conversion: z.coerce.number().min(0).max(100).optional(),
   source_id: z.string().optional(),
+  remark: z.string().optional(),
   status_id: z.string().optional(),
   type_id: z.string().optional(),
   assigned_to: z.string().optional(),
@@ -21,7 +22,6 @@ export const createLeadSchema = z.object({
   attachments: z.array(z.any()).optional(),
   status_histories: z.array(z.any()).optional(),
 });
-
 
 export const createIndiaMartLeadSchema = z.object({
   first_name: z.string().optional(),
@@ -31,10 +31,11 @@ export const createIndiaMartLeadSchema = z.object({
   other_contact: z.string().optional(),
   email: z.string().optional(),
   location: z.string().optional(),
-  budget:  z.number().optional(),
+  budget: z.number().optional(),
   requirement: z.string().optional(),
   possibility_of_conversion: z.number().optional(),
   source_id: z.string().optional(),
+  remark: z.string().optional(),
   status_id: z.string().optional(),
   type_id: z.string().optional(),
   assigned_to: z.string().optional(),
@@ -56,6 +57,7 @@ export const updateLeadSchema = z.object({
   requirement: z.string().optional(),
   possibility_of_conversion: z.coerce.number().min(0).max(100).optional(),
   source_id: z.string().optional(),
+  remark: z.string().optional(),
   status_id: z.string().optional(),
   type_id: z.string().optional(),
   assigned_to: z.string().optional(),
@@ -77,6 +79,7 @@ export const excelLeadSchema = z.object({
   requirement: z.string().optional(),
   possibility_of_conversion: z.coerce.number().min(0).max(100).optional(),
   source_id: z.string().optional(),
+  remark: z.string().optional(),
   status_id: z.string().optional(),
   assigned_to: z.string().optional(),
 });
@@ -106,7 +109,7 @@ export const generateQuotationSchema = z.object({
       z.object({
         name: z.string().min(1, "Product name is required"),
         sale_price: z.number(),
-      })
+      }),
     )
     .optional(),
 });

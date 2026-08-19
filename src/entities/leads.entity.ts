@@ -54,6 +54,8 @@ export class Leads extends Model {
 
   @Column('text', { nullable: true })
   requirement: string;
+  @Column('text', { nullable: true })
+  remark: string;
 
   @Column({ type: "enum", enum: ChannelType, nullable: true, default: ChannelType.INTERNAL} )
   channel: ChannelType;
